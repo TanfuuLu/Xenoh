@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## Sensitive config
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+
+## EF Core migrations (optional, remove if you want to track)
+# src/*/Migrations/
+
+## Logs
+*.log
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Claude
+.claude/

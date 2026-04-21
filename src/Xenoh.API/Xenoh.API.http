@@ -1,0 +1,6 @@
+@Xenoh.API_HostAddress = http://localhost:5293
+
+GET {{Xenoh.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

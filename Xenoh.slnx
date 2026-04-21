@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Xenoh.API/Xenoh.API.csproj" />
+    <Project Path="src/Xenoh.Application/Xenoh.Application.csproj" />
+    <Project Path="src/Xenoh.Domain/Xenoh.Domain.csproj" />
+    <Project Path="src/Xenoh.Infrastructure/Xenoh.Infrastructure.csproj" />
+  </Folder>
+</Solution>

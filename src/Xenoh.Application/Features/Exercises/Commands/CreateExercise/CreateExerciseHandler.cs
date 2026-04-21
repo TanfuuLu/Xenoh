@@ -1,0 +1,93 @@
+using Mediator;
+using Microsoft.EntityFrameworkCore;
+using Xenoh.Application.Common.Interfaces;
+using Xenoh.Domain.Entities;
+using Xenoh.Domain.Enums;
+
+namespace Xenoh.Application.Features.Exercises.Commands.CreateExercise;
+
+public sealed class CreateExerciseHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser
+) : IRequestHandler<CreateExerciseCommand, ExerciseResponse>
+{
+    public async ValueTask<ExerciseResponse> Handle(CreateExerciseCommand request, CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+
+        var dailyWorkout = await context.DailyWorkouts
+            .Include(d => d.WeeklyWorkout)
+                .ThenInclude(w => w.Plan)
+            .FirstOrDefaultAsync(d => d.Id == request.DailyWorkoutId, cancellationToken)
+            ?? throw new InvalidOperationException("Daily workout not found.");
+
+        var plan = dailyWorkout.WeeklyWorkout.Plan;
+        bool canEdit = plan.PlanType == PlanType.Coach
+            ? plan.CreatedByCoachId == userId
+            : plan.OwnerId == userId;
+
+        if (!canEdit)
+            throw new InvalidOperationException(
+                plan.PlanType == PlanType.Coach && plan.OwnerId == userId
+                    ? "This plan is managed by your coach and cannot be edited."
+                    : "Access denied.");
+
+        var template = await context.ExerciseTemplates
+            .FirstOrDefaultAsync(t => t.Id == request.ExerciseTemplateId, cancellationToken)
+            ?? throw new InvalidOperationException("Exercise template not found.");
+
+        var exercise = new Exercise
+        {
+            ExerciseTemplateId = template.Id,
+            Name = template.Name,
+            PrimaryMuscleGroup = template.PrimaryMuscleGroup,
+            SecondaryMuscleGroups = template.SecondaryMuscleGroups,
+            PlannedSets = request.PlannedSets,
+            PlannedReps = request.PlannedReps,
+            PlannedWeight = request.PlannedWeight,
+            Notes = request.Notes,
+            DailyWorkoutId = request.DailyWorkoutId
+        };
+
+        // Auto-generate individual sets
+        for (int i = 1; i <= request.PlannedSets; i++)
+        {
+            exercise.Sets.Add(new ExerciseSet
+            {
+                SetNumber = i,
+                PlannedReps = request.PlannedReps,
+                PlannedWeight = request.PlannedWeight
+            });
+        }
+
+        context.Exercises.Add(exercise);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(exercise);
+    }
+
+    internal static ExerciseResponse ToResponse(Exercise e) => new(
+        e.Id,
+        e.ExerciseTemplateId,
+        e.Name,
+        e.PrimaryMuscleGroup.ToString(),
+        e.SecondaryMuscleGroups.Select(m => m.ToString()).ToList(),
+        e.PlannedSets,
+        e.PlannedReps,
+        e.PlannedWeight,
+        e.Sets.Count(s => s.IsCompleted),
+        e.IsCompleted,
+        e.Notes,
+        e.DailyWorkoutId,
+        e.Sets.OrderBy(s => s.SetNumber).Select(s => new ExerciseSetResponse(
+            s.Id,
+            s.SetNumber,
+            s.PlannedReps,
+            s.PlannedWeight,
+            s.ActualReps,
+            s.ActualWeight,
+            s.IsCompleted,
+            s.CompletedAt
+        )).ToList()
+    );
+}
