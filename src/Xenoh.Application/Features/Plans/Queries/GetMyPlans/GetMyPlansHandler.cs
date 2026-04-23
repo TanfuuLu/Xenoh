@@ -30,6 +30,7 @@ public sealed class GetMyPlansHandler(
                 p.WeeklyWorkouts.Count,
                 p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
                 p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.IsCompleted)),
+                p.IsActive,
                 p.CreatedAt
             ))
             .ToListAsync(cancellationToken);

@@ -27,5 +27,8 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>
             .WithOne(w => w.Plan)
             .HasForeignKey(w => w.PlanId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Index for active-plan lookups (Dashboard, PlanProgress)
+        builder.HasIndex(p => new { p.OwnerId, p.IsActive });
     }
 }

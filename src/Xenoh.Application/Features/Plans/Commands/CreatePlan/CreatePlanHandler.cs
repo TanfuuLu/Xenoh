@@ -62,6 +62,7 @@ public sealed class CreatePlanHandler(
             saved.WeeklyWorkouts.Count,
             allDays.Count,
             0,
+            saved.IsActive,
             saved.CreatedAt
         );
     }

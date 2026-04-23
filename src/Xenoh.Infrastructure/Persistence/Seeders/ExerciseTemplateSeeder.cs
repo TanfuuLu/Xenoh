@@ -8,14 +8,14 @@ public static class ExerciseTemplateSeeder
     public static List<ExerciseTemplate> GetTemplates() =>
     [
         // ── CHEST ──────────────────────────────────────────────
-        new() { Name = "Bench Press",           Description = "Barbell flat bench press",             PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Triceps, MuscleGroup.Shoulders] },
+        new() { Name = "Bench Press",           Description = "Barbell flat bench press",             PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Triceps, MuscleGroup.Shoulders],   IsCompetitionLift = true, CompetitionLiftType = CompetitionLiftType.Bench },
         new() { Name = "Incline Bench Press",   Description = "Barbell incline bench press",          PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Shoulders, MuscleGroup.Triceps] },
         new() { Name = "Dumbbell Fly",          Description = "Dumbbell chest fly on flat bench",     PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Shoulders] },
         new() { Name = "Push-Up",               Description = "Bodyweight push-up",                  PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Triceps, MuscleGroup.Shoulders, MuscleGroup.Core] },
         new() { Name = "Cable Crossover",       Description = "Cable chest fly crossover",           PrimaryMuscleGroup = MuscleGroup.Chest,       SecondaryMuscleGroups = [MuscleGroup.Shoulders] },
 
         // ── BACK ───────────────────────────────────────────────
-        new() { Name = "Deadlift",              Description = "Conventional barbell deadlift",        PrimaryMuscleGroup = MuscleGroup.Back,        SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Hamstrings, MuscleGroup.Quadriceps, MuscleGroup.Core] },
+        new() { Name = "Deadlift",              Description = "Conventional barbell deadlift",        PrimaryMuscleGroup = MuscleGroup.Back,        SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Hamstrings, MuscleGroup.Quadriceps, MuscleGroup.Core], IsCompetitionLift = true, CompetitionLiftType = CompetitionLiftType.Deadlift },
         new() { Name = "Pull-Up",               Description = "Bodyweight pull-up",                  PrimaryMuscleGroup = MuscleGroup.Back,        SecondaryMuscleGroups = [MuscleGroup.Biceps, MuscleGroup.Forearms] },
         new() { Name = "Barbell Row",           Description = "Bent-over barbell row",               PrimaryMuscleGroup = MuscleGroup.Back,        SecondaryMuscleGroups = [MuscleGroup.Biceps, MuscleGroup.Forearms, MuscleGroup.Core] },
         new() { Name = "Lat Pulldown",          Description = "Cable lat pulldown",                  PrimaryMuscleGroup = MuscleGroup.Back,        SecondaryMuscleGroups = [MuscleGroup.Biceps, MuscleGroup.Forearms] },
@@ -42,7 +42,7 @@ public static class ExerciseTemplateSeeder
         new() { Name = "Close-Grip Bench Press",Description = "Narrow grip barbell bench press",    PrimaryMuscleGroup = MuscleGroup.Triceps,     SecondaryMuscleGroups = [MuscleGroup.Chest, MuscleGroup.Shoulders] },
 
         // ── QUADRICEPS ─────────────────────────────────────────
-        new() { Name = "Squat",                 Description = "Barbell back squat",                  PrimaryMuscleGroup = MuscleGroup.Quadriceps,  SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Hamstrings, MuscleGroup.Core] },
+        new() { Name = "Squat",                 Description = "Barbell back squat",                  PrimaryMuscleGroup = MuscleGroup.Quadriceps,  SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Hamstrings, MuscleGroup.Core],  IsCompetitionLift = true, CompetitionLiftType = CompetitionLiftType.Squat },
         new() { Name = "Front Squat",           Description = "Barbell front squat",                 PrimaryMuscleGroup = MuscleGroup.Quadriceps,  SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Core] },
         new() { Name = "Leg Press",             Description = "Machine leg press",                   PrimaryMuscleGroup = MuscleGroup.Quadriceps,  SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Hamstrings] },
         new() { Name = "Leg Extension",         Description = "Machine leg extension",               PrimaryMuscleGroup = MuscleGroup.Quadriceps,  SecondaryMuscleGroups = [] },

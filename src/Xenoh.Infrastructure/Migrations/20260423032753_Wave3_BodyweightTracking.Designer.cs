@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xenoh.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260423032753_Wave3_BodyweightTracking")]
+    partial class Wave3_BodyweightTracking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -431,20 +434,12 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("CompetitionLiftType")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsCompetitionLift")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -481,9 +476,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -505,7 +497,7 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasIndex("CreatedByCoachId");
 
-                    b.HasIndex("OwnerId", "IsActive");
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("Plans");
                 });
