@@ -31,6 +31,14 @@ public sealed class GetExercisesByDayHandler(
             .OrderBy(e => e.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return exercises.Select(CreateExerciseHandler.ToResponse).ToList();
+        var templateIds = exercises.Select(e => e.ExerciseTemplateId).Distinct().ToList();
+        var prs = await context.UserExercisePRs
+            .AsNoTracking()
+            .Where(p => p.UserId == userId && templateIds.Contains(p.ExerciseTemplateId))
+            .ToDictionaryAsync(p => p.ExerciseTemplateId, p => (decimal?)p.Weight, cancellationToken);
+
+        return exercises
+            .Select(e => CreateExerciseHandler.ToResponse(e, prs.GetValueOrDefault(e.ExerciseTemplateId)))
+            .ToList();
     }
 }

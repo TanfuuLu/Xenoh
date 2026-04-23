@@ -1,8 +1,10 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.Plans.Commands.ActivatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlanForUser;
+using Xenoh.Application.Features.Plans.Commands.DeactivatePlan;
 using Xenoh.Application.Features.Plans.Commands.DeletePlan;
 using Xenoh.Application.Features.Plans.Commands.UpdatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
@@ -103,6 +105,47 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Activate a plan. Auto-deactivates any other active plan of the same owner.
+    /// Only the plan owner can activate — coaches cannot activate on behalf of clients.
+    /// Idempotent: activating an already-active plan returns 200 with current state.
+    /// </summary>
+    [HttpPatch("{planId:guid}/activate")]
+    public async Task<IActionResult> ActivatePlan(Guid planId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new ActivatePlanCommand(planId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message == "Plan not found."
+                ? NotFound(new { message = ex.Message })
+                : BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Deactivate a plan. Only the plan owner can deactivate.
+    /// Idempotent: deactivating an already-inactive plan returns 200 with current state.
+    /// </summary>
+    [HttpPatch("{planId:guid}/deactivate")]
+    public async Task<IActionResult> DeactivatePlan(Guid planId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new DeactivatePlanCommand(planId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message == "Plan not found."
+                ? NotFound(new { message = ex.Message })
+                : BadRequest(new { message = ex.Message });
         }
     }
 }

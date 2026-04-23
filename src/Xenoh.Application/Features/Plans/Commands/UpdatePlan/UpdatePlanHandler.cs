@@ -87,6 +87,7 @@ public sealed class UpdatePlanHandler(
             saved.WeeklyWorkouts.Count,
             allDays.Count,
             allDays.Count(d => d.IsCompleted),
+            saved.IsActive,
             saved.CreatedAt
         );
     }

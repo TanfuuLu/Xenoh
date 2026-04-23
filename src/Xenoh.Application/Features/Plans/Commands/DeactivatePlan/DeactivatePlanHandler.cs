@@ -3,26 +3,36 @@ using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 
-namespace Xenoh.Application.Features.Plans.Queries.GetPlanById;
+namespace Xenoh.Application.Features.Plans.Commands.DeactivatePlan;
 
-public sealed class GetPlanByIdHandler(
+public sealed class DeactivatePlanHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser
-) : IRequestHandler<GetPlanByIdQuery, PlanResponse>
+) : IRequestHandler<DeactivatePlanCommand, PlanResponse>
 {
-    public async ValueTask<PlanResponse> Handle(GetPlanByIdQuery request, CancellationToken cancellationToken)
+    public async ValueTask<PlanResponse> Handle(DeactivatePlanCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
 
         var plan = await context.Plans
-            .AsNoTracking()
             .Include(p => p.Owner)
             .Include(p => p.CreatedByCoach)
             .Include(p => p.WeeklyWorkouts)
                 .ThenInclude(w => w.DailyWorkouts)
-            .FirstOrDefaultAsync(p => p.Id == request.PlanId &&
-                (p.OwnerId == userId || p.CreatedByCoachId == userId), cancellationToken)
+            .FirstOrDefaultAsync(p => p.Id == request.PlanId, cancellationToken)
             ?? throw new InvalidOperationException("Plan not found.");
+
+        // Only the owner can deactivate
+        if (plan.OwnerId != userId)
+            throw new InvalidOperationException("Access denied.");
+
+        // Idempotent: already inactive → return current state
+        if (plan.IsActive)
+        {
+            plan.IsActive = false;
+            plan.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync(cancellationToken);
+        }
 
         var allDays = plan.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).ToList();
 

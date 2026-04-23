@@ -63,10 +63,16 @@ public sealed class CreateExerciseHandler(
         context.Exercises.Add(exercise);
         await context.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(exercise);
+        var prWeight = await context.UserExercisePRs
+            .AsNoTracking()
+            .Where(p => p.UserId == userId && p.ExerciseTemplateId == exercise.ExerciseTemplateId)
+            .Select(p => (decimal?)p.Weight)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return ToResponse(exercise, prWeight);
     }
 
-    internal static ExerciseResponse ToResponse(Exercise e) => new(
+    internal static ExerciseResponse ToResponse(Exercise e, decimal? personalRecordWeight = null) => new(
         e.Id,
         e.ExerciseTemplateId,
         e.Name,
@@ -88,6 +94,7 @@ public sealed class CreateExerciseHandler(
             s.ActualWeight,
             s.IsCompleted,
             s.CompletedAt
-        )).ToList()
+        )).ToList(),
+        personalRecordWeight
     );
 }

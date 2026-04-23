@@ -29,5 +29,6 @@ public sealed record PlanResponse(
     int TotalWeeks,
     int TotalDays,
     int CompletedDays,
+    bool IsActive,
     DateTime CreatedAt
 );

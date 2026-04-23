@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xenoh.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260422165058_Wave2_PersonalRecord")]
+    partial class Wave2_PersonalRecord
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -168,9 +171,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateOnly?>("DateOfBirth")
-                        .HasColumnType("date");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -181,12 +181,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int?>("Gender")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("Height")
-                        .HasColumnType("numeric");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -235,35 +229,6 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.BodyweightLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Weight")
-                        .HasColumnType("decimal(6,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Date")
-                        .IsUnique();
-
-                    b.ToTable("BodyweightLogs");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CoachClientRelationship", b =>
@@ -431,20 +396,12 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("CompetitionLiftType")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsCompetitionLift")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -481,9 +438,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -505,7 +459,7 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasIndex("CreatedByCoachId");
 
-                    b.HasIndex("OwnerId", "IsActive");
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("Plans");
                 });
@@ -614,32 +568,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("WeeklyWorkouts");
                 });
 
-            modelBuilder.Entity("Xenoh.Domain.Entities.WorkoutHistory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Date")
-                        .IsUnique();
-
-                    b.ToTable("WorkoutHistories");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -683,15 +611,6 @@ namespace Xenoh.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.BodyweightLog", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", null)
                         .WithMany()
@@ -813,15 +732,6 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Plan");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.WorkoutHistory", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.ApplicationUser", b =>

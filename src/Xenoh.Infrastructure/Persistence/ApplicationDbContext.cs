@@ -17,6 +17,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<CoachClientRelationship> CoachClientRelationships => Set<CoachClientRelationship>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ExerciseTemplate> ExerciseTemplates => Set<ExerciseTemplate>();
+    public DbSet<UserExercisePR> UserExercisePRs => Set<UserExercisePR>();
+    public DbSet<WorkoutHistory> WorkoutHistories => Set<WorkoutHistory>();
+    public DbSet<BodyweightLog> BodyweightLogs => Set<BodyweightLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

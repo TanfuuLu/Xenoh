@@ -17,5 +17,7 @@ public class Plan : BaseEntity
     public Guid? CreatedByCoachId { get; set; }
     public ApplicationUser? CreatedByCoach { get; set; }
 
+    public bool IsActive { get; set; } = false;
+
     public ICollection<WeeklyWorkout> WeeklyWorkouts { get; set; } = [];
 }

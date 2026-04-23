@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Domain.Entities;
 
@@ -7,6 +8,11 @@ public class ApplicationUser : IdentityUser<Guid>
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // User Stats (Wave 2)
+    public decimal? Height { get; set; }        // cm
+    public Gender? Gender { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Plan> Plans { get; set; } = [];

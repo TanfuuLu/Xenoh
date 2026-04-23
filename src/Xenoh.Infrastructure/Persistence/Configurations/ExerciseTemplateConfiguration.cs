@@ -12,5 +12,7 @@ public class ExerciseTemplateConfiguration : IEntityTypeConfiguration<ExerciseTe
         builder.Property(t => t.Name).IsRequired().HasMaxLength(100);
         builder.Property(t => t.Description).HasMaxLength(500);
         builder.Property(t => t.SecondaryMuscleGroups).HasColumnType("jsonb");
+        builder.Property(t => t.IsCompetitionLift).HasDefaultValue(false);
+        builder.Property(t => t.CompetitionLiftType).IsRequired(false);
     }
 }
