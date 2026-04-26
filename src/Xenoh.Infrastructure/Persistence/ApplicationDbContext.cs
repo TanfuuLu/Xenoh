@@ -9,6 +9,7 @@ namespace Xenoh.Infrastructure.Persistence;
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IApplicationDbContext
 {
+    public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
     public DbSet<Plan> Plans => Set<Plan>();
     public DbSet<WeeklyWorkout> WeeklyWorkouts => Set<WeeklyWorkout>();
     public DbSet<DailyWorkout> DailyWorkouts => Set<DailyWorkout>();

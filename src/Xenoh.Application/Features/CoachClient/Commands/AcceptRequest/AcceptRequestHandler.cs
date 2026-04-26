@@ -1,7 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -9,7 +9,7 @@ using Xenoh.Domain.Enums;
 namespace Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 
 public sealed class AcceptRequestHandler(
-    IApplicationDbContext context,
+    ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<AcceptRequestCommand, CoachRelationshipResponse>
@@ -18,19 +18,16 @@ public sealed class AcceptRequestHandler(
     {
         var coachId = currentUser.UserId;
 
-        var relationship = await context.CoachClientRelationships
-            .Include(r => r.Client)
-            .Include(r => r.Coach)
-            .FirstOrDefaultAsync(r => r.Id == request.RelationshipId && r.CoachId == coachId, cancellationToken)
+        var relationship = await coachClientRepo.FindByIdForCoachAsync(request.RelationshipId, coachId, cancellationToken)
             ?? throw new InvalidOperationException("Request not found.");
 
         if (relationship.Status != RelationshipStatus.Pending)
             throw new InvalidOperationException("Request has already been processed.");
 
-        relationship.Status = RelationshipStatus.Accepted;
+        relationship.Status = RelationshipStatus.Active;
         relationship.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await coachClientRepo.SaveChangesAsync(cancellationToken);
 
         var coach = await userManager.FindByIdAsync(coachId.ToString());
 

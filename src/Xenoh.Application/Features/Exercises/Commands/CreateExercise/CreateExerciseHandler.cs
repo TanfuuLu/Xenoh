@@ -1,13 +1,16 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 
 public sealed class CreateExerciseHandler(
-    IApplicationDbContext context,
+    IDailyWorkoutRepository dailyWorkoutRepo,
+    IExerciseRepository exerciseRepo,
+    IExerciseTemplateRepository exerciseTemplateRepo,
+    IUserPrRepository userPrRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<CreateExerciseCommand, ExerciseResponse>
 {
@@ -15,10 +18,7 @@ public sealed class CreateExerciseHandler(
     {
         var userId = currentUser.UserId;
 
-        var dailyWorkout = await context.DailyWorkouts
-            .Include(d => d.WeeklyWorkout)
-                .ThenInclude(w => w.Plan)
-            .FirstOrDefaultAsync(d => d.Id == request.DailyWorkoutId, cancellationToken)
+        var dailyWorkout = await dailyWorkoutRepo.FindWithPlanAsync(request.DailyWorkoutId, cancellationToken)
             ?? throw new InvalidOperationException("Daily workout not found.");
 
         var plan = dailyWorkout.WeeklyWorkout.Plan;
@@ -32,8 +32,7 @@ public sealed class CreateExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
-        var template = await context.ExerciseTemplates
-            .FirstOrDefaultAsync(t => t.Id == request.ExerciseTemplateId, cancellationToken)
+        var template = await exerciseTemplateRepo.FindByIdAsync(request.ExerciseTemplateId, cancellationToken)
             ?? throw new InvalidOperationException("Exercise template not found.");
 
         var exercise = new Exercise
@@ -49,7 +48,6 @@ public sealed class CreateExerciseHandler(
             DailyWorkoutId = request.DailyWorkoutId
         };
 
-        // Auto-generate individual sets
         for (int i = 1; i <= request.PlannedSets; i++)
         {
             exercise.Sets.Add(new ExerciseSet
@@ -60,19 +58,17 @@ public sealed class CreateExerciseHandler(
             });
         }
 
-        context.Exercises.Add(exercise);
-        await context.SaveChangesAsync(cancellationToken);
+        await exerciseRepo.AddAsync(exercise, cancellationToken);
+        await exerciseRepo.SaveChangesAsync(cancellationToken);
 
-        var prWeight = await context.UserExercisePRs
-            .AsNoTracking()
-            .Where(p => p.UserId == userId && p.ExerciseTemplateId == exercise.ExerciseTemplateId)
-            .Select(p => (decimal?)p.Weight)
-            .FirstOrDefaultAsync(cancellationToken);
+        var prWeight = (await userPrRepo.GetByTemplateIdsAsync(
+            userId, [exercise.ExerciseTemplateId], cancellationToken))
+            .GetValueOrDefault(exercise.ExerciseTemplateId);
 
         return ToResponse(exercise, prWeight);
     }
 
-    internal static ExerciseResponse ToResponse(Exercise e, decimal? personalRecordWeight = null) => new(
+    public static ExerciseResponse ToResponse(Exercise e, decimal? personalRecordWeight = null) => new(
         e.Id,
         e.ExerciseTemplateId,
         e.Name,

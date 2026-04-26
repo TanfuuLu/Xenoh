@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Auth.Commands.Register;
 using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 using TokenEntity = Xenoh.Domain.Entities.RefreshToken;
@@ -10,7 +11,7 @@ namespace Xenoh.Application.Features.Auth.Commands.Login;
 public sealed class LoginHandler(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
-    IApplicationDbContext context
+    IRefreshTokenRepository refreshTokenRepo
 ) : IRequestHandler<LoginCommand, AuthResponse>
 {
     public async ValueTask<AuthResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -33,8 +34,8 @@ public sealed class LoginHandler(
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
 
-        context.RefreshTokens.Add(refreshToken);
-        await context.SaveChangesAsync(cancellationToken);
+        await refreshTokenRepo.AddAsync(refreshToken, cancellationToken);
+        await refreshTokenRepo.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(
             accessToken,

@@ -1,14 +1,13 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 
 public sealed class GetCoachProfileHandler(
-    IApplicationDbContext context,
+    ICoachClientRepository coachClientRepo,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachProfileQuery, CoachProfileResponse>
 {
@@ -17,14 +16,11 @@ public sealed class GetCoachProfileHandler(
         var coach = await userManager.FindByIdAsync(request.CoachId.ToString())
             ?? throw new InvalidOperationException("Coach not found.");
 
-        // Verify they are actually a coach
         var isCoach = await userManager.IsInRoleAsync(coach, UserRole.Coach);
         if (!isCoach)
             throw new InvalidOperationException("Coach not found.");
 
-        var totalClients = await context.CoachClientRelationships
-            .AsNoTracking()
-            .CountAsync(r => r.CoachId == request.CoachId && r.Status == RelationshipStatus.Active, cancellationToken);
+        var totalClients = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);
 
         return new CoachProfileResponse(
             coach.Id,

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
+using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyCoach;
 using Xenoh.Application.Features.CoachClient.Queries.GetPendingRequests;
@@ -84,6 +85,17 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetMyClients(CancellationToken ct)
     {
         var result = await mediator.Send(new GetMyClientsQuery(), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// [Coach only] Dashboard: per-client stats — last workout, plan progress, Big 3 PRs, bodyweight.
+    /// </summary>
+    [HttpGet("dashboard")]
+    [Authorize(Roles = UserRole.Coach)]
+    public async Task<IActionResult> GetDashboard(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetCoachDashboardQuery(), ct);
         return Ok(result);
     }
 }

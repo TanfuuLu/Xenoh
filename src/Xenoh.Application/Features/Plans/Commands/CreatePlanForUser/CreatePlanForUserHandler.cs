@@ -1,6 +1,6 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -8,7 +8,8 @@ using Xenoh.Domain.Enums;
 namespace Xenoh.Application.Features.Plans.Commands.CreatePlanForUser;
 
 public sealed class CreatePlanForUserHandler(
-    IApplicationDbContext context,
+    IPlanRepository planRepo,
+    ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<CreatePlanForUserCommand, PlanResponse>
 {
@@ -21,16 +22,11 @@ public sealed class CreatePlanForUserHandler(
 
         var coachId = currentUser.UserId;
 
-        var relationship = await context.CoachClientRelationships
-            .FirstOrDefaultAsync(r =>
-                r.CoachId == coachId &&
-                r.ClientId == request.UserId &&
-                r.Status == RelationshipStatus.Accepted, cancellationToken)
+        var relationship = await coachClientRepo.FindActiveByCoachAndClientAsync(
+            coachId, request.UserId, cancellationToken)
             ?? throw new InvalidOperationException("You are not the coach of this user.");
 
-        var planCount = await context.Plans
-            .CountAsync(p => p.OwnerId == request.UserId, cancellationToken);
-
+        var planCount = await planRepo.CountByOwnerAsync(request.UserId, cancellationToken);
         if (planCount >= MaxPlansPerUser)
             throw new InvalidOperationException($"This user has reached the maximum of {MaxPlansPerUser} plans.");
 
@@ -46,34 +42,10 @@ public sealed class CreatePlanForUserHandler(
 
         plan.WeeklyWorkouts = PlanWeekGenerator.Generate(plan);
 
-        context.Plans.Add(plan);
-        await context.SaveChangesAsync(cancellationToken);
+        await planRepo.AddAsync(plan, cancellationToken);
+        await planRepo.SaveChangesAsync(cancellationToken);
 
-        var saved = await context.Plans
-            .AsNoTracking()
-            .Include(p => p.Owner)
-            .Include(p => p.CreatedByCoach)
-            .Include(p => p.WeeklyWorkouts)
-                .ThenInclude(w => w.DailyWorkouts)
-            .FirstAsync(p => p.Id == plan.Id, cancellationToken);
-
-        var allDays = saved.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).ToList();
-
-        return new PlanResponse(
-            saved.Id,
-            saved.Name,
-            saved.StartDate,
-            saved.EndDate,
-            saved.PlanType.ToString(),
-            saved.OwnerId,
-            $"{saved.Owner.FirstName} {saved.Owner.LastName}".Trim(),
-            saved.CreatedByCoachId,
-            saved.CreatedByCoach is null ? null : $"{saved.CreatedByCoach.FirstName} {saved.CreatedByCoach.LastName}".Trim(),
-            saved.WeeklyWorkouts.Count,
-            allDays.Count,
-            0,
-            saved.IsActive,
-            saved.CreatedAt
-        );
+        return await planRepo.GetByIdForUserAsync(plan.Id, coachId, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to reload created plan.");
     }
 }

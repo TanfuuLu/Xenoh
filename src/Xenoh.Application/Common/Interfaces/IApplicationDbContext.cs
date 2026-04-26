@@ -5,6 +5,7 @@ namespace Xenoh.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    DbSet<ApplicationUser> ApplicationUsers { get; }
     DbSet<Plan> Plans { get; }
     DbSet<WeeklyWorkout> WeeklyWorkouts { get; }
     DbSet<DailyWorkout> DailyWorkouts { get; }

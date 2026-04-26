@@ -1,14 +1,14 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 
 public sealed class RequestCoachHandler(
-    IApplicationDbContext context,
+    ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<RequestCoachCommand, CoachRelationshipResponse>
@@ -17,8 +17,7 @@ public sealed class RequestCoachHandler(
     {
         var clientId = currentUser.UserId;
 
-        var existing = await context.CoachClientRelationships
-            .FirstOrDefaultAsync(r => r.ClientId == clientId, cancellationToken);
+        var existing = await coachClientRepo.FindByClientAsync(clientId, cancellationToken);
         if (existing is not null)
             throw new InvalidOperationException("You already have a coach or a pending request.");
 
@@ -39,8 +38,8 @@ public sealed class RequestCoachHandler(
             Status = RelationshipStatus.Pending
         };
 
-        context.CoachClientRelationships.Add(relationship);
-        await context.SaveChangesAsync(cancellationToken);
+        await coachClientRepo.AddAsync(relationship, cancellationToken);
+        await coachClientRepo.SaveChangesAsync(cancellationToken);
 
         return new CoachRelationshipResponse(
             relationship.Id,

@@ -1,12 +1,12 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Users.Commands.LogBodyweight;
 
 public sealed class LogBodyweightHandler(
-    IApplicationDbContext context,
+    IBodyweightRepository bodyweightRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<LogBodyweightCommand, BodyweightLogResponse>
 {
@@ -15,8 +15,7 @@ public sealed class LogBodyweightHandler(
         var userId = currentUser.UserId;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var existing = await context.BodyweightLogs
-            .FirstOrDefaultAsync(b => b.UserId == userId && b.Date == today, cancellationToken);
+        var existing = await bodyweightRepo.FindTodayAsync(userId, today, cancellationToken);
 
         if (existing is null)
         {
@@ -26,7 +25,7 @@ public sealed class LogBodyweightHandler(
                 Weight = request.Weight,
                 Date = today
             };
-            context.BodyweightLogs.Add(existing);
+            await bodyweightRepo.AddAsync(existing, cancellationToken);
         }
         else
         {
@@ -34,7 +33,7 @@ public sealed class LogBodyweightHandler(
             existing.UpdatedAt = DateTime.UtcNow;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await bodyweightRepo.SaveChangesAsync(cancellationToken);
 
         return new BodyweightLogResponse(existing.Id, existing.Weight, existing.Date);
     }

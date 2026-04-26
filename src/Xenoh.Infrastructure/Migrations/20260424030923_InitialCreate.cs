@@ -34,6 +34,9 @@ namespace Xenoh.Infrastructure.Migrations
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Height = table.Column<decimal>(type: "numeric", nullable: true),
+                    Gender = table.Column<int>(type: "integer", nullable: true),
+                    DateOfBirth = table.Column<DateOnly>(type: "date", nullable: true),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -63,6 +66,8 @@ namespace Xenoh.Infrastructure.Migrations
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     PrimaryMuscleGroup = table.Column<int>(type: "integer", nullable: false),
                     SecondaryMuscleGroups = table.Column<string>(type: "jsonb", nullable: false),
+                    IsCompetitionLift = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    CompetitionLiftType = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -178,6 +183,28 @@ namespace Xenoh.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BodyweightLogs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Weight = table.Column<decimal>(type: "numeric(6,2)", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BodyweightLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BodyweightLogs_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CoachClientRelationships",
                 columns: table => new
                 {
@@ -216,6 +243,7 @@ namespace Xenoh.Infrastructure.Migrations
                     PlanType = table.Column<int>(type: "integer", nullable: false),
                     OwnerId = table.Column<Guid>(type: "uuid", nullable: false),
                     CreatedByCoachId = table.Column<Guid>(type: "uuid", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -260,11 +288,63 @@ namespace Xenoh.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "WorkoutHistories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkoutHistories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WorkoutHistories_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserExercisePRs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExerciseTemplateId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Weight = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    Reps = table.Column<int>(type: "integer", nullable: false),
+                    AchievedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserExercisePRs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserExercisePRs_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserExercisePRs_ExerciseTemplates_ExerciseTemplateId",
+                        column: x => x.ExerciseTemplateId,
+                        principalTable: "ExerciseTemplates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "WeeklyWorkouts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     WeekNumber = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
                     StartDate = table.Column<DateOnly>(type: "date", nullable: false),
                     EndDate = table.Column<DateOnly>(type: "date", nullable: false),
                     PlanId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -316,9 +396,7 @@ namespace Xenoh.Infrastructure.Migrations
                     ExerciseTemplateId = table.Column<Guid>(type: "uuid", nullable: false),
                     PlannedSets = table.Column<int>(type: "integer", nullable: false),
                     PlannedReps = table.Column<int>(type: "integer", nullable: false),
-                    ActualSets = table.Column<int>(type: "integer", nullable: true),
-                    ActualReps = table.Column<int>(type: "integer", nullable: true),
-                    CompletedSets = table.Column<int>(type: "integer", nullable: false),
+                    PlannedWeight = table.Column<decimal>(type: "numeric", nullable: true),
                     IsCompleted = table.Column<bool>(type: "boolean", nullable: false),
                     Notes = table.Column<string>(type: "text", nullable: true),
                     DailyWorkoutId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -340,6 +418,33 @@ namespace Xenoh.Infrastructure.Migrations
                         principalTable: "ExerciseTemplates",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ExerciseSets",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    SetNumber = table.Column<int>(type: "integer", nullable: false),
+                    PlannedReps = table.Column<int>(type: "integer", nullable: false),
+                    PlannedWeight = table.Column<decimal>(type: "numeric(10,2)", nullable: true),
+                    ActualReps = table.Column<int>(type: "integer", nullable: true),
+                    ActualWeight = table.Column<decimal>(type: "numeric(10,2)", nullable: true),
+                    IsCompleted = table.Column<bool>(type: "boolean", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ExerciseId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExerciseSets", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExerciseSets_Exercises_ExerciseId",
+                        column: x => x.ExerciseId,
+                        principalTable: "Exercises",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -380,6 +485,12 @@ namespace Xenoh.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_BodyweightLogs_UserId_Date",
+                table: "BodyweightLogs",
+                columns: new[] { "UserId", "Date" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_CoachClientRelationships_ClientId",
                 table: "CoachClientRelationships",
                 column: "ClientId",
@@ -406,14 +517,19 @@ namespace Xenoh.Infrastructure.Migrations
                 column: "ExerciseTemplateId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ExerciseSets_ExerciseId",
+                table: "ExerciseSets",
+                column: "ExerciseId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Plans_CreatedByCoachId",
                 table: "Plans",
                 column: "CreatedByCoachId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Plans_OwnerId",
+                name: "IX_Plans_OwnerId_IsActive",
                 table: "Plans",
-                column: "OwnerId");
+                columns: new[] { "OwnerId", "IsActive" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
@@ -421,9 +537,26 @@ namespace Xenoh.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserExercisePRs_ExerciseTemplateId",
+                table: "UserExercisePRs",
+                column: "ExerciseTemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserExercisePRs_UserId_ExerciseTemplateId",
+                table: "UserExercisePRs",
+                columns: new[] { "UserId", "ExerciseTemplateId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_WeeklyWorkouts_PlanId",
                 table: "WeeklyWorkouts",
                 column: "PlanId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkoutHistories_UserId_Date",
+                table: "WorkoutHistories",
+                columns: new[] { "UserId", "Date" },
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -445,16 +578,28 @@ namespace Xenoh.Infrastructure.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "BodyweightLogs");
+
+            migrationBuilder.DropTable(
                 name: "CoachClientRelationships");
 
             migrationBuilder.DropTable(
-                name: "Exercises");
+                name: "ExerciseSets");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
+                name: "UserExercisePRs");
+
+            migrationBuilder.DropTable(
+                name: "WorkoutHistories");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Exercises");
 
             migrationBuilder.DropTable(
                 name: "DailyWorkouts");

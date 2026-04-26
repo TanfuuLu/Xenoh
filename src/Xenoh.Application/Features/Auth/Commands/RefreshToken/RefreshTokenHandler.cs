@@ -1,7 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Auth.Commands.Register;
 using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 using TokenEntity = Xenoh.Domain.Entities.RefreshToken;
@@ -11,14 +11,12 @@ namespace Xenoh.Application.Features.Auth.Commands.RefreshToken;
 public sealed class RefreshTokenHandler(
     UserManager<ApplicationUser> userManager,
     ITokenService tokenService,
-    IApplicationDbContext context
+    IRefreshTokenRepository refreshTokenRepo
 ) : IRequestHandler<RefreshTokenCommand, AuthResponse>
 {
     public async ValueTask<AuthResponse> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var storedToken = await context.RefreshTokens
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.Token == request.RefreshToken, cancellationToken)
+        var storedToken = await refreshTokenRepo.FindActiveAsync(request.RefreshToken, cancellationToken)
             ?? throw new InvalidOperationException("Invalid refresh token.");
 
         if (!storedToken.IsActive)
@@ -38,8 +36,8 @@ public sealed class RefreshTokenHandler(
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
 
-        context.RefreshTokens.Add(newRefreshToken);
-        await context.SaveChangesAsync(cancellationToken);
+        await refreshTokenRepo.AddAsync(newRefreshToken, cancellationToken);
+        await refreshTokenRepo.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(
             accessToken,

@@ -1,6 +1,6 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -8,7 +8,7 @@ using Xenoh.Domain.Enums;
 namespace Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 
 public sealed class UpdateExerciseHandler(
-    IApplicationDbContext context,
+    IExerciseRepository exerciseRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdateExerciseCommand, ExerciseResponse>
 {
@@ -16,12 +16,7 @@ public sealed class UpdateExerciseHandler(
     {
         var userId = currentUser.UserId;
 
-        var exercise = await context.Exercises
-            .Include(e => e.Sets)
-            .Include(e => e.DailyWorkout)
-                .ThenInclude(d => d.WeeklyWorkout)
-                    .ThenInclude(w => w.Plan)
-            .FirstOrDefaultAsync(e => e.Id == request.ExerciseId, cancellationToken)
+        var exercise = await exerciseRepo.FindWithSetsAndPlanAsync(request.ExerciseId, cancellationToken)
             ?? throw new InvalidOperationException("Exercise not found.");
 
         var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
@@ -35,15 +30,13 @@ public sealed class UpdateExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
-        // Nếu thay đổi PlannedSets, chỉ cho phép khi chưa có set nào được done
         if (request.PlannedSets is not null && request.PlannedSets.Value != exercise.PlannedSets)
         {
             bool hasCompletedSets = exercise.Sets.Any(s => s.IsCompleted);
             if (hasCompletedSets)
                 throw new InvalidOperationException("Cannot change PlannedSets after sets have been completed.");
 
-            // Xóa toàn bộ sets cũ, tạo lại theo số mới
-            context.ExerciseSets.RemoveRange(exercise.Sets);
+            exerciseRepo.RemoveSetRange(exercise.Sets);
             exercise.PlannedSets = request.PlannedSets.Value;
 
             int reps = request.PlannedReps ?? exercise.PlannedReps;
@@ -66,7 +59,7 @@ public sealed class UpdateExerciseHandler(
 
         exercise.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await exerciseRepo.SaveChangesAsync(cancellationToken);
 
         return CreateExerciseHandler.ToResponse(exercise);
     }

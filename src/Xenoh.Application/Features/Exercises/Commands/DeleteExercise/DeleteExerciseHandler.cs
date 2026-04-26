@@ -1,12 +1,12 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Exercises.Commands.DeleteExercise;
 
 public sealed class DeleteExerciseHandler(
-    IApplicationDbContext context,
+    IExerciseRepository exerciseRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<DeleteExerciseCommand>
 {
@@ -14,11 +14,7 @@ public sealed class DeleteExerciseHandler(
     {
         var userId = currentUser.UserId;
 
-        var exercise = await context.Exercises
-            .Include(e => e.DailyWorkout)
-                .ThenInclude(d => d.WeeklyWorkout)
-                    .ThenInclude(w => w.Plan)
-            .FirstOrDefaultAsync(e => e.Id == request.ExerciseId, cancellationToken)
+        var exercise = await exerciseRepo.FindWithPlanAsync(request.ExerciseId, cancellationToken)
             ?? throw new InvalidOperationException("Exercise not found.");
 
         var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
@@ -32,8 +28,8 @@ public sealed class DeleteExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
-        context.Exercises.Remove(exercise);
-        await context.SaveChangesAsync(cancellationToken);
+        exerciseRepo.Remove(exercise);
+        await exerciseRepo.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }

@@ -1,41 +1,25 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 
 namespace Xenoh.Application.Features.DailyWorkouts.Queries.GetDaysByWeek;
 
 public sealed class GetDaysByWeekHandler(
-    IApplicationDbContext context,
+    IDailyWorkoutRepository dailyWorkoutRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<GetDaysByWeekQuery, List<DailyWorkoutResponse>>
 {
-    public async ValueTask<List<DailyWorkoutResponse>> Handle(GetDaysByWeekQuery request, CancellationToken cancellationToken)
+    public async ValueTask<List<DailyWorkoutResponse>> Handle(
+        GetDaysByWeekQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
 
-        var weekExists = await context.WeeklyWorkouts
-            .AsNoTracking()
-            .Include(w => w.Plan)
-            .AnyAsync(w => w.Id == request.WeeklyWorkoutId &&
-                (w.Plan.OwnerId == userId || w.Plan.CreatedByCoachId == userId), cancellationToken);
+        var accessible = await dailyWorkoutRepo.WeekAccessibleByUserAsync(
+            request.WeeklyWorkoutId, userId, cancellationToken);
 
-        if (!weekExists)
+        if (!accessible)
             throw new InvalidOperationException("Weekly workout not found.");
 
-        return await context.DailyWorkouts
-            .AsNoTracking()
-            .Include(d => d.Exercises)
-            .Where(d => d.WeeklyWorkoutId == request.WeeklyWorkoutId)
-            .OrderBy(d => d.Date)
-            .Select(d => new DailyWorkoutResponse(
-                d.Id,
-                d.Date,
-                d.DayOfWeek.ToString(),
-                d.IsCompleted,
-                d.WeeklyWorkoutId,
-                d.Exercises.Count,
-                d.Exercises.Count(e => e.IsCompleted)
-            ))
-            .ToListAsync(cancellationToken);
+        return await dailyWorkoutRepo.GetByWeekAsync(request.WeeklyWorkoutId, cancellationToken);
     }
 }

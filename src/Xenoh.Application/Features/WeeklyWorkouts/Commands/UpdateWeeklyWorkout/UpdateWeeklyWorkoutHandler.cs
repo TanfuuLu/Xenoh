@@ -1,24 +1,22 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.WeeklyWorkouts.Queries.GetWeeksByPlan;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.WeeklyWorkouts.Commands.UpdateWeeklyWorkout;
 
 public sealed class UpdateWeeklyWorkoutHandler(
-    IApplicationDbContext context,
+    IWeeklyWorkoutRepository weeklyWorkoutRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdateWeeklyWorkoutCommand, WeeklyWorkoutResponse>
 {
-    public async ValueTask<WeeklyWorkoutResponse> Handle(UpdateWeeklyWorkoutCommand request, CancellationToken cancellationToken)
+    public async ValueTask<WeeklyWorkoutResponse> Handle(
+        UpdateWeeklyWorkoutCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
 
-        var week = await context.WeeklyWorkouts
-            .Include(w => w.DailyWorkouts)
-            .Include(w => w.Plan)
-            .FirstOrDefaultAsync(w => w.Id == request.WeeklyWorkoutId, cancellationToken)
+        var week = await weeklyWorkoutRepo.FindForMutationAsync(request.WeeklyWorkoutId, cancellationToken)
             ?? throw new InvalidOperationException("Weekly workout not found.");
 
         var plan = week.Plan;
@@ -35,7 +33,7 @@ public sealed class UpdateWeeklyWorkoutHandler(
         week.Name = request.Name.Trim();
         week.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await weeklyWorkoutRepo.SaveChangesAsync(cancellationToken);
 
         return new WeeklyWorkoutResponse(
             week.Id,

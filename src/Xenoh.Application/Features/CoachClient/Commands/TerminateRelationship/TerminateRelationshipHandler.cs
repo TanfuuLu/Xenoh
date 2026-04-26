@@ -1,12 +1,13 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
 
 public sealed class TerminateRelationshipHandler(
-    IApplicationDbContext context,
+    ICoachClientRepository coachClientRepo,
+    IPlanRepository planRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<TerminateRelationshipCommand>
 {
@@ -14,26 +15,16 @@ public sealed class TerminateRelationshipHandler(
     {
         var userId = currentUser.UserId;
 
-        var relationship = await context.CoachClientRelationships
-            .FirstOrDefaultAsync(r =>
-                r.Id == request.RelationshipId &&
-                (r.ClientId == userId || r.CoachId == userId), cancellationToken)
+        var relationship = await coachClientRepo.FindByIdForParticipantAsync(
+            request.RelationshipId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Relationship not found.");
 
-        // Delete all plans created by this coach for the client
-        if (relationship.Status == RelationshipStatus.Accepted)
-        {
-            var coachPlans = await context.Plans
-                .Where(p => p.OwnerId == relationship.ClientId
-                            && p.CreatedByCoachId == relationship.CoachId
-                            && p.PlanType == PlanType.Coach)
-                .ToListAsync(cancellationToken);
+        if (relationship.Status == RelationshipStatus.Active)
+            await planRepo.DeleteCoachPlansForClientAsync(
+                relationship.ClientId, relationship.CoachId, cancellationToken);
 
-            context.Plans.RemoveRange(coachPlans);
-        }
-
-        context.CoachClientRelationships.Remove(relationship);
-        await context.SaveChangesAsync(cancellationToken);
+        coachClientRepo.Remove(relationship);
+        await coachClientRepo.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }

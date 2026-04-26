@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Infrastructure.Identity;
 using Xenoh.Infrastructure.Persistence;
+using Xenoh.Infrastructure.Persistence.Repositories;
 using Xenoh.Infrastructure.Services;
 
 namespace Xenoh.Infrastructure;
@@ -19,6 +21,20 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
+
+        // Repositories
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ICoachClientRepository, CoachClientRepository>();
+        services.AddScoped<IPlanRepository, PlanRepository>();
+        services.AddScoped<IWeeklyWorkoutRepository, WeeklyWorkoutRepository>();
+        services.AddScoped<IDailyWorkoutRepository, DailyWorkoutRepository>();
+        services.AddScoped<IExerciseRepository, ExerciseRepository>();
+        services.AddScoped<IExerciseSetRepository, ExerciseSetRepository>();
+        services.AddScoped<IExerciseTemplateRepository, ExerciseTemplateRepository>();
+        services.AddScoped<IBodyweightRepository, BodyweightRepository>();
+        services.AddScoped<IWorkoutHistoryRepository, WorkoutHistoryRepository>();
+        services.AddScoped<IUserPrRepository, UserPrRepository>();
+        services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
 
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {

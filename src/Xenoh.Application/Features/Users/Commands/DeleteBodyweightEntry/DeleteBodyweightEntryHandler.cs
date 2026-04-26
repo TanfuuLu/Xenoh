@@ -1,11 +1,11 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 
 namespace Xenoh.Application.Features.Users.Commands.DeleteBodyweightEntry;
 
 public sealed class DeleteBodyweightEntryHandler(
-    IApplicationDbContext context,
+    IBodyweightRepository bodyweightRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<DeleteBodyweightEntryCommand>
 {
@@ -13,12 +13,11 @@ public sealed class DeleteBodyweightEntryHandler(
     {
         var userId = currentUser.UserId;
 
-        var entry = await context.BodyweightLogs
-            .FirstOrDefaultAsync(b => b.Id == request.Id && b.UserId == userId, cancellationToken)
+        var entry = await bodyweightRepo.FindByIdAndOwnerAsync(request.Id, userId, cancellationToken)
             ?? throw new InvalidOperationException("Bodyweight entry not found.");
 
-        context.BodyweightLogs.Remove(entry);
-        await context.SaveChangesAsync(cancellationToken);
+        bodyweightRepo.Remove(entry);
+        await bodyweightRepo.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }

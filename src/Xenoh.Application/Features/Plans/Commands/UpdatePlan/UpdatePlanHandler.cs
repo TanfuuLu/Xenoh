@@ -1,13 +1,14 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Plans.Commands.UpdatePlan;
 
 public sealed class UpdatePlanHandler(
-    IApplicationDbContext context,
+    IPlanRepository planRepo,
+    IWeeklyWorkoutRepository weeklyWorkoutRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdatePlanCommand, PlanResponse>
 {
@@ -18,13 +19,9 @@ public sealed class UpdatePlanHandler(
 
         var userId = currentUser.UserId;
 
-        var plan = await context.Plans
-            .Include(p => p.WeeklyWorkouts)
-                .ThenInclude(w => w.DailyWorkouts)
-            .FirstOrDefaultAsync(p => p.Id == request.PlanId, cancellationToken)
+        var plan = await planRepo.FindForMutationAsync(request.PlanId, cancellationToken)
             ?? throw new InvalidOperationException("Plan not found.");
 
-        // Permission check
         bool canEdit = plan.PlanType == PlanType.Coach
             ? plan.CreatedByCoachId == userId
             : plan.OwnerId == userId;
@@ -43,52 +40,26 @@ public sealed class UpdatePlanHandler(
             if (hasProgress)
                 throw new InvalidOperationException("Cannot change dates: plan already has completed days.");
 
-            // Remove all existing weeks (cascade deletes days + exercises)
-            context.WeeklyWorkouts.RemoveRange(plan.WeeklyWorkouts);
+            weeklyWorkoutRepo.RemoveRange(plan.WeeklyWorkouts);
 
             plan.StartDate = request.StartDate;
             plan.EndDate = request.EndDate;
             plan.Name = request.Name;
 
-            await context.SaveChangesAsync(cancellationToken);
+            await planRepo.SaveChangesAsync(cancellationToken);
 
-            // Regenerate weeks
             var newWeeks = PlanWeekGenerator.Generate(plan);
-            context.WeeklyWorkouts.AddRange(newWeeks);
+            weeklyWorkoutRepo.AddRange(newWeeks);
         }
         else
         {
             plan.Name = request.Name;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        plan.UpdatedAt = DateTime.UtcNow;
+        await planRepo.SaveChangesAsync(cancellationToken);
 
-        // Reload with full data for response
-        var saved = await context.Plans
-            .AsNoTracking()
-            .Include(p => p.Owner)
-            .Include(p => p.CreatedByCoach)
-            .Include(p => p.WeeklyWorkouts)
-                .ThenInclude(w => w.DailyWorkouts)
-            .FirstAsync(p => p.Id == plan.Id, cancellationToken);
-
-        var allDays = saved.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).ToList();
-
-        return new PlanResponse(
-            saved.Id,
-            saved.Name,
-            saved.StartDate,
-            saved.EndDate,
-            saved.PlanType.ToString(),
-            saved.OwnerId,
-            $"{saved.Owner.FirstName} {saved.Owner.LastName}".Trim(),
-            saved.CreatedByCoachId,
-            saved.CreatedByCoach is null ? null : $"{saved.CreatedByCoach.FirstName} {saved.CreatedByCoach.LastName}".Trim(),
-            saved.WeeklyWorkouts.Count,
-            allDays.Count,
-            allDays.Count(d => d.IsCompleted),
-            saved.IsActive,
-            saved.CreatedAt
-        );
+        return await planRepo.GetByIdForUserAsync(plan.Id, userId, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to reload updated plan.");
     }
 }

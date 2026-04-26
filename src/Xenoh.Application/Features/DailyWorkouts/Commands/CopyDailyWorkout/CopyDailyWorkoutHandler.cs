@@ -1,37 +1,35 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 
 public sealed class CopyDailyWorkoutHandler(
-    IApplicationDbContext context,
+    IDailyWorkoutRepository dailyWorkoutRepo,
+    IExerciseRepository exerciseRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<CopyDailyWorkoutCommand, CopyDailyWorkoutResponse>
 {
-    public async ValueTask<CopyDailyWorkoutResponse> Handle(CopyDailyWorkoutCommand request, CancellationToken cancellationToken)
+    public async ValueTask<CopyDailyWorkoutResponse> Handle(
+        CopyDailyWorkoutCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
 
         if (request.SourceDailyWorkoutId == request.TargetDailyWorkoutId)
             throw new InvalidOperationException("Source and target cannot be the same daily workout.");
 
-        var source = await context.DailyWorkouts
-            .Include(d => d.WeeklyWorkout).ThenInclude(w => w.Plan)
-            .Include(d => d.Exercises).ThenInclude(e => e.Sets)
-            .FirstOrDefaultAsync(d => d.Id == request.SourceDailyWorkoutId, cancellationToken)
+        var source = await dailyWorkoutRepo.FindWithExercisesAndPlanAsync(
+            request.SourceDailyWorkoutId, cancellationToken)
             ?? throw new InvalidOperationException("Source daily workout not found.");
 
         var sourcePlan = source.WeeklyWorkout.Plan;
         if (sourcePlan.OwnerId != userId && sourcePlan.CreatedByCoachId != userId)
             throw new InvalidOperationException("Access denied to source daily workout.");
 
-        var target = await context.DailyWorkouts
-            .Include(d => d.WeeklyWorkout).ThenInclude(w => w.Plan)
-            .Include(d => d.Exercises).ThenInclude(e => e.Sets)
-            .FirstOrDefaultAsync(d => d.Id == request.TargetDailyWorkoutId, cancellationToken)
+        var target = await dailyWorkoutRepo.FindWithExercisesAndPlanAsync(
+            request.TargetDailyWorkoutId, cancellationToken)
             ?? throw new InvalidOperationException("Target daily workout not found.");
 
         var targetPlan = target.WeeklyWorkout.Plan;
@@ -42,10 +40,8 @@ public sealed class CopyDailyWorkoutHandler(
         if (!canEditTarget)
             throw new InvalidOperationException("Access denied to target daily workout.");
 
-        // Clear existing exercises in target before copying
-        context.Exercises.RemoveRange(target.Exercises);
+        exerciseRepo.RemoveRange(target.Exercises);
 
-        // Clone exercises (planned data only — actuals and completion state reset)
         var cloned = source.Exercises.Select(e => new Exercise
         {
             ExerciseTemplateId = e.ExerciseTemplateId,
@@ -65,12 +61,12 @@ public sealed class CopyDailyWorkoutHandler(
             }).ToList<ExerciseSet>()
         }).ToList();
 
-        context.Exercises.AddRange(cloned);
+        exerciseRepo.AddRange(cloned);
 
         target.IsCompleted = false;
         target.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await dailyWorkoutRepo.SaveChangesAsync(cancellationToken);
 
         return new CopyDailyWorkoutResponse(target.Id, cloned.Count);
     }

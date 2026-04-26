@@ -90,7 +90,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
             var result = await mediator.Send(new GetUserProfileQuery(userId), ct);
             return Ok(result);
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }

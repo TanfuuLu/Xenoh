@@ -1,7 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -9,7 +9,9 @@ using Xenoh.Domain.Enums;
 namespace Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
 
 public sealed class UpdateMyProfileHandler(
-    IApplicationDbContext context,
+    IWorkoutHistoryRepository workoutHistoryRepo,
+    IBodyweightRepository bodyweightRepo,
+    IUserPrRepository userPrRepo,
     UserManager<ApplicationUser> userManager,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdateMyProfileCommand, UserProfileResponse>
@@ -31,34 +33,14 @@ public sealed class UpdateMyProfileHandler(
 
         await userManager.UpdateAsync(user);
 
-        // Return updated profile
-        var workoutDates = await context.WorkoutHistories
-            .AsNoTracking()
-            .Where(h => h.UserId == userId)
-            .OrderByDescending(h => h.Date)
-            .Select(h => h.Date)
-            .ToListAsync(cancellationToken);
-
+        var workoutDates = await workoutHistoryRepo.GetSortedDatesDescAsync(userId, cancellationToken);
         int currentStreak = GetMyProfileHandler.CalculateCurrentStreak(
             workoutDates, DateOnly.FromDateTime(DateTime.UtcNow));
 
-        var latestWeight = await context.BodyweightLogs
-            .AsNoTracking()
-            .Where(b => b.UserId == userId)
-            .OrderByDescending(b => b.Date)
-            .Select(b => (decimal?)b.Weight)
-            .FirstOrDefaultAsync(cancellationToken);
-
+        var latestWeight = await bodyweightRepo.GetLatestWeightAsync(userId, cancellationToken);
         var (bmi, bmiCategory) = GetMyProfileHandler.CalculateBmi(user.Height, latestWeight);
 
-        // DOTS Score
-        var big3Prs = await (
-            from pr in context.UserExercisePRs.AsNoTracking()
-            join t in context.ExerciseTemplates.AsNoTracking()
-                on pr.ExerciseTemplateId equals t.Id
-            where pr.UserId == userId && t.IsCompetitionLift
-            select new { t.CompetitionLiftType, Weight = (decimal?)pr.Weight }
-        ).ToDictionaryAsync(x => x.CompetitionLiftType!.Value, x => x.Weight, cancellationToken);
+        var big3Prs = await userPrRepo.GetBig3Async(userId, cancellationToken);
 
         var gender = user.Gender.HasValue && Enum.IsDefined(user.Gender.Value) ? user.Gender : null;
         var dotsScore = GetMyProfileHandler.CalculateDots(gender, latestWeight, big3Prs);
