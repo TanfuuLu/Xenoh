@@ -64,11 +64,9 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
     [HttpPatch("sets/{setId:guid}/complete")]
     public async Task<IActionResult> MarkSetComplete(Guid setId, [FromBody] MarkSetCompleteCommand command, CancellationToken ct)
     {
-        if (setId != command.SetId)
-            return BadRequest(new { message = "SetId mismatch." });
         try
         {
-            var result = await mediator.Send(command, ct);
+            var result = await mediator.Send(command with { SetId = setId }, ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
