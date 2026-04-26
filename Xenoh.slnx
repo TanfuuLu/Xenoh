@@ -5,4 +5,7 @@
     <Project Path="src/Xenoh.Domain/Xenoh.Domain.csproj" />
     <Project Path="src/Xenoh.Infrastructure/Xenoh.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Xenoh.Application.Tests/Xenoh.Application.Tests.csproj" />
+  </Folder>
 </Solution>

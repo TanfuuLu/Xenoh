@@ -92,6 +92,7 @@ public sealed class CreateExerciseHandler(
             s.PlannedWeight,
             s.ActualReps,
             s.ActualWeight,
+            s.Rpe,
             s.IsCompleted,
             s.CompletedAt
         )).ToList(),

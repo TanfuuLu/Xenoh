@@ -11,6 +11,8 @@ public class ExerciseSet : BaseEntity
     public int? ActualReps { get; set; }
     public decimal? ActualWeight { get; set; }
 
+    public decimal? Rpe { get; set; }
+
     public bool IsCompleted { get; set; }
     public DateTime? CompletedAt { get; set; }
 

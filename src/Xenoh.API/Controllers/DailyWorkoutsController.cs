@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 using Xenoh.Application.Features.DailyWorkouts.Queries.GetDaysByWeek;
 
 namespace Xenoh.API.Controllers;
@@ -21,6 +22,25 @@ public sealed class DailyWorkoutsController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Copy all exercises from a source day to a target day.
+    /// Existing exercises in the target day are replaced.
+    /// </summary>
+    [HttpPost("/api/days/{sourceDailyWorkoutId:guid}/copy")]
+    public async Task<IActionResult> Copy(Guid sourceDailyWorkoutId, [FromBody] CopyDailyWorkoutRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var command = new CopyDailyWorkoutCommand(sourceDailyWorkoutId, request.TargetDailyWorkoutId);
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }
