@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Coaches.Queries.GetCoaches;
+using Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 
 namespace Xenoh.API.Controllers;
 
@@ -19,5 +20,23 @@ public sealed class CoachesController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetCoachesQuery(name), ct);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Get a coach's public profile (name, email, total clients).
+    /// Any authenticated user can view.
+    /// </summary>
+    [HttpGet("{coachId:guid}")]
+    public async Task<IActionResult> GetCoachProfile(Guid coachId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetCoachProfileQuery(coachId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

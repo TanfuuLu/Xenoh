@@ -6,6 +6,7 @@ using Xenoh.Application.Features.Users.Commands.LogBodyweight;
 using Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
+using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
 namespace Xenoh.API.Controllers;
 
@@ -70,6 +71,28 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         {
             await mediator.Send(new DeleteBodyweightEntryCommand(id), ct);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Coach views a client's full profile stats, or a client views their coach's profile.
+    /// Requires an active coach–client relationship between caller and the target user.
+    /// </summary>
+    [HttpGet("{userId:guid}")]
+    public async Task<IActionResult> GetUserProfile(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetUserProfileQuery(userId), ct);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {
