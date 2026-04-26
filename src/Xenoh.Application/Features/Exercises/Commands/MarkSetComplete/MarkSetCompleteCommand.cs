@@ -14,4 +14,7 @@ public sealed record MarkSetCompleteCommand : IRequest<ExerciseResponse>
 
     [Range(0, 10000)]
     public decimal? ActualWeight { get; init; }
+
+    [Range(1, 10, ErrorMessage = "RPE must be between 1 and 10.")]
+    public decimal? Rpe { get; init; }
 }

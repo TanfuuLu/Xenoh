@@ -12,6 +12,7 @@ public class ExerciseSetConfiguration : IEntityTypeConfiguration<ExerciseSet>
 
         builder.Property(s => s.PlannedWeight).HasColumnType("decimal(10,2)");
         builder.Property(s => s.ActualWeight).HasColumnType("decimal(10,2)");
+        builder.Property(s => s.Rpe).HasColumnType("decimal(4,2)");
 
         builder.HasOne(s => s.Exercise)
             .WithMany(e => e.Sets)

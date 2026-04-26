@@ -44,6 +44,7 @@ public sealed class MarkSetCompleteHandler(
 
         if (request.ActualReps is not null) set.ActualReps = request.ActualReps;
         if (request.ActualWeight is not null) set.ActualWeight = request.ActualWeight;
+        if (request.Rpe is not null) set.Rpe = request.Rpe;
 
         // Auto-complete exercise when all sets are done
         bool allSetsDone = exercise.Sets.All(s => s.IsCompleted || s.Id == set.Id);

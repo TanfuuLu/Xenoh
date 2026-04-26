@@ -30,6 +30,7 @@ public sealed record ExerciseSetResponse(
     decimal? PlannedWeight,
     int? ActualReps,
     decimal? ActualWeight,
+    decimal? Rpe,
     bool IsCompleted,
     DateTime? CompletedAt
 );
