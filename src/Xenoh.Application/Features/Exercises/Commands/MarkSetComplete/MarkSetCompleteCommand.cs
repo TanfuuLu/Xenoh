@@ -6,8 +6,7 @@ namespace Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 
 public sealed record MarkSetCompleteCommand : IRequest<ExerciseResponse>
 {
-    [Required]
-    public required Guid SetId { get; init; }
+    public Guid SetId { get; init; }
 
     [Range(1, 1000)]
     public int? ActualReps { get; init; }
