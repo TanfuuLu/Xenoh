@@ -63,6 +63,10 @@ public sealed class UpdateMyProfileHandler(
         var gender = user.Gender.HasValue && Enum.IsDefined(user.Gender.Value) ? user.Gender : null;
         var dotsScore = GetMyProfileHandler.CalculateDots(gender, latestWeight, big3Prs);
 
+        big3Prs.TryGetValue(CompetitionLiftType.Squat,    out var squatPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Bench,    out var benchPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Deadlift, out var deadliftPr);
+
         return new UserProfileResponse(
             user.Id,
             user.Email!,
@@ -75,7 +79,8 @@ public sealed class UpdateMyProfileHandler(
             latestWeight,
             bmi,
             bmiCategory,
-            dotsScore
+            dotsScore,
+            new Big3PrsResponse(squatPr, benchPr, deadliftPr)
         );
     }
 }

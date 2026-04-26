@@ -1,5 +1,11 @@
 namespace Xenoh.Application.Features.Users.Queries.GetMyProfile;
 
+public sealed record Big3PrsResponse(
+    decimal? Squat,
+    decimal? Bench,
+    decimal? Deadlift
+);
+
 public sealed record UserProfileResponse(
     Guid Id,
     string Email,
@@ -12,5 +18,6 @@ public sealed record UserProfileResponse(
     decimal? LatestBodyweight,
     decimal? Bmi,
     string? BmiCategory,
-    decimal? DotsScore
+    decimal? DotsScore,
+    Big3PrsResponse Big3Prs
 );
