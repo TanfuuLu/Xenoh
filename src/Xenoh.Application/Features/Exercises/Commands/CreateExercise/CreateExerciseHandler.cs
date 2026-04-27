@@ -45,7 +45,8 @@ public sealed class CreateExerciseHandler(
             PlannedReps = request.PlannedReps,
             PlannedWeight = request.PlannedWeight,
             Notes = request.Notes,
-            DailyWorkoutId = request.DailyWorkoutId
+            DailyWorkoutId = request.DailyWorkoutId,
+            SortOrder = await exerciseRepo.GetNextSortOrderAsync(request.DailyWorkoutId, cancellationToken)
         };
 
         for (int i = 1; i <= request.PlannedSets; i++)
@@ -81,6 +82,7 @@ public sealed class CreateExerciseHandler(
         e.IsCompleted,
         e.Notes,
         e.DailyWorkoutId,
+        e.SortOrder,
         e.Sets.OrderBy(s => s.SetNumber).Select(s => new ExerciseSetResponse(
             s.Id,
             s.SetNumber,

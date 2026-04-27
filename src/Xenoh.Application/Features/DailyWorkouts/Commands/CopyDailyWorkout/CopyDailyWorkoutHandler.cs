@@ -42,7 +42,10 @@ public sealed class CopyDailyWorkoutHandler(
 
         exerciseRepo.RemoveRange(target.Exercises);
 
-        var cloned = source.Exercises.Select(e => new Exercise
+        var cloned = source.Exercises
+        .OrderBy(e => e.SortOrder)
+        .ThenBy(e => e.CreatedAt)
+        .Select((e, index) => new Exercise
         {
             ExerciseTemplateId = e.ExerciseTemplateId,
             Name = e.Name,
@@ -53,6 +56,7 @@ public sealed class CopyDailyWorkoutHandler(
             PlannedWeight = e.PlannedWeight,
             Notes = e.Notes,
             DailyWorkoutId = target.Id,
+            SortOrder = index,
             Sets = e.Sets.OrderBy(s => s.SetNumber).Select(s => new ExerciseSet
             {
                 SetNumber = s.SetNumber,

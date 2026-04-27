@@ -13,6 +13,9 @@ public interface IExerciseRepository
     /// <summary>Tracked: exercise with plan only (for delete — no sets needed).</summary>
     Task<Exercise?> FindWithPlanAsync(Guid exerciseId, CancellationToken ct = default);
 
+    Task<int> GetNextSortOrderAsync(Guid dailyWorkoutId, CancellationToken ct = default);
+    Task<List<Exercise>> GetByIdsWithPlanAsync(IEnumerable<Guid> exerciseIds, CancellationToken ct = default);
+
     Task AddAsync(Exercise exercise, CancellationToken ct = default);
     void Remove(Exercise exercise);
     void RemoveRange(IEnumerable<Exercise> exercises);

@@ -48,6 +48,7 @@ public sealed record ExerciseResponse(
     bool IsCompleted,
     string? Notes,
     Guid DailyWorkoutId,
+    int SortOrder,
     List<ExerciseSetResponse> Sets,
     decimal? PersonalRecordWeight
 );

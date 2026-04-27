@@ -26,7 +26,7 @@ public sealed class MarkSetCompleteHandler(
             throw new InvalidOperationException("Access denied.");
 
         if (set.IsCompleted)
-            throw new InvalidOperationException("Set is already completed.");
+            return CreateExerciseHandler.ToResponse(exercise, await GetPersonalRecordWeight(userId, exercise.ExerciseTemplateId, cancellationToken));
 
         set.IsCompleted = true;
         set.CompletedAt = DateTime.UtcNow;
@@ -88,5 +88,11 @@ public sealed class MarkSetCompleteHandler(
         }
 
         return CreateExerciseHandler.ToResponse(exercise, prWeight);
+    }
+
+    private async Task<decimal?> GetPersonalRecordWeight(Guid userId, Guid exerciseTemplateId, CancellationToken cancellationToken)
+    {
+        var pr = await userPrRepo.FindAsync(userId, exerciseTemplateId, cancellationToken);
+        return pr?.Weight;
     }
 }

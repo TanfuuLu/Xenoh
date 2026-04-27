@@ -16,6 +16,8 @@ public class Exercise : BaseEntity
     public int PlannedReps { get; set; }
     public decimal? PlannedWeight { get; set; }
 
+    public int SortOrder { get; set; }
+
     public bool IsCompleted { get; set; }
 
     public string? Notes { get; set; }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Application.Features.Exercises.Commands.DeleteExercise;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
+using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
 
@@ -25,6 +26,26 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("by-day/{dailyWorkoutId:guid}/reorder")]
+    public async Task<IActionResult> Reorder(
+        Guid dailyWorkoutId,
+        [FromBody] ReorderExercisesCommand command,
+        CancellationToken ct)
+    {
+        if (dailyWorkoutId != command.DailyWorkoutId)
+            return BadRequest(new { message = "DailyWorkoutId mismatch." });
+
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

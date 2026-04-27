@@ -24,7 +24,8 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
             .AsNoTracking()
             .Include(e => e.Sets)
             .Where(e => e.DailyWorkoutId == dailyWorkoutId)
-            .OrderBy(e => e.CreatedAt)
+            .OrderBy(e => e.SortOrder)
+            .ThenBy(e => e.CreatedAt)
             .ToListAsync(ct);
 
         var templateIds = exercises.Select(e => e.ExerciseTemplateId).Distinct().ToList();
@@ -53,6 +54,28 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
               .ThenInclude(d => d.WeeklyWorkout)
                   .ThenInclude(w => w.Plan)
           .FirstOrDefaultAsync(e => e.Id == exerciseId, ct);
+
+    public async Task<int> GetNextSortOrderAsync(Guid dailyWorkoutId, CancellationToken ct = default)
+    {
+        var maxSortOrder = await db.Exercises
+            .Where(e => e.DailyWorkoutId == dailyWorkoutId)
+            .Select(e => (int?)e.SortOrder)
+            .MaxAsync(ct);
+
+        return (maxSortOrder ?? -1) + 1;
+    }
+
+    public Task<List<Exercise>> GetByIdsWithPlanAsync(IEnumerable<Guid> exerciseIds, CancellationToken ct = default)
+    {
+        var ids = exerciseIds.ToList();
+
+        return db.Exercises
+            .Include(e => e.DailyWorkout)
+                .ThenInclude(d => d.WeeklyWorkout)
+                    .ThenInclude(w => w.Plan)
+            .Where(e => ids.Contains(e.Id))
+            .ToListAsync(ct);
+    }
 
     public async Task AddAsync(Exercise exercise, CancellationToken ct) =>
         await db.Exercises.AddAsync(exercise, ct);
