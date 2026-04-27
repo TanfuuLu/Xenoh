@@ -143,6 +143,7 @@ public sealed class LeaderboardRepository(ApplicationDbContext db) : ILeaderboar
                     DeadliftPr = deadlift,
                     Total      = total,
                     DotsScore  = dots,
+                    Bodyweight = bw,
                 };
             })
             .Where(e => !gender.HasValue || e.Gender == gender.Value)
@@ -159,7 +160,8 @@ public sealed class LeaderboardRepository(ApplicationDbContext db) : ILeaderboar
             e.BenchPr,
             e.DeadliftPr,
             e.Total,
-            e.DotsScore
+            e.DotsScore,
+            e.Bodyweight
         )).ToList();
     }
 }

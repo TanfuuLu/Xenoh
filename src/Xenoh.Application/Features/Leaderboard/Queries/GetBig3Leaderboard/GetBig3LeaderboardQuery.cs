@@ -16,5 +16,6 @@ public sealed record Big3LeaderboardEntryResponse(
     decimal? BenchPr,
     decimal? DeadliftPr,
     decimal Total,
-    decimal? DotsScore
+    decimal? DotsScore,
+    decimal? Bodyweight
 );
