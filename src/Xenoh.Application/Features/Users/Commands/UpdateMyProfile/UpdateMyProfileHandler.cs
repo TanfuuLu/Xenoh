@@ -27,6 +27,7 @@ public sealed class UpdateMyProfileHandler(
             && request.DateOfBirth.Value > DateOnly.FromDateTime(DateTime.UtcNow))
             throw new InvalidOperationException("Date of birth cannot be in the future.");
 
+        if (request.Bio is not null) user.Bio = request.Bio;
         if (request.Height is not null) user.Height = request.Height;
         if (request.Gender is not null) user.Gender = request.Gender;
         if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
@@ -54,6 +55,7 @@ public sealed class UpdateMyProfileHandler(
             user.Email!,
             user.FirstName,
             user.LastName,
+            user.Bio,
             user.Height,
             gender.HasValue ? gender.Value.ToString() : null,
             user.DateOfBirth,
