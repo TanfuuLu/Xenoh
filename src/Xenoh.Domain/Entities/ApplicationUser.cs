@@ -25,4 +25,6 @@ public class ApplicationUser : IdentityUser<Guid>
 
     // As coach
     public ICollection<CoachClientRelationship> Clients { get; set; } = [];
+
+    public ICollection<Notification> Notifications { get; set; } = [];
 }

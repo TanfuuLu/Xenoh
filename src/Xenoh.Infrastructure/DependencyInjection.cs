@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenBlacklist, InMemoryTokenBlacklist>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

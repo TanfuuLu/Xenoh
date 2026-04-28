@@ -21,6 +21,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserExercisePR> UserExercisePRs => Set<UserExercisePR>();
     public DbSet<WorkoutHistory> WorkoutHistories => Set<WorkoutHistory>();
     public DbSet<BodyweightLog> BodyweightLogs => Set<BodyweightLog>();
+    public DbSet<PlanComment> PlanComments => Set<PlanComment>();
+    public DbSet<WeeklyWorkoutComment> WeeklyWorkoutComments => Set<WeeklyWorkoutComment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

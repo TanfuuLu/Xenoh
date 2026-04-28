@@ -1,0 +1,31 @@
+using Mediator;
+using Microsoft.EntityFrameworkCore;
+using Xenoh.Application.Common.Interfaces;
+
+namespace Xenoh.Application.Features.PlanComments.Commands.DeletePlanComment;
+
+public sealed class DeletePlanCommentHandler(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser
+) : IRequestHandler<DeletePlanCommentCommand>
+{
+    public async ValueTask<Unit> Handle(
+        DeletePlanCommentCommand request, CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+
+        var comment = await db.PlanComments
+            .FirstOrDefaultAsync(
+                c => c.Id == request.CommentId && c.PlanId == request.PlanId,
+                cancellationToken)
+            ?? throw new InvalidOperationException("Comment not found.");
+
+        if (comment.AuthorId != userId)
+            throw new InvalidOperationException("You can only delete your own comments.");
+
+        db.PlanComments.Remove(comment);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Unit.Value;
+    }
+}

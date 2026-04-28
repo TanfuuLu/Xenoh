@@ -10,7 +10,8 @@ public sealed class MarkSetCompleteHandler(
     IExerciseSetRepository exerciseSetRepo,
     IWorkoutHistoryRepository workoutHistoryRepo,
     IUserPrRepository userPrRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    INotificationService notificationService
 ) : IRequestHandler<MarkSetCompleteCommand, ExerciseResponse>
 {
     public async ValueTask<ExerciseResponse> Handle(MarkSetCompleteCommand request, CancellationToken cancellationToken)
@@ -85,6 +86,26 @@ public sealed class MarkSetCompleteHandler(
             }
 
             prWeight = pr.Weight;
+        }
+
+        // Notify coach of exercise warning (RPE >= 9 or < 70% of planned reps)
+        var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
+        if (plan.CreatedByCoachId.HasValue)
+        {
+            bool hasWarning =
+                (set.Rpe.HasValue && set.Rpe.Value >= 9) ||
+                (set.ActualReps.HasValue && set.ActualReps.Value < set.PlannedReps * 0.7m);
+
+            if (hasWarning)
+            {
+                await notificationService.NotifyAsync(
+                    plan.CreatedByCoachId.Value,
+                    "ExerciseWarning",
+                    $"Client có cảnh báo khi tập '{exercise.Name}' (ngày {exercise.DailyWorkout.Date:dd/MM/yyyy}).",
+                    exercise.DailyWorkout.Id,
+                    "Day",
+                    cancellationToken);
+            }
         }
 
         return CreateExerciseHandler.ToResponse(exercise, prWeight);

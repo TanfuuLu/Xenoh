@@ -20,4 +20,5 @@ public class Plan : BaseEntity
     public bool IsActive { get; set; } = false;
 
     public ICollection<WeeklyWorkout> WeeklyWorkouts { get; set; } = [];
+    public ICollection<PlanComment> Comments { get; set; } = [];
 }

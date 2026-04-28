@@ -10,7 +10,8 @@ namespace Xenoh.Application.Features.Plans.Commands.CreatePlanForUser;
 public sealed class CreatePlanForUserHandler(
     IPlanRepository planRepo,
     ICoachClientRepository coachClientRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    INotificationService notificationService
 ) : IRequestHandler<CreatePlanForUserCommand, PlanResponse>
 {
     private const int MaxPlansPerUser = 3;
@@ -44,6 +45,14 @@ public sealed class CreatePlanForUserHandler(
 
         await planRepo.AddAsync(plan, cancellationToken);
         await planRepo.SaveChangesAsync(cancellationToken);
+
+        await notificationService.NotifyAsync(
+            request.UserId,
+            "PlanAssigned",
+            $"Coach đã tạo kế hoạch '{plan.Name}' cho bạn.",
+            plan.Id,
+            "Plan",
+            cancellationToken);
 
         return await planRepo.GetByIdForUserAsync(plan.Id, coachId, cancellationToken)
             ?? throw new InvalidOperationException("Failed to reload created plan.");

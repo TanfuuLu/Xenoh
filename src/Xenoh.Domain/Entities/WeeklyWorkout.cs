@@ -13,4 +13,5 @@ public class WeeklyWorkout : BaseEntity
     public Plan Plan { get; set; } = null!;
 
     public ICollection<DailyWorkout> DailyWorkouts { get; set; } = [];
+    public ICollection<WeeklyWorkoutComment> Comments { get; set; } = [];
 }

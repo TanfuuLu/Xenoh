@@ -17,6 +17,9 @@ public interface IApplicationDbContext
     DbSet<UserExercisePR> UserExercisePRs { get; }
     DbSet<WorkoutHistory> WorkoutHistories { get; }
     DbSet<BodyweightLog> BodyweightLogs { get; }
+    DbSet<PlanComment> PlanComments { get; }
+    DbSet<WeeklyWorkoutComment> WeeklyWorkoutComments { get; }
+    DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

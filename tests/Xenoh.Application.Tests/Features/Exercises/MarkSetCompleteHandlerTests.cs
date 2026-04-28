@@ -4,6 +4,7 @@ using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
+using Xenoh.Infrastructure.Persistence.Repositories;
 
 namespace Xenoh.Application.Tests.Features.Exercises;
 
@@ -22,7 +23,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         var template = new ExerciseTemplate
         {
             Name = "Back Squat",
-            PrimaryMuscleGroup = MuscleGroup.Quadriceps
+            PrimaryMuscleGroup = MuscleGroup.Quads
         };
 
         var plan = new Plan
@@ -54,7 +55,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         {
             ExerciseTemplateId = template.Id,
             Name = template.Name,
-            PrimaryMuscleGroup = MuscleGroup.Quadriceps,
+            PrimaryMuscleGroup = MuscleGroup.Quads,
             PlannedSets = 1,
             PlannedReps = 5,
             PlannedWeight = 100m,
@@ -81,6 +82,14 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         return (set.Id, template.Id);
     }
 
+    private MarkSetCompleteHandler CreateHandler(ApplicationDbContext ctx) =>
+        new(
+            new ExerciseSetRepository(ctx),
+            new WorkoutHistoryRepository(ctx),
+            new UserPrRepository(ctx),
+            CurrentUser(),
+            new FakeNotificationService());
+
     // ─── RPE tests ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -88,7 +97,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
     {
         var (setId, _) = await SeedAsync();
         await using var ctx = CreateContext();
-        var handler = new MarkSetCompleteHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         var command = new MarkSetCompleteCommand
         {
@@ -110,7 +119,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
     {
         var (setId, _) = await SeedAsync();
         await using var ctx = CreateContext();
-        var handler = new MarkSetCompleteHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         var command = new MarkSetCompleteCommand
         {
@@ -130,7 +139,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
     {
         var (setId, _) = await SeedAsync();
         await using var ctx = CreateContext();
-        var handler = new MarkSetCompleteHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         await handler.Handle(new MarkSetCompleteCommand
         {
@@ -147,16 +156,15 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
     }
 
     [Fact]
-    public async Task Handle_AlreadyCompleted_ThrowsInvalidOperationException()
+    public async Task Handle_AlreadyCompleted_ReturnsCurrentState()
     {
         var (setId, _) = await SeedAsync(alreadyCompleted: true);
         await using var ctx = CreateContext();
-        var handler = new MarkSetCompleteHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
-        var act = () => handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None).AsTask();
+        var response = await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already completed*");
+        response.Sets.Single().IsCompleted.Should().BeTrue();
     }
 
     [Fact]
@@ -166,7 +174,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         var (setId, _) = await SeedAsync(ownerOverride: otherUserId);
 
         await using var ctx = CreateContext();
-        var handler = new MarkSetCompleteHandler(ctx, CurrentUser()); // CurrentUser = UserId, plan owned by otherUserId
+        var handler = CreateHandler(ctx); // CurrentUser = UserId, plan owned by otherUserId
 
         var act = () => handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None).AsTask();
 
