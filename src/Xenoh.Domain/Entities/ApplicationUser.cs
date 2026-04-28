@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Domain.Enums;
 
@@ -13,6 +14,8 @@ public class ApplicationUser : IdentityUser<Guid>
     public decimal? Height { get; set; }        // cm
     public Gender? Gender { get; set; }
     public DateOnly? DateOfBirth { get; set; }
+    [MaxLength(500)]
+    public string? Bio { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Plan> Plans { get; set; } = [];
