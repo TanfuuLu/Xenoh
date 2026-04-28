@@ -13,8 +13,7 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
         var query = db.ExerciseTemplates.AsNoTracking();
 
         if (muscleGroup is not null)
-            query = query.Where(t => t.PrimaryMuscleGroup == muscleGroup
-                                   || t.SecondaryMuscleGroups.Contains(muscleGroup.Value));
+            query = query.Where(t => t.PrimaryMuscleGroup == muscleGroup);
 
         return query
             .OrderBy(t => t.PrimaryMuscleGroup)

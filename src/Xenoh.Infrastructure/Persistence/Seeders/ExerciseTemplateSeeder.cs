@@ -110,6 +110,33 @@ public static class ExerciseTemplateSeeder
         new() { Name = "Farmer's Walk",            Description = "Heavy dumbbell carry",                        PrimaryMuscleGroup = MuscleGroup.Forearms,   SecondaryMuscleGroups = [MuscleGroup.Abs, MuscleGroup.Shoulders] },
         new() { Name = "Plate Pinch",              Description = "Plate pinch hold for grip strength",          PrimaryMuscleGroup = MuscleGroup.Forearms,   SecondaryMuscleGroups = [] },
 
+        // ── TRAPS ──────────────────────────────────────────────────────────────
+        new() { Name = "Barbell Shrug",            Description = "Standing barbell shrug",                      PrimaryMuscleGroup = MuscleGroup.Traps,      SecondaryMuscleGroups = [MuscleGroup.Forearms] },
+        new() { Name = "Dumbbell Shrug",           Description = "Standing dumbbell shrug",                     PrimaryMuscleGroup = MuscleGroup.Traps,      SecondaryMuscleGroups = [MuscleGroup.Forearms] },
+        new() { Name = "Smith Machine Shrug",      Description = "Smith machine trap shrug",                    PrimaryMuscleGroup = MuscleGroup.Traps,      SecondaryMuscleGroups = [MuscleGroup.Forearms] },
+        new() { Name = "Trap Bar Shrug",           Description = "Trap bar shrug",                              PrimaryMuscleGroup = MuscleGroup.Traps,      SecondaryMuscleGroups = [MuscleGroup.Forearms] },
+        new() { Name = "High Pull",                Description = "Barbell high pull",                           PrimaryMuscleGroup = MuscleGroup.Traps,      SecondaryMuscleGroups = [MuscleGroup.Shoulders, MuscleGroup.Back] },
+
+        // ── NECK ───────────────────────────────────────────────────────────────
+        new() { Name = "Neck Flexion",             Description = "Neck flexion with harness or plate",          PrimaryMuscleGroup = MuscleGroup.Neck,       SecondaryMuscleGroups = [] },
+        new() { Name = "Neck Extension",           Description = "Neck extension with harness or plate",        PrimaryMuscleGroup = MuscleGroup.Neck,       SecondaryMuscleGroups = [MuscleGroup.Traps] },
+        new() { Name = "Lateral Neck Flexion",     Description = "Side neck flexion",                           PrimaryMuscleGroup = MuscleGroup.Neck,       SecondaryMuscleGroups = [] },
+        new() { Name = "Neck Harness Extension",   Description = "Weighted neck harness extension",             PrimaryMuscleGroup = MuscleGroup.Neck,       SecondaryMuscleGroups = [MuscleGroup.Traps] },
+
+        // ── ADDUCTORS ──────────────────────────────────────────────────────────
+        new() { Name = "Hip Adduction Machine",    Description = "Seated machine hip adduction",               PrimaryMuscleGroup = MuscleGroup.Adductors,  SecondaryMuscleGroups = [] },
+        new() { Name = "Copenhagen Plank",         Description = "Side plank variation for adductors",          PrimaryMuscleGroup = MuscleGroup.Adductors,  SecondaryMuscleGroups = [MuscleGroup.Abs] },
+        new() { Name = "Cable Hip Adduction",      Description = "Standing cable hip adduction",                PrimaryMuscleGroup = MuscleGroup.Adductors,  SecondaryMuscleGroups = [] },
+        new() { Name = "Sumo Leg Press",           Description = "Wide-stance leg press",                       PrimaryMuscleGroup = MuscleGroup.Adductors,  SecondaryMuscleGroups = [MuscleGroup.Quads, MuscleGroup.Glutes] },
+        new() { Name = "Side Lunge",               Description = "Lateral lunge",                               PrimaryMuscleGroup = MuscleGroup.Adductors,  SecondaryMuscleGroups = [MuscleGroup.Quads, MuscleGroup.Glutes] },
+
+        // ── ABDUCTORS ──────────────────────────────────────────────────────────
+        new() { Name = "Hip Abduction Machine",    Description = "Seated machine hip abduction",               PrimaryMuscleGroup = MuscleGroup.Abductors,  SecondaryMuscleGroups = [MuscleGroup.Glutes] },
+        new() { Name = "Cable Hip Abduction",      Description = "Standing cable hip abduction",                PrimaryMuscleGroup = MuscleGroup.Abductors,  SecondaryMuscleGroups = [MuscleGroup.Glutes] },
+        new() { Name = "Banded Lateral Walk",      Description = "Mini-band lateral walk",                      PrimaryMuscleGroup = MuscleGroup.Abductors,  SecondaryMuscleGroups = [MuscleGroup.Glutes] },
+        new() { Name = "Clamshell",                Description = "Side-lying clamshell",                        PrimaryMuscleGroup = MuscleGroup.Abductors,  SecondaryMuscleGroups = [MuscleGroup.Glutes] },
+        new() { Name = "Side-Lying Leg Raise",     Description = "Side-lying hip abduction raise",              PrimaryMuscleGroup = MuscleGroup.Abductors,  SecondaryMuscleGroups = [MuscleGroup.Glutes] },
+
         // ── FULL BODY ──────────────────────────────────────────────────────────
         new() { Name = "Burpee",                   Description = "Full body burpee",                            PrimaryMuscleGroup = MuscleGroup.FullBody,   SecondaryMuscleGroups = [MuscleGroup.Chest, MuscleGroup.Abs, MuscleGroup.Quads] },
         new() { Name = "Clean and Press",          Description = "Barbell power clean and press",               PrimaryMuscleGroup = MuscleGroup.FullBody,   SecondaryMuscleGroups = [MuscleGroup.Shoulders, MuscleGroup.Back, MuscleGroup.Quads] },

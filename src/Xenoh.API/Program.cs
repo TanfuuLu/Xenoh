@@ -90,10 +90,18 @@ using (var scope = app.Services.CreateScope())
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
 
-        if (!db.ExerciseTemplates.Any())
+        var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
+        var existingTemplateNames = await db.ExerciseTemplates
+            .Select(t => t.Name.ToLower())
+            .ToListAsync();
+        var existingTemplateNameSet = existingTemplateNames.ToHashSet();
+        var missingTemplates = seededTemplates
+            .Where(t => !existingTemplateNameSet.Contains(t.Name.ToLower()))
+            .ToList();
+
+        if (missingTemplates.Count > 0)
         {
-            var templates = ExerciseTemplateSeeder.GetTemplates();
-            db.ExerciseTemplates.AddRange(templates);
+            db.ExerciseTemplates.AddRange(missingTemplates);
             await db.SaveChangesAsync();
         }
     }

@@ -11,5 +11,6 @@ public sealed record ClientResponse(
     string Email,
     /// <summary>"Pending" | "Active"</summary>
     string Status,
-    DateTime ConnectedAt
+    DateTime ConnectedAt,
+    DateOnly? LastWorkoutCompletedAt
 );

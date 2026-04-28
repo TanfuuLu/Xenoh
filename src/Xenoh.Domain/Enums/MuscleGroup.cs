@@ -15,4 +15,8 @@ public enum MuscleGroup
     Calves      = 10,
     FullBody    = 11,
     Cardio      = 12,
+    Traps       = 13,
+    Neck        = 14,
+    Adductors   = 15,
+    Abductors   = 16,
 }

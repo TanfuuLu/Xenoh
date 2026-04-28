@@ -84,7 +84,12 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               $"{r.Client.FirstName} {r.Client.LastName}",
               r.Client.Email!,
               r.Status.ToString(),
-              r.CreatedAt))
+              r.CreatedAt,
+              db.WorkoutHistories
+                .Where(w => w.UserId == r.ClientId)
+                .OrderByDescending(w => w.Date)
+                .Select(w => (DateOnly?)w.Date)
+                .FirstOrDefault()))
           .ToListAsync(ct);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>

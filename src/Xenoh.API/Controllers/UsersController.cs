@@ -64,6 +64,20 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{userId:guid}/bodyweight")]
+    public async Task<IActionResult> GetUserBodyweightHistory(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetBodyweightHistoryQuery(userId), ct);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     [HttpDelete("me/bodyweight/{id:guid}")]
     public async Task<IActionResult> DeleteBodyweightEntry(Guid id, CancellationToken ct)
     {
