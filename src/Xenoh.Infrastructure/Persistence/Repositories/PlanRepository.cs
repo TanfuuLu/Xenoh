@@ -21,7 +21,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
               p.WeeklyWorkouts.Count,
               p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
-              p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.IsCompleted)),
+              p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
               p.IsActive, p.CreatedAt))
           .ToListAsync(ct);
 
@@ -33,6 +33,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .Include(p => p.CreatedByCoach)
             .Include(p => p.WeeklyWorkouts)
                 .ThenInclude(w => w.DailyWorkouts)
+                    .ThenInclude(d => d.Exercises)
             .FirstOrDefaultAsync(p => p.Id == planId &&
                 (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
 
@@ -86,7 +87,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             {
                 p.OwnerId,
                 TotalDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(),
-                CompletedDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.IsCompleted)
+                CompletedDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))
             })
             .ToListAsync(ct);
 
@@ -128,6 +129,6 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         p.CreatedByCoach is null ? null : $"{p.CreatedByCoach.FirstName} {p.CreatedByCoach.LastName}".Trim(),
         p.WeeklyWorkouts.Count,
         allDays.Count,
-        allDays.Count(d => d.IsCompleted),
+        allDays.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)),
         p.IsActive, p.CreatedAt);
 }

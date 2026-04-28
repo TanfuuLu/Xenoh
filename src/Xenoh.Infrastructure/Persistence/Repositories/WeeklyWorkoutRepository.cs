@@ -22,7 +22,7 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
               w.Id, w.WeekNumber, w.Name,
               w.StartDate, w.EndDate, w.PlanId,
               w.DailyWorkouts.Count,
-              w.DailyWorkouts.Count(d => d.IsCompleted)))
+              w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))))
           .ToListAsync(ct);
 
     public Task<WeeklyWorkout?> FindForMutationAsync(Guid weekId, CancellationToken ct) =>

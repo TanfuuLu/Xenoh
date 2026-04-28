@@ -22,7 +22,7 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
           .OrderBy(d => d.Date)
           .Select(d => new DailyWorkoutResponse(
               d.Id, d.Date, d.DayOfWeek.ToString(),
-              d.IsCompleted, d.WeeklyWorkoutId,
+              d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted), d.WeeklyWorkoutId,
               d.Exercises.Count,
               d.Exercises.Count(e => e.IsCompleted)))
           .ToListAsync(ct);

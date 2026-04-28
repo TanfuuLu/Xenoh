@@ -28,6 +28,12 @@ public sealed class DeleteExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
+        var dailyWorkout = exercise.DailyWorkout;
+        var remainingExercises = dailyWorkout.Exercises.Where(e => e.Id != exercise.Id).ToList();
+
+        dailyWorkout.IsCompleted = remainingExercises.Count > 0 && remainingExercises.All(e => e.IsCompleted);
+        dailyWorkout.UpdatedAt = DateTime.UtcNow;
+
         exerciseRepo.Remove(exercise);
         await exerciseRepo.SaveChangesAsync(cancellationToken);
 

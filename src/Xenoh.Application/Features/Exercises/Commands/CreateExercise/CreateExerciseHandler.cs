@@ -49,6 +49,9 @@ public sealed class CreateExerciseHandler(
             SortOrder = await exerciseRepo.GetNextSortOrderAsync(request.DailyWorkoutId, cancellationToken)
         };
 
+        dailyWorkout.IsCompleted = false;
+        dailyWorkout.UpdatedAt = DateTime.UtcNow;
+
         for (int i = 1; i <= request.PlannedSets; i++)
         {
             exercise.Sets.Add(new ExerciseSet

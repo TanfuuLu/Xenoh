@@ -41,7 +41,7 @@ public sealed class MarkSetCompleteHandler(
         exercise.UpdatedAt = DateTime.UtcNow;
 
         var dailyWorkout = exercise.DailyWorkout;
-        bool allExercisesDone = dailyWorkout.Exercises.All(e =>
+        bool allExercisesDone = dailyWorkout.Exercises.Any() && dailyWorkout.Exercises.All(e =>
             e.Id == exercise.Id ? allSetsDone : e.IsCompleted);
 
         dailyWorkout.IsCompleted = allExercisesDone;
