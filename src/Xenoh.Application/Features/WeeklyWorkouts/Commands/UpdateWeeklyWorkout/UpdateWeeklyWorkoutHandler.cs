@@ -43,7 +43,11 @@ public sealed class UpdateWeeklyWorkoutHandler(
             week.EndDate,
             week.PlanId,
             week.DailyWorkouts.Count,
-            week.DailyWorkouts.Count(d => d.IsCompleted)
+            week.DailyWorkouts.Count(d => d.IsCompleted),
+            week.DailyWorkouts.Any(d => d.Exercises.Any(e => e.Sets.Any(s =>
+                s.IsCompleted &&
+                ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
+                 (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))))
         );
     }
 }

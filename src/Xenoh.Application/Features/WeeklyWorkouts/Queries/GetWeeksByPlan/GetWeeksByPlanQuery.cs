@@ -12,5 +12,6 @@ public sealed record WeeklyWorkoutResponse(
     DateOnly EndDate,
     Guid PlanId,
     int TotalDays,
-    int CompletedDays
+    int CompletedDays,
+    bool HasWarning
 );

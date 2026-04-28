@@ -22,12 +22,18 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
               w.Id, w.WeekNumber, w.Name,
               w.StartDate, w.EndDate, w.PlanId,
               w.DailyWorkouts.Count,
-              w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))))
+              w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)),
+              w.DailyWorkouts.Any(d => d.Exercises.Any(e => e.Sets.Any(s =>
+                  s.IsCompleted &&
+                  ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
+                   (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))))))
           .ToListAsync(ct);
 
     public Task<WeeklyWorkout?> FindForMutationAsync(Guid weekId, CancellationToken ct) =>
         db.WeeklyWorkouts
           .Include(w => w.DailyWorkouts)
+              .ThenInclude(d => d.Exercises)
+              .ThenInclude(e => e.Sets)
           .Include(w => w.Plan)
           .FirstOrDefaultAsync(w => w.Id == weekId, ct);
 
