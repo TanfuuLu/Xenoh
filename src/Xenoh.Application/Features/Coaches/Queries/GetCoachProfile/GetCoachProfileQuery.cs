@@ -9,5 +9,6 @@ public sealed record CoachProfileResponse(
     string FullName,
     string Email,
     string? AvatarUrl,
+    string? Bio,
     int TotalClients
 );

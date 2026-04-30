@@ -11,6 +11,7 @@ namespace Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 public sealed class AcceptRequestHandler(
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
+    INotificationService notificationService,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<AcceptRequestCommand, CoachRelationshipResponse>
 {
@@ -30,6 +31,14 @@ public sealed class AcceptRequestHandler(
         await coachClientRepo.SaveChangesAsync(cancellationToken);
 
         var coach = await userManager.FindByIdAsync(coachId.ToString());
+
+        await notificationService.NotifyAsync(
+            relationship.ClientId,
+            "CoachAccepted",
+            $"Coach {coach!.FirstName} {coach.LastName} đã chấp nhận yêu cầu kết nối của bạn.",
+            relationship.Id,
+            "CoachRequest",
+            cancellationToken);
 
         return new CoachRelationshipResponse(
             relationship.Id,

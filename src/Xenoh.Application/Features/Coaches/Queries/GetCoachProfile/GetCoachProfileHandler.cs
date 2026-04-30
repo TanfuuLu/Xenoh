@@ -27,6 +27,7 @@ public sealed class GetCoachProfileHandler(
             $"{coach.FirstName} {coach.LastName}",
             coach.Email!,
             coach.AvatarUrl,
+            coach.Bio,
             totalClients
         );
     }

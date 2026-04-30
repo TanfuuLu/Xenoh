@@ -10,6 +10,7 @@ namespace Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 public sealed class RequestCoachHandler(
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
+    INotificationService notificationService,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<RequestCoachCommand, CoachRelationshipResponse>
 {
@@ -40,6 +41,14 @@ public sealed class RequestCoachHandler(
 
         await coachClientRepo.AddAsync(relationship, cancellationToken);
         await coachClientRepo.SaveChangesAsync(cancellationToken);
+
+        await notificationService.NotifyAsync(
+            request.CoachId,
+            "CoachRequest",
+            $"{client.FirstName} {client.LastName} đã gửi yêu cầu kết nối với bạn.",
+            relationship.Id,
+            "CoachRequest",
+            cancellationToken);
 
         return new CoachRelationshipResponse(
             relationship.Id,

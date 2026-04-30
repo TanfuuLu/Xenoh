@@ -9,6 +9,7 @@ public sealed record CoachClientDashboardResponse(
     Guid ClientId,
     string FullName,
     string Email,
+    string? AvatarUrl,
     DateOnly? LastWorkoutDate,
     int? PlanProgressPercent,
     decimal? LatestBodyweightKg,

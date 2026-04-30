@@ -1,6 +1,9 @@
 using Mediator;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
@@ -11,7 +14,8 @@ public sealed class GetCoachDashboardHandler(
     IPlanRepository planRepo,
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachDashboardQuery, List<CoachClientDashboardResponse>>
 {
     public async ValueTask<List<CoachClientDashboardResponse>> Handle(
@@ -33,6 +37,13 @@ public sealed class GetCoachDashboardHandler(
         var planProgress = await planRepo.GetProgressByOwnersAsync(clientIds, cancellationToken);
         var latestBodyweights = await bodyweightRepo.GetLatestWeightsForUsersAsync(clientIds, cancellationToken);
         var competitionLifts = await userPrRepo.GetCompetitionLiftsForUsersAsync(clientIds, cancellationToken);
+
+        // Batch-fetch avatar URLs for all clients in one query
+        var clientIdStrings = clientIds.Select(id => id.ToString()).ToList();
+        var avatarUrls = await userManager.Users
+            .Where(u => clientIdStrings.Contains(u.Id.ToString()))
+            .Select(u => new { u.Id, u.AvatarUrl })
+            .ToDictionaryAsync(u => Guid.Parse(u.Id.ToString()), u => u.AvatarUrl, cancellationToken);
 
         // Aggregate plan progress per client
         var progressByClient = planProgress
@@ -60,6 +71,7 @@ public sealed class GetCoachDashboardHandler(
                 r.ClientId,
                 r.FullName,
                 r.Email,
+                avatarUrls.GetValueOrDefault(r.ClientId),
                 lastWorkoutDates.GetValueOrDefault(r.ClientId),
                 progressByClient.GetValueOrDefault(r.ClientId),
                 latestBodyweights.GetValueOrDefault(r.ClientId),

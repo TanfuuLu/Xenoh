@@ -9,6 +9,7 @@ using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
+using Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
 namespace Xenoh.API.Controllers;
@@ -127,6 +128,20 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         {
             await mediator.Send(new DeleteBodyweightEntryCommand(id), ct);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{userId:guid}/public")]
+    public async Task<IActionResult> GetPublicUserProfile(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetPublicUserProfileQuery(userId), ct);
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {
