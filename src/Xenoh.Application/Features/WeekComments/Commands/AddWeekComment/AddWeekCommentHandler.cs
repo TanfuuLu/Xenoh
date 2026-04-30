@@ -9,7 +9,8 @@ namespace Xenoh.Application.Features.WeekComments.Commands.AddWeekComment;
 public sealed class AddWeekCommentHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    INotificationService notificationService
+    INotificationService notificationService,
+    ICommentRealtimeService commentRealtimeService
 ) : IRequestHandler<AddWeekCommentCommand, CommentResponse>
 {
     public async ValueTask<CommentResponse> Handle(
@@ -55,6 +56,17 @@ public sealed class AddWeekCommentHandler(
                 cancellationToken);
         }
 
-        return new CommentResponse(comment.Id, comment.Content, authorId, authorName, comment.CreatedAt);
+        var response = new CommentResponse(comment.Id, comment.Content, authorId, authorName, comment.CreatedAt);
+        var realtimeRecipients = recipientId.HasValue
+            ? new[] { authorId, recipientId.Value }
+            : new[] { authorId };
+
+        await commentRealtimeService.WeekCommentAddedAsync(
+            week.Id,
+            response,
+            realtimeRecipients,
+            cancellationToken);
+
+        return response;
     }
 }

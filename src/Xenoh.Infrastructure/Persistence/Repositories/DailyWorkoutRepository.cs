@@ -28,7 +28,8 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
               d.Exercises.Any(e => e.Sets.Any(s =>
                   s.IsCompleted &&
                   ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
-                   (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight))))))
+                   (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))),
+              d.Status.ToString()))
           .ToListAsync(ct);
 
     public Task<DailyWorkout?> FindWithPlanAsync(Guid dailyWorkoutId, CancellationToken ct) =>

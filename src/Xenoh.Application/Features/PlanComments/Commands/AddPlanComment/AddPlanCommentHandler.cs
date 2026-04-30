@@ -9,7 +9,8 @@ namespace Xenoh.Application.Features.PlanComments.Commands.AddPlanComment;
 public sealed class AddPlanCommentHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    INotificationService notificationService
+    INotificationService notificationService,
+    ICommentRealtimeService commentRealtimeService
 ) : IRequestHandler<AddPlanCommentCommand, CommentResponse>
 {
     public async ValueTask<CommentResponse> Handle(
@@ -54,6 +55,17 @@ public sealed class AddPlanCommentHandler(
                 cancellationToken);
         }
 
-        return new CommentResponse(comment.Id, comment.Content, authorId, authorName, comment.CreatedAt);
+        var response = new CommentResponse(comment.Id, comment.Content, authorId, authorName, comment.CreatedAt);
+        var realtimeRecipients = recipientId.HasValue
+            ? new[] { authorId, recipientId.Value }
+            : new[] { authorId };
+
+        await commentRealtimeService.PlanCommentAddedAsync(
+            plan.Id,
+            response,
+            realtimeRecipients,
+            cancellationToken);
+
+        return response;
     }
 }

@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
 
         return services;

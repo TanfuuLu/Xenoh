@@ -86,7 +86,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .Select(p => new
             {
                 p.OwnerId,
-                TotalDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(),
+                TotalDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.Status != DayStatus.Rest),
                 CompletedDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))
             })
             .ToListAsync(ct);

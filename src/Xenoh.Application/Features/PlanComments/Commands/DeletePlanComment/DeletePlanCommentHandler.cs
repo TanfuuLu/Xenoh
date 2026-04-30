@@ -6,7 +6,8 @@ namespace Xenoh.Application.Features.PlanComments.Commands.DeletePlanComment;
 
 public sealed class DeletePlanCommentHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    ICommentRealtimeService commentRealtimeService
 ) : IRequestHandler<DeletePlanCommentCommand>
 {
     public async ValueTask<Unit> Handle(
@@ -23,8 +24,23 @@ public sealed class DeletePlanCommentHandler(
         if (comment.AuthorId != userId)
             throw new InvalidOperationException("You can only delete your own comments.");
 
+        var plan = await db.Plans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == request.PlanId, cancellationToken)
+            ?? throw new InvalidOperationException("Plan not found.");
+
         db.PlanComments.Remove(comment);
         await db.SaveChangesAsync(cancellationToken);
+
+        var realtimeRecipients = plan.CreatedByCoachId.HasValue
+            ? new[] { plan.OwnerId, plan.CreatedByCoachId.Value }
+            : new[] { plan.OwnerId };
+
+        await commentRealtimeService.PlanCommentDeletedAsync(
+            request.PlanId,
+            request.CommentId,
+            realtimeRecipients,
+            cancellationToken);
 
         return Unit.Value;
     }

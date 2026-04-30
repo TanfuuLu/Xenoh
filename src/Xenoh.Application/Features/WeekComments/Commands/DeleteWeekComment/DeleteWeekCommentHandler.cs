@@ -6,7 +6,8 @@ namespace Xenoh.Application.Features.WeekComments.Commands.DeleteWeekComment;
 
 public sealed class DeleteWeekCommentHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    ICommentRealtimeService commentRealtimeService
 ) : IRequestHandler<DeleteWeekCommentCommand>
 {
     public async ValueTask<Unit> Handle(
@@ -23,8 +24,25 @@ public sealed class DeleteWeekCommentHandler(
         if (comment.AuthorId != userId)
             throw new InvalidOperationException("You can only delete your own comments.");
 
+        var week = await db.WeeklyWorkouts
+            .AsNoTracking()
+            .Include(w => w.Plan)
+            .FirstOrDefaultAsync(w => w.Id == request.WeeklyWorkoutId, cancellationToken)
+            ?? throw new InvalidOperationException("Week not found.");
+
         db.WeeklyWorkoutComments.Remove(comment);
         await db.SaveChangesAsync(cancellationToken);
+
+        var plan = week.Plan;
+        var realtimeRecipients = plan.CreatedByCoachId.HasValue
+            ? new[] { plan.OwnerId, plan.CreatedByCoachId.Value }
+            : new[] { plan.OwnerId };
+
+        await commentRealtimeService.WeekCommentDeletedAsync(
+            request.WeeklyWorkoutId,
+            request.CommentId,
+            realtimeRecipients,
+            cancellationToken);
 
         return Unit.Value;
     }
