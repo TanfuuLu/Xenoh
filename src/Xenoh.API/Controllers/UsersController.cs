@@ -5,6 +5,8 @@ using Xenoh.Application.Features.Users.Commands.DeleteBodyweightEntry;
 using Xenoh.Application.Features.Users.Commands.LogBodyweight;
 using Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
+using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
+using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
@@ -61,6 +63,20 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetBodyweightHistory(CancellationToken ct)
     {
         var result = await mediator.Send(new GetBodyweightHistoryQuery(), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("me/exercise-prs")]
+    public async Task<IActionResult> GetExercisePrs(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetExercisePrsQuery(), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("me/exercise-prs/{exerciseTemplateId:guid}/history")]
+    public async Task<IActionResult> GetExercisePrHistory(Guid exerciseTemplateId, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetExercisePrHistoryQuery(exerciseTemplateId), ct);
         return Ok(result);
     }
 

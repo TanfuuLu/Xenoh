@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<ExerciseTemplate> ExerciseTemplates { get; }
     DbSet<UserExercisePR> UserExercisePRs { get; }
+    DbSet<UserExercisePRHistory> UserExercisePRHistories { get; }
     DbSet<WorkoutHistory> WorkoutHistories { get; }
     DbSet<BodyweightLog> BodyweightLogs { get; }
     DbSet<PlanComment> PlanComments { get; }

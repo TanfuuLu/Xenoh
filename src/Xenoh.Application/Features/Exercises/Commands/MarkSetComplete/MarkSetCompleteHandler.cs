@@ -62,6 +62,8 @@ public sealed class MarkSetCompleteHandler(
         if (effectiveWeight is > 0)
         {
             var pr = await userPrRepo.FindAsync(userId, exercise.ExerciseTemplateId, cancellationToken);
+            var achievedAt = DateTime.UtcNow;
+            var reps = set.ActualReps ?? set.PlannedReps;
 
             if (pr is null)
             {
@@ -70,18 +72,23 @@ public sealed class MarkSetCompleteHandler(
                     UserId = userId,
                     ExerciseTemplateId = exercise.ExerciseTemplateId,
                     Weight = effectiveWeight.Value,
-                    Reps = set.ActualReps ?? set.PlannedReps,
-                    AchievedAt = DateTime.UtcNow
+                    Reps = reps,
+                    AchievedAt = achievedAt
                 };
                 await userPrRepo.AddAsync(pr, cancellationToken);
+                await userPrRepo.AddHistoryAsync(CreateHistory(pr), cancellationToken);
                 await userPrRepo.SaveChangesAsync(cancellationToken);
             }
             else if (effectiveWeight.Value > pr.Weight)
             {
+                if (!await userPrRepo.HasHistoryAsync(userId, exercise.ExerciseTemplateId, cancellationToken))
+                    await userPrRepo.AddHistoryAsync(CreateHistory(pr), cancellationToken);
+
                 pr.Weight = effectiveWeight.Value;
-                pr.Reps = set.ActualReps ?? set.PlannedReps;
-                pr.AchievedAt = DateTime.UtcNow;
-                pr.UpdatedAt = DateTime.UtcNow;
+                pr.Reps = reps;
+                pr.AchievedAt = achievedAt;
+                pr.UpdatedAt = achievedAt;
+                await userPrRepo.AddHistoryAsync(CreateHistory(pr), cancellationToken);
                 await userPrRepo.SaveChangesAsync(cancellationToken);
             }
 
@@ -116,4 +123,14 @@ public sealed class MarkSetCompleteHandler(
         var pr = await userPrRepo.FindAsync(userId, exerciseTemplateId, cancellationToken);
         return pr?.Weight;
     }
+
+    private static UserExercisePRHistory CreateHistory(UserExercisePR pr) =>
+        new()
+        {
+            UserId = pr.UserId,
+            ExerciseTemplateId = pr.ExerciseTemplateId,
+            Weight = pr.Weight,
+            Reps = pr.Reps,
+            AchievedAt = pr.AchievedAt
+        };
 }

@@ -5,6 +5,7 @@ using Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
+using Xenoh.Infrastructure.Persistence.Repositories;
 
 namespace Xenoh.Application.Tests.Features.DailyWorkouts;
 
@@ -13,6 +14,9 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
     // ─── seed helpers ────────────────────────────────────────────────────────
 
     private record SeededDays(Guid SourceId, Guid TargetId);
+
+    private CopyDailyWorkoutHandler CreateHandler(Xenoh.Infrastructure.Persistence.ApplicationDbContext ctx) =>
+        new(new DailyWorkoutRepository(ctx), new ExerciseRepository(ctx), CurrentUser());
 
     /// <summary>
     /// Creates a plan with two daily workouts under the same week.
@@ -130,7 +134,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
         var days = await SeedAsync(sourceExerciseCount: 2, setsPerExercise: 3);
 
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         var response = await handler.Handle(
             new CopyDailyWorkoutCommand(days.SourceId, days.TargetId),
@@ -167,7 +171,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
         var days = await SeedAsync(sourceExerciseCount: 2, targetExerciseCount: 1);
 
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         await handler.Handle(
             new CopyDailyWorkoutCommand(days.SourceId, days.TargetId),
@@ -199,7 +203,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
 
         // Now copy
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
         await handler.Handle(new CopyDailyWorkoutCommand(days.SourceId, days.TargetId), CancellationToken.None);
 
         // Cloned sets should have planned data only, no actuals
@@ -224,7 +228,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
         var days = await SeedAsync();
 
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         var act = () => handler.Handle(
             new CopyDailyWorkoutCommand(days.SourceId, days.SourceId),
@@ -238,7 +242,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
     public async Task Handle_SourceNotFound_Throws()
     {
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser());
+        var handler = CreateHandler(ctx);
 
         var act = () => handler.Handle(
             new CopyDailyWorkoutCommand(Guid.NewGuid(), Guid.NewGuid()),
@@ -255,7 +259,7 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
         var days = await SeedAsync(ownerOverride: otherUser); // plan owned by someone else
 
         await using var ctx = CreateContext();
-        var handler = new CopyDailyWorkoutHandler(ctx, CurrentUser()); // CurrentUser != otherUser
+        var handler = CreateHandler(ctx); // CurrentUser != otherUser
 
         var act = () => handler.Handle(
             new CopyDailyWorkoutCommand(days.SourceId, days.TargetId),

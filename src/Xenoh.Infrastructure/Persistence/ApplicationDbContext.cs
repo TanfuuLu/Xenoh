@@ -19,6 +19,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ExerciseTemplate> ExerciseTemplates => Set<ExerciseTemplate>();
     public DbSet<UserExercisePR> UserExercisePRs => Set<UserExercisePR>();
+    public DbSet<UserExercisePRHistory> UserExercisePRHistories => Set<UserExercisePRHistory>();
     public DbSet<WorkoutHistory> WorkoutHistories => Set<WorkoutHistory>();
     public DbSet<BodyweightLog> BodyweightLogs => Set<BodyweightLog>();
     public DbSet<PlanComment> PlanComments => Set<PlanComment>();

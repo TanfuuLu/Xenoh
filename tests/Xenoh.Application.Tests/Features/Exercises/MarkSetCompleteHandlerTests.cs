@@ -4,6 +4,7 @@ using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
+using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Repositories;
 
 namespace Xenoh.Application.Tests.Features.Exercises;
@@ -180,5 +181,125 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Access denied*");
+    }
+
+    [Fact]
+    public async Task Handle_FirstWeightedSet_CreatesCurrentPrAndHistory()
+    {
+        var (setId, templateId) = await SeedAsync();
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.UserExercisePRs
+            .Single(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .Weight.Should().Be(100m);
+
+        verifyCtx.UserExercisePRHistories
+            .Single(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .Weight.Should().Be(100m);
+    }
+
+    [Theory]
+    [InlineData(90)]
+    [InlineData(100)]
+    public async Task Handle_LowerOrEqualWeight_DoesNotCreateHistory(decimal completedWeight)
+    {
+        var (setId, templateId) = await SeedAsync();
+        await using var seedCtx = CreateContext();
+        seedCtx.UserExercisePRs.Add(new UserExercisePR
+        {
+            UserId = UserId,
+            ExerciseTemplateId = templateId,
+            Weight = 100m,
+            Reps = 5,
+            AchievedAt = DateTime.UtcNow.AddDays(-1)
+        });
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = completedWeight
+        }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.UserExercisePRs.Single(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .Weight.Should().Be(100m);
+        verifyCtx.UserExercisePRHistories
+            .Where(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_BreakingPr_AddsBaselineAndNewHistory()
+    {
+        var (setId, templateId) = await SeedAsync();
+        var baselineAchievedAt = DateTime.UtcNow.AddDays(-1);
+        await using var seedCtx = CreateContext();
+        seedCtx.UserExercisePRs.Add(new UserExercisePR
+        {
+            UserId = UserId,
+            ExerciseTemplateId = templateId,
+            Weight = 100m,
+            Reps = 5,
+            AchievedAt = baselineAchievedAt
+        });
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 3,
+            ActualWeight = 110m
+        }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.UserExercisePRs.Single(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .Weight.Should().Be(110m);
+
+        verifyCtx.UserExercisePRHistories
+            .Where(p => p.UserId == UserId && p.ExerciseTemplateId == templateId)
+            .OrderBy(p => p.AchievedAt)
+            .Select(p => p.Weight)
+            .Should().Equal(100m, 110m);
+    }
+
+    [Fact]
+    public async Task GetHistoryAsync_WithCurrentPrAndNoHistory_ReturnsSyntheticBaseline()
+    {
+        var (_, templateId) = await SeedAsync(alreadyCompleted: true);
+        await using var seedCtx = CreateContext();
+        seedCtx.UserExercisePRs.Add(new UserExercisePR
+        {
+            UserId = UserId,
+            ExerciseTemplateId = templateId,
+            Weight = 100m,
+            Reps = 5,
+            AchievedAt = DateTime.UtcNow
+        });
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var repo = new UserPrRepository(ctx);
+
+        var history = await repo.GetHistoryAsync(UserId, templateId, CancellationToken.None);
+
+        history.Should().ContainSingle();
+        history[0].Weight.Should().Be(100m);
     }
 }
