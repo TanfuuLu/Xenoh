@@ -24,9 +24,11 @@ public sealed record RegisterCommand : IRequest<AuthResponse>
 }
 
 public sealed record AuthResponse(
+    Guid UserId,
     string AccessToken,
     string RefreshToken,
     string Email,
     string FullName,
+    string? AvatarUrl,
     IList<string> Roles
 );

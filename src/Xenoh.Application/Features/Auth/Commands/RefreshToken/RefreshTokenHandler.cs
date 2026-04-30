@@ -40,10 +40,12 @@ public sealed class RefreshTokenHandler(
         await refreshTokenRepo.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(
+            user.Id,
             accessToken,
             newRefreshTokenValue,
             user.Email!,
             $"{user.FirstName} {user.LastName}",
+            user.AvatarUrl,
             roles
         );
     }

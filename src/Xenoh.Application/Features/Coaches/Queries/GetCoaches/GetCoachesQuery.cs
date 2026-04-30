@@ -7,5 +7,6 @@ public sealed record GetCoachesQuery(string? Name = null) : IRequest<List<CoachR
 public sealed record CoachResponse(
     Guid Id,
     string FullName,
-    string Email
+    string Email,
+    string? AvatarUrl
 );

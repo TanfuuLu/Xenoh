@@ -6,36 +6,57 @@ using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
-namespace Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
+namespace Xenoh.Application.Features.Users.Commands.UpdateMyAvatar;
 
-public sealed class UpdateMyProfileHandler(
+public sealed class UpdateMyAvatarHandler(
     IWorkoutHistoryRepository workoutHistoryRepo,
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
     UserManager<ApplicationUser> userManager,
-    ICurrentUserService currentUser
-) : IRequestHandler<UpdateMyProfileCommand, UserProfileResponse>
+    ICurrentUserService currentUser,
+    IUserAvatarStorageService avatarStorage
+) : IRequestHandler<UpdateMyAvatarCommand, UserProfileResponse>
 {
-    public async ValueTask<UserProfileResponse> Handle(UpdateMyProfileCommand request, CancellationToken cancellationToken)
-    {
-        var userId = currentUser.UserId;
+    private const long MaxFileSizeBytes = 5 * 1024 * 1024;
 
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif"
+    };
+
+    public async ValueTask<UserProfileResponse> Handle(UpdateMyAvatarCommand request, CancellationToken cancellationToken)
+    {
+        if (request.Length <= 0)
+            throw new InvalidOperationException("Avatar image is required.");
+
+        if (request.Length > MaxFileSizeBytes)
+            throw new InvalidOperationException("Avatar image must be 5 MB or smaller.");
+
+        if (!AllowedContentTypes.Contains(request.ContentType))
+            throw new InvalidOperationException("Avatar image must be JPEG, PNG, WebP, or GIF.");
+
+        var userId = currentUser.UserId;
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        if (request.DateOfBirth is not null
-            && request.DateOfBirth.Value > DateOnly.FromDateTime(DateTime.UtcNow))
-            throw new InvalidOperationException("Date of birth cannot be in the future.");
+        var avatarUrl = await avatarStorage.SaveAsync(
+            userId,
+            request.FileName,
+            request.ContentType,
+            request.Content,
+            cancellationToken);
 
-        if (request.Bio is not null) user.Bio = request.Bio;
-        if (request.Height is not null) user.Height = request.Height;
-        if (request.Gender is not null) user.Gender = request.Gender;
-        if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
+        user.AvatarUrl = avatarUrl;
 
-        await userManager.UpdateAsync(user);
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", updateResult.Errors.Select(e => e.Description)));
 
         var workoutDates = await workoutHistoryRepo.GetSortedDatesDescAsync(userId, cancellationToken);
-        int currentStreak = GetMyProfileHandler.CalculateCurrentStreak(
+        var currentStreak = GetMyProfileHandler.CalculateCurrentStreak(
             workoutDates, DateOnly.FromDateTime(DateTime.UtcNow));
 
         var latestWeight = await bodyweightRepo.GetLatestWeightAsync(userId, cancellationToken);
@@ -46,8 +67,8 @@ public sealed class UpdateMyProfileHandler(
         var gender = user.Gender.HasValue && Enum.IsDefined(user.Gender.Value) ? user.Gender : null;
         var dotsScore = GetMyProfileHandler.CalculateDots(gender, latestWeight, big3Prs);
 
-        big3Prs.TryGetValue(CompetitionLiftType.Squat,    out var squatPr);
-        big3Prs.TryGetValue(CompetitionLiftType.Bench,    out var benchPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Squat, out var squatPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Bench, out var benchPr);
         big3Prs.TryGetValue(CompetitionLiftType.Deadlift, out var deadliftPr);
 
         return new UserProfileResponse(

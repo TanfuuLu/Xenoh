@@ -17,6 +17,9 @@ public class ApplicationUser : IdentityUser<Guid>
     [MaxLength(500)]
     public string? Bio { get; set; }
 
+    [MaxLength(300)]
+    public string? AvatarUrl { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Plan> Plans { get; set; } = [];
 

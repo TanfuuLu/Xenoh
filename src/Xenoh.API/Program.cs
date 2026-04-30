@@ -137,6 +137,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("FrontendPolicy");
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseTokenBlacklistMiddleware();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -8,5 +8,6 @@ public sealed record CoachProfileResponse(
     Guid Id,
     string FullName,
     string Email,
+    string? AvatarUrl,
     int TotalClients
 );

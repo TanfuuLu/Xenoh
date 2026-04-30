@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Users.Commands.DeleteBodyweightEntry;
 using Xenoh.Application.Features.Users.Commands.LogBodyweight;
+using Xenoh.Application.Features.Users.Commands.UpdateMyAvatar;
 using Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
@@ -37,6 +38,31 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("me/avatar")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UpdateMyAvatar([FromForm] IFormFile? file, CancellationToken ct)
+    {
+        try
+        {
+            if (file is null || file.Length == 0)
+                return BadRequest(new { message = "Avatar image is required." });
+
+            await using var stream = file.OpenReadStream();
+            var result = await mediator.Send(new UpdateMyAvatarCommand(
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                stream), ct);
+
             return Ok(result);
         }
         catch (InvalidOperationException ex)

@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Mapster" Version="10.0.7" />
     <PackageReference Include="Mediator.Abstractions" Version="3.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
   </ItemGroup>
 
   <PropertyGroup>

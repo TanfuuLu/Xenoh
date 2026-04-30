@@ -41,7 +41,8 @@ public sealed class GetCoachesHandler(
             .Select(c => new CoachResponse(
                 c.Id,
                 $"{c.FirstName} {c.LastName}",
-                c.Email!
+                c.Email!,
+                c.AvatarUrl
             ))
             .ToList();
     }

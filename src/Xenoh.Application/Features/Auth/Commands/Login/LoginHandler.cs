@@ -38,10 +38,12 @@ public sealed class LoginHandler(
         await refreshTokenRepo.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(
+            user.Id,
             accessToken,
             refreshTokenValue,
             user.Email!,
             $"{user.FirstName} {user.LastName}",
+            user.AvatarUrl,
             roles
         );
     }

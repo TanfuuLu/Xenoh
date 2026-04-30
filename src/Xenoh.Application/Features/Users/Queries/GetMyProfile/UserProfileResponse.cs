@@ -11,6 +11,7 @@ public sealed record UserProfileResponse(
     string Email,
     string FirstName,
     string LastName,
+    string? AvatarUrl,
     string? Bio,
     decimal? Height,
     string? Gender,

@@ -53,6 +53,7 @@ public sealed class GetUserProfileHandler(
             user.Email!,
             user.FirstName,
             user.LastName,
+            user.AvatarUrl,
             user.Bio,
             user.Height,
             gender.HasValue ? gender.Value.ToString() : null,

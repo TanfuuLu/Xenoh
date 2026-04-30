@@ -55,10 +55,12 @@ public sealed class RegisterHandler(
         await context.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(
+            user.Id,
             accessToken,
             refreshTokenValue,
             user.Email!,
             $"{user.FirstName} {user.LastName}",
+            user.AvatarUrl,
             roles
         );
     }
