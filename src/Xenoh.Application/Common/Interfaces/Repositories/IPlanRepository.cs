@@ -1,5 +1,6 @@
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
+using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -23,6 +24,9 @@ public interface IPlanRepository
     Task<List<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, CancellationToken ct = default);
 
     Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct = default);
+
+    /// <summary>Read-only: analytics data for a plan (compliance, volume, muscle groups).</summary>
+    Task<PlanAnalyticsResponse?> GetAnalyticsAsync(Guid planId, Guid userId, CancellationToken ct = default);
 
     /// <summary>Read-only: for each owner, the total and completed day counts across all their plans.</summary>
     Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(IEnumerable<Guid> ownerIds, CancellationToken ct = default);

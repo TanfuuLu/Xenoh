@@ -155,5 +155,6 @@ public static class ExerciseTemplateSeeder
         new() { Name = "Elliptical",               Description = "Elliptical cross-trainer",                    PrimaryMuscleGroup = MuscleGroup.Cardio,     SecondaryMuscleGroups = [MuscleGroup.Quads, MuscleGroup.Glutes], ExerciseKind = ExerciseKind.Cardio, EstimatedMet = 5.5m },
         new() { Name = "Stair Climber",            Description = "Stair climber machine",                       PrimaryMuscleGroup = MuscleGroup.Cardio,     SecondaryMuscleGroups = [MuscleGroup.Glutes, MuscleGroup.Quads, MuscleGroup.Calves], ExerciseKind = ExerciseKind.Cardio, EstimatedMet = 8.8m },
         new() { Name = "Mountain Climber",         Description = "Bodyweight mountain climber",                 PrimaryMuscleGroup = MuscleGroup.Cardio,     SecondaryMuscleGroups = [MuscleGroup.Abs, MuscleGroup.Shoulders], ExerciseKind = ExerciseKind.Cardio, EstimatedMet = 8.0m },
+        new() { Name = "Treadmill Walk",           Description = "Steady-pace walking on treadmill",            PrimaryMuscleGroup = MuscleGroup.Cardio,     SecondaryMuscleGroups = [MuscleGroup.Quads, MuscleGroup.Calves, MuscleGroup.Glutes], ExerciseKind = ExerciseKind.Cardio, EstimatedMet = 3.5m },
     ];
 }

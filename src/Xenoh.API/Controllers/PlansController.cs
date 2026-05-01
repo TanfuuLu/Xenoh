@@ -9,6 +9,7 @@ using Xenoh.Application.Features.Plans.Commands.DeletePlan;
 using Xenoh.Application.Features.Plans.Commands.UpdatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetMyPlans;
+using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanById;
 using Xenoh.Domain.Enums;
 
@@ -133,6 +134,20 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     /// Deactivate a plan. Only the plan owner can deactivate.
     /// Idempotent: deactivating an already-inactive plan returns 200 with current state.
     /// </summary>
+    [HttpGet("{planId:guid}/analytics")]
+    public async Task<IActionResult> GetPlanAnalytics(Guid planId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetPlanAnalyticsQuery(planId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     [HttpPatch("{planId:guid}/deactivate")]
     public async Task<IActionResult> DeactivatePlan(Guid planId, CancellationToken ct)
     {

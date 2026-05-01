@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
+using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -110,6 +111,65 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .ToListAsync(ct);
 
         db.Plans.RemoveRange(plans);
+    }
+
+    public async Task<PlanAnalyticsResponse?> GetAnalyticsAsync(Guid planId, Guid userId, CancellationToken ct)
+    {
+        var canAccess = await db.Plans.AsNoTracking()
+            .AnyAsync(p => p.Id == planId &&
+                (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+        if (!canAccess) return null;
+
+        var weeks = await db.WeeklyWorkouts.AsNoTracking()
+            .Where(w => w.PlanId == planId)
+            .OrderBy(w => w.WeekNumber)
+            .Select(w => new
+            {
+                w.WeekNumber,
+                w.Name,
+                Days = w.DailyWorkouts.Select(d => new
+                {
+                    d.IsCompleted,
+                    IsRest = d.Status == DayStatus.Rest,
+                    Sets = d.Exercises.SelectMany(e => e.Sets
+                        .Where(s => s.IsCompleted)
+                        .Select(s => new
+                        {
+                            s.ActualReps,
+                            s.ActualWeight,
+                            MuscleGroup = e.PrimaryMuscleGroup.ToString()
+                        })).ToList()
+                }).ToList()
+            })
+            .ToListAsync(ct);
+
+        var weeklyCompliance = weeks.Select(w => new WeekCompliancePoint(
+            w.WeekNumber, w.Name,
+            w.Days.Count(d => d.IsCompleted),
+            w.Days.Count(d => !d.IsRest)
+        )).ToList();
+
+        var weeklyVolume = weeks.Select(w => new WeekVolumePoint(
+            w.WeekNumber, w.Name,
+            w.Days.SelectMany(d => d.Sets)
+                  .Sum(s => (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))
+        )).ToList();
+
+        var allSets = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
+        var muscleGroups = allSets
+            .GroupBy(s => s.MuscleGroup)
+            .Select(g => new MuscleGroupPoint(g.Key, g.Count()))
+            .OrderByDescending(m => m.CompletedSets)
+            .ToList();
+
+        var totalCompleted = weeks.SelectMany(w => w.Days).Count(d => d.IsCompleted);
+        var nonRestDays    = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
+        var totalVolume    = weeklyVolume.Sum(w => w.TotalVolume);
+        var consistency    = nonRestDays == 0 ? 0m : Math.Round((decimal)totalCompleted / nonRestDays * 100, 1);
+        var avgPerWeek     = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
+
+        return new PlanAnalyticsResponse(totalCompleted, totalVolume, consistency, avgPerWeek,
+            weeklyCompliance, weeklyVolume, muscleGroups);
     }
 
     public async Task AddAsync(Plan plan, CancellationToken ct) =>
