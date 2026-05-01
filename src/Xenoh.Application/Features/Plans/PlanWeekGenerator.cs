@@ -7,13 +7,13 @@ internal static class PlanWeekGenerator
     internal static List<WeeklyWorkout> Generate(Plan plan)
     {
         var weeks = new List<WeeklyWorkout>();
-        var current = plan.StartDate;
+        var current = StartOfWeek(plan.StartDate);
+        var final = EndOfWeek(plan.EndDate);
         int weekNumber = 1;
 
-        while (current <= plan.EndDate)
+        while (current <= final)
         {
             var weekEnd = current.AddDays(6);
-            if (weekEnd > plan.EndDate) weekEnd = plan.EndDate;
 
             var week = new WeeklyWorkout
             {
@@ -32,6 +32,14 @@ internal static class PlanWeekGenerator
 
         return weeks;
     }
+
+    private static DateOnly StartOfWeek(DateOnly date)
+    {
+        var daysSinceMonday = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        return date.AddDays(-daysSinceMonday);
+    }
+
+    private static DateOnly EndOfWeek(DateOnly date) => StartOfWeek(date).AddDays(6);
 
     private static List<DailyWorkout> GenerateDays(DateOnly weekStart, DateOnly weekEnd)
     {

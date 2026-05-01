@@ -10,14 +10,20 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
     public async Task<List<ExerciseResponse>> GetByDayWithPrsAsync(
         Guid dailyWorkoutId, Guid userId, CancellationToken ct)
     {
-        var dayAccessible = await db.DailyWorkouts
+        var day = await db.DailyWorkouts
             .AsNoTracking()
             .Include(d => d.WeeklyWorkout).ThenInclude(w => w.Plan)
-            .AnyAsync(d => d.Id == dailyWorkoutId &&
+            .Where(d => d.Id == dailyWorkoutId &&
                 (d.WeeklyWorkout.Plan.OwnerId == userId ||
-                 d.WeeklyWorkout.Plan.CreatedByCoachId == userId), ct);
+                 d.WeeklyWorkout.Plan.CreatedByCoachId == userId))
+            .Select(d => new
+            {
+                d.Date,
+                d.WeeklyWorkout.Plan.OwnerId
+            })
+            .FirstOrDefaultAsync(ct);
 
-        if (!dayAccessible)
+        if (day is null)
             throw new InvalidOperationException("Daily workout not found.");
 
         var exercises = await db.Exercises
@@ -35,8 +41,18 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
             .Where(p => p.UserId == userId && templateIds.Contains(p.ExerciseTemplateId))
             .ToDictionaryAsync(p => p.ExerciseTemplateId, p => (decimal?)p.Weight, ct);
 
+        var bodyweight = await db.BodyweightLogs
+            .AsNoTracking()
+            .Where(b => b.UserId == day.OwnerId && b.Date <= day.Date)
+            .OrderByDescending(b => b.Date)
+            .Select(b => (decimal?)b.Weight)
+            .FirstOrDefaultAsync(ct);
+
         return exercises
-            .Select(e => CreateExerciseHandler.ToResponse(e, prs.GetValueOrDefault(e.ExerciseTemplateId)))
+            .Select(e => CreateExerciseHandler.ToResponse(
+                e,
+                prs.GetValueOrDefault(e.ExerciseTemplateId),
+                bodyweight))
             .ToList();
     }
 

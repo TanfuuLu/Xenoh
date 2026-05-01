@@ -12,6 +12,8 @@ public class ExerciseConfiguration : IEntityTypeConfiguration<Exercise>
         builder.Property(e => e.Name).IsRequired().HasMaxLength(100);
         builder.Property(e => e.SecondaryMuscleGroups)
             .HasColumnType("jsonb");
+        builder.Property(e => e.ExerciseKind).HasDefaultValue(Xenoh.Domain.Enums.ExerciseKind.Strength);
+        builder.Property(e => e.EstimatedMet).HasPrecision(5, 2).HasDefaultValue(5.0m);
 
         builder.HasOne(e => e.ExerciseTemplate)
             .WithMany()

@@ -41,6 +41,8 @@ public sealed record ExerciseResponse(
     string Name,
     string PrimaryMuscleGroup,
     List<string> SecondaryMuscleGroups,
+    string ExerciseKind,
+    decimal EstimatedMet,
     int PlannedSets,
     int PlannedReps,
     decimal? PlannedWeight,
@@ -50,5 +52,10 @@ public sealed record ExerciseResponse(
     Guid DailyWorkoutId,
     int SortOrder,
     List<ExerciseSetResponse> Sets,
-    decimal? PersonalRecordWeight
+    decimal? PersonalRecordWeight,
+    DateTime? StartedAtUtc,
+    DateTime? EndedAtUtc,
+    int? DurationSeconds,
+    decimal? EstimatedCalories,
+    string CalorieEstimateStatus
 );

@@ -51,6 +51,8 @@ public sealed class CopyDailyWorkoutHandler(
             Name = e.Name,
             PrimaryMuscleGroup = e.PrimaryMuscleGroup,
             SecondaryMuscleGroups = [.. e.SecondaryMuscleGroups],
+            ExerciseKind = e.ExerciseKind,
+            EstimatedMet = e.EstimatedMet,
             PlannedSets = e.PlannedSets,
             PlannedReps = e.PlannedReps,
             PlannedWeight = e.PlannedWeight,

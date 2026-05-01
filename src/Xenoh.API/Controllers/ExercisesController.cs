@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Application.Features.Exercises.Commands.DeleteExercise;
+using Xenoh.Application.Features.Exercises.Commands.FinishExerciseTimer;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
+using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
 
@@ -71,6 +73,34 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("{exerciseId:guid}/timer/start")]
+    public async Task<IActionResult> StartTimer(Guid exerciseId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new StartExerciseTimerCommand(exerciseId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("{exerciseId:guid}/timer/finish")]
+    public async Task<IActionResult> FinishTimer(Guid exerciseId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new FinishExerciseTimerCommand(exerciseId), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

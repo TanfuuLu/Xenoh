@@ -76,7 +76,9 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
             var template = new ExerciseTemplate
             {
                 Name = $"Exercise {i + 1}",
-                PrimaryMuscleGroup = MuscleGroup.Chest
+                PrimaryMuscleGroup = MuscleGroup.Chest,
+                ExerciseKind = i == 0 ? ExerciseKind.Cardio : ExerciseKind.Strength,
+                EstimatedMet = i == 0 ? 9.8m : 5.0m
             };
             ctx.ExerciseTemplates.Add(template);
 
@@ -85,6 +87,8 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
                 ExerciseTemplateId = template.Id,
                 Name = template.Name,
                 PrimaryMuscleGroup = MuscleGroup.Chest,
+                ExerciseKind = template.ExerciseKind,
+                EstimatedMet = template.EstimatedMet,
                 PlannedSets = setsPerExercise,
                 PlannedReps = 10,
                 PlannedWeight = 60m + i * 10,
@@ -150,6 +154,8 @@ public sealed class CopyDailyWorkoutHandlerTests : HandlerTestBase
             .ToListAsync();
 
         exercises.Should().HaveCount(2);
+        exercises.Single(e => e.Name == "Exercise 1").ExerciseKind.Should().Be(ExerciseKind.Cardio);
+        exercises.Single(e => e.Name == "Exercise 1").EstimatedMet.Should().Be(9.8m);
         exercises.Should().AllSatisfy(e =>
         {
             e.Sets.Should().HaveCount(3);

@@ -12,6 +12,8 @@ public class ExerciseTemplateConfiguration : IEntityTypeConfiguration<ExerciseTe
         builder.Property(t => t.Name).IsRequired().HasMaxLength(100);
         builder.Property(t => t.Description).HasMaxLength(500);
         builder.Property(t => t.SecondaryMuscleGroups).HasColumnType("jsonb");
+        builder.Property(t => t.ExerciseKind).HasDefaultValue(Xenoh.Domain.Enums.ExerciseKind.Strength);
+        builder.Property(t => t.EstimatedMet).HasPrecision(5, 2).HasDefaultValue(5.0m);
         builder.Property(t => t.IsCompetitionLift).HasDefaultValue(false);
         builder.Property(t => t.CompetitionLiftType).IsRequired(false);
     }

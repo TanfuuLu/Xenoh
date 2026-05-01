@@ -7,6 +7,7 @@ public interface IBodyweightRepository
 {
     Task<List<BodyweightLogResponse>> GetHistoryAsync(Guid userId, DateOnly from, CancellationToken ct = default);
     Task<decimal?> GetLatestWeightAsync(Guid userId, CancellationToken ct = default);
+    Task<decimal?> GetLatestWeightOnOrBeforeAsync(Guid userId, DateOnly date, CancellationToken ct = default);
     Task<Dictionary<Guid, decimal?>> GetLatestWeightsForUsersAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
     Task<BodyweightLog?> FindTodayAsync(Guid userId, DateOnly today, CancellationToken ct = default);
     Task<BodyweightLog?> FindByIdAndOwnerAsync(Guid id, Guid userId, CancellationToken ct = default);

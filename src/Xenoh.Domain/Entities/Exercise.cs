@@ -8,6 +8,8 @@ public class Exercise : BaseEntity
     public string Name { get; set; } = string.Empty;
     public MuscleGroup PrimaryMuscleGroup { get; set; }
     public List<MuscleGroup> SecondaryMuscleGroups { get; set; } = [];
+    public ExerciseKind ExerciseKind { get; set; } = ExerciseKind.Strength;
+    public decimal EstimatedMet { get; set; } = 5.0m;
 
     public Guid ExerciseTemplateId { get; set; }
     public ExerciseTemplate ExerciseTemplate { get; set; } = null!;
@@ -19,6 +21,9 @@ public class Exercise : BaseEntity
     public int SortOrder { get; set; }
 
     public bool IsCompleted { get; set; }
+    public DateTime? StartedAtUtc { get; set; }
+    public DateTime? EndedAtUtc { get; set; }
+    public int? DurationSeconds { get; set; }
 
     public string? Notes { get; set; }
 

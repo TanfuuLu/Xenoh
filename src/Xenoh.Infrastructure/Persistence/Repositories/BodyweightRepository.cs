@@ -23,6 +23,14 @@ public sealed class BodyweightRepository(ApplicationDbContext db) : IBodyweightR
           .Select(b => (decimal?)b.Weight)
           .FirstOrDefaultAsync(ct);
 
+    public Task<decimal?> GetLatestWeightOnOrBeforeAsync(Guid userId, DateOnly date, CancellationToken ct) =>
+        db.BodyweightLogs
+          .AsNoTracking()
+          .Where(b => b.UserId == userId && b.Date <= date)
+          .OrderByDescending(b => b.Date)
+          .Select(b => (decimal?)b.Weight)
+          .FirstOrDefaultAsync(ct);
+
     public async Task<Dictionary<Guid, decimal?>> GetLatestWeightsForUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct)
     {

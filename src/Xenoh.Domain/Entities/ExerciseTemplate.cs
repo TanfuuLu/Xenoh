@@ -9,6 +9,8 @@ public class ExerciseTemplate : BaseEntity
     public string? Description { get; set; }
     public MuscleGroup PrimaryMuscleGroup { get; set; }
     public List<MuscleGroup> SecondaryMuscleGroups { get; set; } = [];
+    public ExerciseKind ExerciseKind { get; set; } = ExerciseKind.Strength;
+    public decimal EstimatedMet { get; set; } = 5.0m;
     public bool IsCompetitionLift { get; set; } = false;
     public CompetitionLiftType? CompetitionLiftType { get; set; }
 }

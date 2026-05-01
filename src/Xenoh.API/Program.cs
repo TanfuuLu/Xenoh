@@ -117,6 +117,26 @@ using (var scope = app.Services.CreateScope())
             db.ExerciseTemplates.AddRange(missingTemplates);
             await db.SaveChangesAsync();
         }
+
+        var seededByName = seededTemplates.ToDictionary(t => t.Name.ToLower());
+        var templatesToSync = await db.ExerciseTemplates.ToListAsync();
+        var syncedAny = false;
+        foreach (var template in templatesToSync)
+        {
+            if (!seededByName.TryGetValue(template.Name.ToLower(), out var seededTemplate))
+                continue;
+
+            if (template.ExerciseKind == seededTemplate.ExerciseKind &&
+                template.EstimatedMet == seededTemplate.EstimatedMet)
+                continue;
+
+            template.ExerciseKind = seededTemplate.ExerciseKind;
+            template.EstimatedMet = seededTemplate.EstimatedMet;
+            syncedAny = true;
+        }
+
+        if (syncedAny)
+            await db.SaveChangesAsync();
     }
     catch (Exception ex)
     {

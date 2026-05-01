@@ -23,7 +23,9 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
                 t.Name,
                 t.Description,
                 t.PrimaryMuscleGroup.ToString(),
-                t.SecondaryMuscleGroups.Select(m => m.ToString()).ToList()))
+                t.SecondaryMuscleGroups.Select(m => m.ToString()).ToList(),
+                t.ExerciseKind.ToString(),
+                t.EstimatedMet))
             .ToListAsync(ct);
     }
 
