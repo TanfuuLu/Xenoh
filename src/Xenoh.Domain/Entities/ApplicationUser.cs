@@ -23,6 +23,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
     public ICollection<ExternalAuthTicket> ExternalAuthTickets { get; set; } = [];
+    public ICollection<ExerciseTemplate> CustomExerciseTemplates { get; set; } = [];
     public ICollection<Plan> Plans { get; set; } = [];
 
     // As client

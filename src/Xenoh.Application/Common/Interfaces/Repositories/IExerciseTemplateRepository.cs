@@ -6,6 +6,7 @@ namespace Xenoh.Application.Common.Interfaces.Repositories;
 
 public interface IExerciseTemplateRepository
 {
-    Task<List<ExerciseTemplateResponse>> GetAllAsync(MuscleGroup? muscleGroup, CancellationToken ct = default);
+    Task<List<ExerciseTemplateResponse>> GetAllAsync(Guid userId, MuscleGroup? muscleGroup, CancellationToken ct = default);
     Task<ExerciseTemplate?> FindByIdAsync(Guid id, CancellationToken ct = default);
+    Task<ExerciseTemplate?> FindAvailableByIdAsync(Guid id, Guid userId, CancellationToken ct = default);
 }

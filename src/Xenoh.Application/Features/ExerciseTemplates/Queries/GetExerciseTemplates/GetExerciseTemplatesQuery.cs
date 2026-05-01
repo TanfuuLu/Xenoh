@@ -13,5 +13,7 @@ public sealed record ExerciseTemplateResponse(
     string PrimaryMuscleGroup,
     List<string> SecondaryMuscleGroups,
     string ExerciseKind,
-    decimal EstimatedMet
+    decimal EstimatedMet,
+    bool IsCustom,
+    Guid? OwnerId
 );
