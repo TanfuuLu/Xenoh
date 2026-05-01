@@ -57,5 +57,6 @@ public sealed record ExerciseResponse(
     DateTime? EndedAtUtc,
     int? DurationSeconds,
     decimal? EstimatedCalories,
-    string CalorieEstimateStatus
+    string CalorieEstimateStatus,
+    bool IsCompetitionLift
 );

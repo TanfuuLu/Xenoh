@@ -1,6 +1,8 @@
 using Mediator;
+using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.XP;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Domain.Entities;
 
@@ -11,7 +13,8 @@ public sealed class MarkSetCompleteHandler(
     IWorkoutHistoryRepository workoutHistoryRepo,
     IUserPrRepository userPrRepo,
     ICurrentUserService currentUser,
-    INotificationService notificationService
+    INotificationService notificationService,
+    UserManager<ApplicationUser> userManager
 ) : IRequestHandler<MarkSetCompleteCommand, ExerciseResponse>
 {
     public async ValueTask<ExerciseResponse> Handle(MarkSetCompleteCommand request, CancellationToken cancellationToken)
@@ -55,6 +58,18 @@ public sealed class MarkSetCompleteHandler(
             await workoutHistoryRepo.AddAsync(new WorkoutHistory { UserId = userId, Date = today }, cancellationToken);
 
         await exerciseSetRepo.SaveChangesAsync(cancellationToken);
+
+        // Award XP for this completed set
+        int xpEarned = XpCalculator.ComputeSetXp(
+            set.ActualWeight, set.PlannedWeight,
+            set.ActualReps, set.PlannedReps,
+            set.Exercise.ExerciseTemplate.IsCompetitionLift);
+
+        var xpUser = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+        xpUser.TotalXp += xpEarned;
+        xpUser.Level    = XpCalculator.ComputeLevel(xpUser.TotalXp);
+        await userManager.UpdateAsync(xpUser);
 
         // PR upsert: use actual weight if provided, else fall back to planned weight
         decimal? prWeight = null;

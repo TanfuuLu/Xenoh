@@ -63,7 +63,11 @@ public sealed class GetUserProfileHandler(
             bmi,
             bmiCategory,
             dotsScore,
-            new Big3PrsResponse(squatPr, benchPr, deadliftPr)
+            new Big3PrsResponse(squatPr, benchPr, deadliftPr),
+            Math.Max(1, user.Level),
+            user.TotalXp,
+            Xenoh.Application.Common.XP.XpCalculator.XpToNextLevel(user.Level),
+            Xenoh.Application.Common.XP.XpCalculator.GetTitle(user.Level)
         );
     }
 }

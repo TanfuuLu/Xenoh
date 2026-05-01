@@ -21,5 +21,9 @@ public sealed record UserProfileResponse(
     decimal? Bmi,
     string? BmiCategory,
     decimal? DotsScore,
-    Big3PrsResponse Big3Prs
+    Big3PrsResponse Big3Prs,
+    int Level,
+    long TotalXp,
+    long XpToNextLevel,
+    string Title
 );

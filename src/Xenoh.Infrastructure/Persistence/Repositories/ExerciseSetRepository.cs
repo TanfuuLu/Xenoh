@@ -11,6 +11,8 @@ public sealed class ExerciseSetRepository(ApplicationDbContext db) : IExerciseSe
           .Include(s => s.Exercise)
               .ThenInclude(e => e.Sets)
           .Include(s => s.Exercise)
+              .ThenInclude(e => e.ExerciseTemplate)
+          .Include(s => s.Exercise)
               .ThenInclude(e => e.DailyWorkout)
                   .ThenInclude(d => d.Exercises)
                       .ThenInclude(e => e.Sets)

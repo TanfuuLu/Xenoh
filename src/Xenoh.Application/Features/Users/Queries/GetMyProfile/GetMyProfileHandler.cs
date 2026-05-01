@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.XP;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -39,6 +40,11 @@ public sealed class GetMyProfileHandler(
         big3Prs.TryGetValue(CompetitionLiftType.Bench,    out var benchPr);
         big3Prs.TryGetValue(CompetitionLiftType.Deadlift, out var deadliftPr);
 
+        int    level    = Math.Max(1, user.Level);
+        long   totalXp  = user.TotalXp;
+        long   xpToNext = XpCalculator.XpToNextLevel(level);
+        string title    = XpCalculator.GetTitle(level);
+
         return new UserProfileResponse(
             user.Id,
             user.Email!,
@@ -54,7 +60,11 @@ public sealed class GetMyProfileHandler(
             bmi,
             bmiCategory,
             dotsScore,
-            new Big3PrsResponse(squatPr, benchPr, deadliftPr)
+            new Big3PrsResponse(squatPr, benchPr, deadliftPr),
+            level,
+            totalXp,
+            xpToNext,
+            title
         );
     }
 

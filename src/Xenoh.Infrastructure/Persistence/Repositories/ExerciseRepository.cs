@@ -29,6 +29,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
         var exercises = await db.Exercises
             .AsNoTracking()
             .Include(e => e.Sets)
+            .Include(e => e.ExerciseTemplate)
             .Where(e => e.DailyWorkoutId == dailyWorkoutId)
             .OrderBy(e => e.SortOrder)
             .ThenBy(e => e.CreatedAt)

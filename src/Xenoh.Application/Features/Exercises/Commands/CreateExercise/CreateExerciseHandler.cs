@@ -118,7 +118,8 @@ public sealed class CreateExerciseHandler(
             e.EndedAtUtc,
             e.DurationSeconds,
             calorieEstimate.Calories,
-            calorieEstimate.Status
+            calorieEstimate.Status,
+            e.ExerciseTemplate?.IsCompetitionLift ?? false
         );
     }
 }

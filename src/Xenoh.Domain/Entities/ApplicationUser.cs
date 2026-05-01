@@ -33,4 +33,8 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<CoachClientRelationship> Clients { get; set; } = [];
 
     public ICollection<Notification> Notifications { get; set; } = [];
+
+    // XP / Leveling
+    public long TotalXp { get; set; } = 0;
+    public int  Level   { get; set; } = 1;
 }
