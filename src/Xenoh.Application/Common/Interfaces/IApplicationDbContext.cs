@@ -14,6 +14,7 @@ public interface IApplicationDbContext
     DbSet<CoachClientRelationship> CoachClientRelationships { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<PasswordResetCode> PasswordResetCodes { get; }
+    DbSet<ExternalAuthTicket> ExternalAuthTickets { get; }
     DbSet<ExerciseTemplate> ExerciseTemplates { get; }
     DbSet<UserExercisePR> UserExercisePRs { get; }
     DbSet<UserExercisePRHistory> UserExercisePRHistories { get; }

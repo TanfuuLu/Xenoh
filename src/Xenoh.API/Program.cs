@@ -1,6 +1,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Security.Claims;
+using Mediator;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Facebook;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +19,7 @@ using Xenoh.Infrastructure;
 using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Seeders;
+using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +63,36 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         }
     };
+})
+.AddCookie("External", options =>
+{
+    options.Cookie.Name = "xenoh.external";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+})
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+    options.SignInScheme = "External";
+    options.CallbackPath = "/api/auth/external/google/callback";
+    options.SaveTokens = false;
+    options.ClaimActions.MapJsonKey("picture", "picture");
+    options.Events = CreateExternalAuthEvents("Google", builder.Configuration);
+})
+.AddFacebook(options =>
+{
+    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+    options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+    options.SignInScheme = "External";
+    options.CallbackPath = "/api/auth/external/facebook/callback";
+    options.SaveTokens = false;
+    options.Fields.Add("email");
+    options.Fields.Add("first_name");
+    options.Fields.Add("last_name");
+    options.Events = CreateExternalAuthEvents("Facebook", builder.Configuration);
 });
 
 builder.Services.AddAuthorization();
@@ -165,3 +203,60 @@ app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
+
+static OAuthEvents CreateExternalAuthEvents(string provider, IConfiguration configuration)
+{
+    return new OAuthEvents
+    {
+        OnTicketReceived = async context =>
+        {
+            var mediator = context.HttpContext.RequestServices.GetRequiredService<IMediator>();
+            var principal = context.Principal ?? throw new InvalidOperationException("External login principal was not returned.");
+            var providerKey = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("External provider did not return a user identifier.");
+            var email = principal.FindFirstValue(ClaimTypes.Email)
+                ?? throw new InvalidOperationException("External provider did not return an email address.");
+            var fullName = principal.FindFirstValue(ClaimTypes.Name);
+            var firstName = principal.FindFirstValue(ClaimTypes.GivenName);
+            var lastName = principal.FindFirstValue(ClaimTypes.Surname);
+            if (string.IsNullOrWhiteSpace(firstName) && !string.IsNullOrWhiteSpace(fullName))
+            {
+                var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                firstName = nameParts.ElementAtOrDefault(0);
+                lastName = nameParts.ElementAtOrDefault(1);
+            }
+
+            var ticket = await mediator.Send(new ExternalLoginCommand(
+                provider,
+                providerKey,
+                email,
+                firstName,
+                lastName,
+                principal.FindFirstValue("picture")
+            ), context.HttpContext.RequestAborted);
+
+            var redirectUrl = BuildFrontendRedirectUrl(configuration, "auth/social-callback", ("ticket", ticket.Ticket));
+            await context.HttpContext.SignOutAsync("External");
+            context.Response.Redirect(redirectUrl);
+            context.HandleResponse();
+        },
+        OnRemoteFailure = context =>
+        {
+            var redirectUrl = BuildFrontendRedirectUrl(configuration, "login", ("externalError", "External login failed."));
+            context.Response.Redirect(redirectUrl);
+            context.HandleResponse();
+            return Task.CompletedTask;
+        }
+    };
+}
+
+static string BuildFrontendRedirectUrl(IConfiguration configuration, string path, params (string Key, string Value)[] query)
+{
+    var frontendUrl = (configuration["Authentication:FrontendUrl"] ?? "http://localhost:5173").TrimEnd('/');
+    var url = $"{frontendUrl}/{path.TrimStart('/')}";
+    if (query.Length == 0)
+        return url;
+
+    var queryString = string.Join("&", query.Select(q => $"{Uri.EscapeDataString(q.Key)}={Uri.EscapeDataString(q.Value)}"));
+    return $"{url}?{queryString}";
+}

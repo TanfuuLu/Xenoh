@@ -7,6 +7,12 @@ namespace Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
 
 public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
 {
+    [StringLength(100, MinimumLength = 1, ErrorMessage = "First name must be between 1 and 100 characters.")]
+    public string? FirstName { get; init; }
+
+    [StringLength(100, MinimumLength = 1, ErrorMessage = "Last name must be between 1 and 100 characters.")]
+    public string? LastName { get; init; }
+
     [StringLength(500, ErrorMessage = "Bio cannot exceed 500 characters.")]
     public string? Bio { get; init; }
 

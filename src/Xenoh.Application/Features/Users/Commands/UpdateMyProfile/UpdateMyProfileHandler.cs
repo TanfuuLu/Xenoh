@@ -27,12 +27,32 @@ public sealed class UpdateMyProfileHandler(
             && request.DateOfBirth.Value > DateOnly.FromDateTime(DateTime.UtcNow))
             throw new InvalidOperationException("Date of birth cannot be in the future.");
 
+        if (request.FirstName is not null)
+        {
+            var firstName = request.FirstName.Trim();
+            if (string.IsNullOrWhiteSpace(firstName))
+                throw new InvalidOperationException("First name is required.");
+
+            user.FirstName = firstName;
+        }
+
+        if (request.LastName is not null)
+        {
+            var lastName = request.LastName.Trim();
+            if (string.IsNullOrWhiteSpace(lastName))
+                throw new InvalidOperationException("Last name is required.");
+
+            user.LastName = lastName;
+        }
+
         if (request.Bio is not null) user.Bio = request.Bio;
         if (request.Height is not null) user.Height = request.Height;
         if (request.Gender is not null) user.Gender = request.Gender;
         if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
 
-        await userManager.UpdateAsync(user);
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", updateResult.Errors.Select(e => e.Description)));
 
         var workoutDates = await workoutHistoryRepo.GetSortedDatesDescAsync(userId, cancellationToken);
         int currentStreak = GetMyProfileHandler.CalculateCurrentStreak(
