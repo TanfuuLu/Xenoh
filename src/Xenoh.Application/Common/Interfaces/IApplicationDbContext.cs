@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<ExerciseSet> ExerciseSets { get; }
     DbSet<CoachClientRelationship> CoachClientRelationships { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<PasswordResetCode> PasswordResetCodes { get; }
     DbSet<ExerciseTemplate> ExerciseTemplates { get; }
     DbSet<UserExercisePR> UserExercisePRs { get; }
     DbSet<UserExercisePRHistory> UserExercisePRHistories { get; }

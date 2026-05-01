@@ -55,6 +55,8 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         return services;
     }

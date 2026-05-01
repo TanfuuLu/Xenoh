@@ -21,6 +21,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public string? AvatarUrl { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
     public ICollection<Plan> Plans { get; set; } = [];
 
     // As client
