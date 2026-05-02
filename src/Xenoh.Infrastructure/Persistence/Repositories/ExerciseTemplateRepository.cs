@@ -30,7 +30,8 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
                 t.ExerciseKind.ToString(),
                 t.EstimatedMet,
                 t.OwnerId != null,
-                t.OwnerId))
+                t.OwnerId,
+                t.ImageUrl))
             .ToListAsync(ct);
     }
 

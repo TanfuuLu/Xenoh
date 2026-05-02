@@ -159,17 +159,31 @@ using (var scope = app.Services.CreateScope())
         var seededByName = seededTemplates.ToDictionary(t => t.Name.ToLower());
         var templatesToSync = await db.ExerciseTemplates.ToListAsync();
         var syncedAny = false;
+        var toDelete = new List<Xenoh.Domain.Entities.ExerciseTemplate>();
         foreach (var template in templatesToSync)
         {
             if (!seededByName.TryGetValue(template.Name.ToLower(), out var seededTemplate))
+            {
+                // Remove system templates that are no longer in the seed list
+                if (template.OwnerId == null)
+                    toDelete.Add(template);
                 continue;
+            }
 
             if (template.ExerciseKind == seededTemplate.ExerciseKind &&
-                template.EstimatedMet == seededTemplate.EstimatedMet)
+                template.EstimatedMet == seededTemplate.EstimatedMet &&
+                template.ImageUrl == seededTemplate.ImageUrl)
                 continue;
 
             template.ExerciseKind = seededTemplate.ExerciseKind;
             template.EstimatedMet = seededTemplate.EstimatedMet;
+            template.ImageUrl = seededTemplate.ImageUrl;
+            syncedAny = true;
+        }
+
+        if (toDelete.Count > 0)
+        {
+            db.ExerciseTemplates.RemoveRange(toDelete);
             syncedAny = true;
         }
 

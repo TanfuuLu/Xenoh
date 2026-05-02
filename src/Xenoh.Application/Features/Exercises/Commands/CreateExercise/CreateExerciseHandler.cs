@@ -39,6 +39,7 @@ public sealed class CreateExerciseHandler(
 
         var exercise = new Exercise
         {
+            ExerciseTemplate = template,
             ExerciseTemplateId = template.Id,
             Name = template.Name,
             PrimaryMuscleGroup = template.PrimaryMuscleGroup,
@@ -119,7 +120,8 @@ public sealed class CreateExerciseHandler(
             e.DurationSeconds,
             calorieEstimate.Calories,
             calorieEstimate.Status,
-            e.ExerciseTemplate?.IsCompetitionLift ?? false
+            e.ExerciseTemplate?.IsCompetitionLift ?? false,
+            e.ExerciseTemplate?.ImageUrl
         );
     }
 }

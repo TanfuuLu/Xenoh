@@ -57,7 +57,8 @@ public sealed class CreateCustomExerciseTemplateHandler(
             template.ExerciseKind.ToString(),
             template.EstimatedMet,
             template.OwnerId != null,
-            template.OwnerId);
+            template.OwnerId,
+            template.ImageUrl);
 
     internal static string NormalizeRequired(string value, string errorMessage)
     {

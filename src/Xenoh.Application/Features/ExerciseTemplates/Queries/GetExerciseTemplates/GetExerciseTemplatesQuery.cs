@@ -15,5 +15,6 @@ public sealed record ExerciseTemplateResponse(
     string ExerciseKind,
     decimal EstimatedMet,
     bool IsCustom,
-    Guid? OwnerId
+    Guid? OwnerId,
+    string? ImageUrl
 );

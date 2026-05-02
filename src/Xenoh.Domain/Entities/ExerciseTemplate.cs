@@ -15,5 +15,6 @@ public class ExerciseTemplate : BaseEntity
     public bool IsCompetitionLift { get; set; } = false;
     public bool IsArchived { get; set; } = false;
     public CompetitionLiftType? CompetitionLiftType { get; set; }
+    public string? ImageUrl { get; set; }
     public ApplicationUser? Owner { get; set; }
 }

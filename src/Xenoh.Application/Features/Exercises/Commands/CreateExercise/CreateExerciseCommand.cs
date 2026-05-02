@@ -58,5 +58,6 @@ public sealed record ExerciseResponse(
     int? DurationSeconds,
     decimal? EstimatedCalories,
     string CalorieEstimateStatus,
-    bool IsCompetitionLift
+    bool IsCompetitionLift,
+    string? ImageUrl
 );

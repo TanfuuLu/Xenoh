@@ -60,6 +60,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
     public Task<Exercise?> FindWithSetsAndPlanAsync(Guid exerciseId, CancellationToken ct) =>
         db.Exercises
           .Include(e => e.Sets)
+          .Include(e => e.ExerciseTemplate)
           .Include(e => e.DailyWorkout)
               .ThenInclude(d => d.WeeklyWorkout)
                   .ThenInclude(w => w.Plan)
