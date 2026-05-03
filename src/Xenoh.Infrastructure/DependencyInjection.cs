@@ -35,6 +35,8 @@ public static class DependencyInjection
         services.AddScoped<IWorkoutHistoryRepository, WorkoutHistoryRepository>();
         services.AddScoped<IUserPrRepository, UserPrRepository>();
         services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IPaymentOrderRepository, PaymentOrderRepository>();
 
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {
@@ -57,6 +59,11 @@ public static class DependencyInjection
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddScoped<IEmailService, SmtpEmailService>();
+
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
+        services.AddSingleton<ISePayBankInfo, SePayBankInfo>();
+        services.Configure<SePayOptions>(configuration.GetSection(SePayOptions.SectionName));
 
         return services;
     }

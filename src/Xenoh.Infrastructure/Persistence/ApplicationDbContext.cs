@@ -27,6 +27,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PlanComment> PlanComments => Set<PlanComment>();
     public DbSet<WeeklyWorkoutComment> WeeklyWorkoutComments => Set<WeeklyWorkoutComment>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+    public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

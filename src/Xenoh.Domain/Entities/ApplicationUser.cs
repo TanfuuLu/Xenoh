@@ -37,4 +37,6 @@ public class ApplicationUser : IdentityUser<Guid>
     // XP / Leveling
     public long TotalXp { get; set; } = 0;
     public int  Level   { get; set; } = 1;
+
+    public UserSubscription? Subscription { get; set; }
 }

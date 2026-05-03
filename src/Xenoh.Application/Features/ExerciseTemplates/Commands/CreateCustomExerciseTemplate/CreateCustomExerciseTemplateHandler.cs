@@ -9,7 +9,8 @@ namespace Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExer
 
 public sealed class CreateCustomExerciseTemplateHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    ISubscriptionService subscriptionService
 ) : IRequestHandler<CreateCustomExerciseTemplateCommand, ExerciseTemplateResponse>
 {
     private const int CustomExerciseLimit = 5;
@@ -21,6 +22,9 @@ public sealed class CreateCustomExerciseTemplateHandler(
         var userId = currentUser.UserId;
         if (userId == Guid.Empty)
             throw new InvalidOperationException("User is not authenticated.");
+
+        if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
+            throw new InvalidOperationException("Creating custom exercises requires an active Pro subscription. Upgrade to unlock this feature.");
 
         var activeCustomCount = await db.ExerciseTemplates
             .CountAsync(t => t.OwnerId == userId && !t.IsArchived, cancellationToken);
