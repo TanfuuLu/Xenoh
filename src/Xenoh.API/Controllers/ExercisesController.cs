@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Application.Features.Exercises.Commands.DeleteExercise;
 using Xenoh.Application.Features.Exercises.Commands.FinishExerciseTimer;
+using Xenoh.Application.Features.Exercises.Commands.SetExerciseTimerDuration;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
 using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
@@ -101,6 +102,25 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(new FinishExerciseTimerCommand(exerciseId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("{exerciseId:guid}/timer/set-duration")]
+    public async Task<IActionResult> SetDuration(
+        Guid exerciseId,
+        [FromBody] SetExerciseTimerDurationCommand command,
+        CancellationToken ct)
+    {
+        if (exerciseId != command.ExerciseId)
+            return BadRequest(new { message = "ExerciseId mismatch." });
+        try
+        {
+            var result = await mediator.Send(command, ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
