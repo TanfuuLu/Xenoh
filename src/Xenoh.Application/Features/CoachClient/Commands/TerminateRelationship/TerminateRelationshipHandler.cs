@@ -7,7 +7,6 @@ namespace Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
 
 public sealed class TerminateRelationshipHandler(
     ICoachClientRepository coachClientRepo,
-    IPlanRepository planRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<TerminateRelationshipCommand>
 {
@@ -19,18 +18,10 @@ public sealed class TerminateRelationshipHandler(
             request.RelationshipId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Relationship not found.");
 
-        if (relationship.Status == RelationshipStatus.Active)
-        {
-            await planRepo.DeleteCoachPlansForClientAsync(
-                relationship.ClientId, relationship.CoachId, cancellationToken);
+        if (relationship.Status != RelationshipStatus.Pending)
+            throw new InvalidOperationException("Only pending join requests can be declined this way. Use the termination request flow to disconnect an active relationship.");
 
-            relationship.Status = RelationshipStatus.Ended;
-            relationship.UpdatedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            coachClientRepo.Remove(relationship);
-        }
+        coachClientRepo.Remove(relationship);
 
         await coachClientRepo.SaveChangesAsync(cancellationToken);
 

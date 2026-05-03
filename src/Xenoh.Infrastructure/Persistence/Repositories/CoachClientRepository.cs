@@ -48,10 +48,12 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.Id,
               r.ClientId,
               r.Client.FirstName + " " + r.Client.LastName,
+              r.Client.AvatarUrl,
               r.CoachId,
               r.Coach.FirstName + " " + r.Coach.LastName,
               r.Status.ToString(),
-              r.CreatedAt))
+              r.CreatedAt,
+              null))
           .ToListAsync(ct);
 
     public async Task<CoachRelationshipResponse?> GetByClientWithDetailsAsync(Guid clientId, CancellationToken ct)
@@ -66,10 +68,12 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
             r.Id,
             r.ClientId,
             $"{r.Client.FirstName} {r.Client.LastName}",
+            r.Client.AvatarUrl,
             r.CoachId,
             $"{r.Coach.FirstName} {r.Coach.LastName}",
             r.Status.ToString(),
-            r.CreatedAt);
+            r.CreatedAt,
+            r.TerminationRequestedBy);
     }
 
     public Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct) =>
@@ -90,7 +94,8 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
                 .Where(w => w.UserId == r.ClientId)
                 .OrderByDescending(w => w.Date)
                 .Select(w => (DateOnly?)w.Date)
-                .FirstOrDefault()))
+                .FirstOrDefault(),
+              r.TerminationRequestedBy))
           .ToListAsync(ct);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>

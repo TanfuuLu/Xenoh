@@ -9,8 +9,9 @@ public sealed record ClientResponse(
     Guid ClientId,
     string FullName,
     string Email,
-    /// <summary>"Pending" | "Active"</summary>
+    /// <summary>"Pending" | "Active" | "PendingTermination"</summary>
     string Status,
     DateTime ConnectedAt,
-    DateOnly? LastWorkoutCompletedAt
+    DateOnly? LastWorkoutCompletedAt,
+    Guid? TerminationRequestedBy
 );

@@ -2,7 +2,10 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
+using Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
+using Xenoh.Application.Features.CoachClient.Commands.RejectTermination;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
+using Xenoh.Application.Features.CoachClient.Commands.RequestTermination;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
@@ -75,6 +78,48 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetMyCoachQuery(), ct);
         return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{relationshipId:guid}/request-termination")]
+    public async Task<IActionResult> RequestTermination(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new RequestTerminationCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/accept-termination")]
+    public async Task<IActionResult> AcceptTermination(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new AcceptTerminationCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/reject-termination")]
+    public async Task<IActionResult> RejectTermination(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new RejectTerminationCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>

@@ -60,10 +60,12 @@ public sealed class RequestCoachHandler(
             relationship.Id,
             clientId,
             $"{client.FirstName} {client.LastName}",
+            client.AvatarUrl,
             request.CoachId,
             $"{coach.FirstName} {coach.LastName}",
             relationship.Status.ToString(),
-            relationship.CreatedAt
+            relationship.CreatedAt,
+            null
         );
     }
 }

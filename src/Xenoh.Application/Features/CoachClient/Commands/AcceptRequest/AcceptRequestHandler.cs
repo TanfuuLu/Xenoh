@@ -44,10 +44,12 @@ public sealed class AcceptRequestHandler(
             relationship.Id,
             relationship.ClientId,
             $"{relationship.Client.FirstName} {relationship.Client.LastName}",
+            relationship.Client.AvatarUrl,
             coachId,
             $"{coach!.FirstName} {coach.LastName}",
             relationship.Status.ToString(),
-            relationship.CreatedAt
+            relationship.CreatedAt,
+            null
         );
     }
 }

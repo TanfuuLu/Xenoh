@@ -13,8 +13,10 @@ public sealed record CoachRelationshipResponse(
     Guid Id,
     Guid ClientId,
     string ClientName,
+    string? ClientAvatarUrl,
     Guid CoachId,
     string CoachName,
     string Status,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    Guid? TerminationRequestedBy
 );

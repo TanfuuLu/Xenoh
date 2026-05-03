@@ -12,4 +12,6 @@ public class CoachClientRelationship : BaseEntity
     public ApplicationUser Coach { get; set; } = null!;
 
     public RelationshipStatus Status { get; set; } = RelationshipStatus.Pending;
+
+    public Guid? TerminationRequestedBy { get; set; }
 }
