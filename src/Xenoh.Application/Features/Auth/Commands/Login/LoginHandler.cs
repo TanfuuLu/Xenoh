@@ -19,6 +19,9 @@ public sealed class LoginHandler(
         var user = await userManager.FindByEmailAsync(request.Email)
             ?? throw new InvalidOperationException("Invalid email or password.");
 
+        if (await userManager.IsLockedOutAsync(user))
+            throw new InvalidOperationException("Account is suspended.");
+
         var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
             throw new InvalidOperationException("Invalid email or password.");

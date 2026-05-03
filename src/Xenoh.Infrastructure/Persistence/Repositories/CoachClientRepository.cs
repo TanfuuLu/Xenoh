@@ -11,7 +11,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
 {
     public Task<CoachClientRelationship?> FindByClientAsync(Guid clientId, CancellationToken ct) =>
         db.CoachClientRelationships
-          .FirstOrDefaultAsync(r => r.ClientId == clientId, ct);
+          .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, ct);
 
     public Task<CoachClientRelationship?> FindByIdForCoachAsync(Guid id, Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships
@@ -60,7 +60,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
             .AsNoTracking()
             .Include(r => r.Client)
             .Include(r => r.Coach)
-            .FirstOrDefaultAsync(r => r.ClientId == clientId, ct);
+            .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, ct);
 
         return r is null ? null : new CoachRelationshipResponse(
             r.Id,
@@ -77,6 +77,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
           .AsNoTracking()
           .Include(r => r.Client)
           .Where(r => r.CoachId == coachId)
+          .Where(r => r.Status != RelationshipStatus.Ended)
           .OrderByDescending(r => r.CreatedAt)
           .Select(r => new ClientResponse(
               r.Id,

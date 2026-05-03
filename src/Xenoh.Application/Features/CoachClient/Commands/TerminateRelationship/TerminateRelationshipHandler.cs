@@ -20,10 +20,18 @@ public sealed class TerminateRelationshipHandler(
             ?? throw new InvalidOperationException("Relationship not found.");
 
         if (relationship.Status == RelationshipStatus.Active)
+        {
             await planRepo.DeleteCoachPlansForClientAsync(
                 relationship.ClientId, relationship.CoachId, cancellationToken);
 
-        coachClientRepo.Remove(relationship);
+            relationship.Status = RelationshipStatus.Ended;
+            relationship.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            coachClientRepo.Remove(relationship);
+        }
+
         await coachClientRepo.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;

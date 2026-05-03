@@ -1,5 +1,6 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -8,6 +9,8 @@ namespace Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 
 public sealed class GetCoachProfileHandler(
     ICoachClientRepository coachClientRepo,
+    ICoachRatingRepository ratingRepo,
+    ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachProfileQuery, CoachProfileResponse>
 {
@@ -21,6 +24,9 @@ public sealed class GetCoachProfileHandler(
             throw new InvalidOperationException("Coach not found.");
 
         var totalClients = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);
+        var ratingSummary = await ratingRepo.GetSummaryAsync(request.CoachId, currentUser.UserId, cancellationToken);
+        var canRate = await ratingRepo.CanClientRateCoachAsync(request.CoachId, currentUser.UserId, cancellationToken);
+        var ratings = await ratingRepo.GetByCoachAsync(request.CoachId, cancellationToken);
 
         return new CoachProfileResponse(
             coach.Id,
@@ -28,7 +34,12 @@ public sealed class GetCoachProfileHandler(
             coach.Email!,
             coach.AvatarUrl,
             coach.Bio,
-            totalClients
+            totalClients,
+            ratingSummary.AverageRating,
+            ratingSummary.RatingCount,
+            canRate,
+            ratingSummary.MyRating,
+            ratings
         );
     }
 }

@@ -25,6 +25,9 @@ public sealed class RefreshTokenHandler(
         storedToken.IsRevoked = true;
 
         var user = storedToken.User;
+        if (await userManager.IsLockedOutAsync(user))
+            throw new InvalidOperationException("Account is suspended.");
+
         var roles = await userManager.GetRolesAsync(user);
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var newRefreshTokenValue = tokenService.GenerateRefreshToken();

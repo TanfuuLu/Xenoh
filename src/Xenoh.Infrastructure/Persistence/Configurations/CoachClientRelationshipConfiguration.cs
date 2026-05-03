@@ -20,6 +20,8 @@ public class CoachClientRelationshipConfiguration : IEntityTypeConfiguration<Coa
             .HasForeignKey(r => r.CoachId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(r => r.ClientId).IsUnique();
+        builder.HasIndex(r => r.ClientId)
+            .IsUnique()
+            .HasFilter("\"Status\" <> 2");
     }
 }

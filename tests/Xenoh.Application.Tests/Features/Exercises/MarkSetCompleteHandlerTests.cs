@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Tests.Common;
@@ -89,7 +91,8 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             new WorkoutHistoryRepository(ctx),
             new UserPrRepository(ctx),
             CurrentUser(),
-            new FakeNotificationService());
+            new FakeNotificationService(),
+            new TestUserManager(new ApplicationUser { Id = UserId }));
 
     // ─── RPE tests ───────────────────────────────────────────────────────────
 
@@ -301,5 +304,67 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
 
         history.Should().ContainSingle();
         history[0].Weight.Should().Be(100m);
+    }
+
+    private sealed class TestUserManager(ApplicationUser user)
+        : UserManager<ApplicationUser>(
+            new TestUserStore(user),
+            Microsoft.Extensions.Options.Options.Create(new IdentityOptions()),
+            new PasswordHasher<ApplicationUser>(),
+            [],
+            [],
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            null!,
+            NullLogger<UserManager<ApplicationUser>>.Instance)
+    {
+        public override Task<ApplicationUser?> FindByIdAsync(string userId) =>
+            Task.FromResult(user.Id.ToString() == userId ? user : null);
+
+        public override Task<IdentityResult> UpdateAsync(ApplicationUser user) =>
+            Task.FromResult(IdentityResult.Success);
+    }
+
+    private sealed class TestUserStore(ApplicationUser user) : IUserStore<ApplicationUser>
+    {
+        public Task<string> GetUserIdAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(user.Id.ToString());
+
+        public Task<string?> GetUserNameAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(user.UserName);
+
+        public Task SetUserNameAsync(ApplicationUser user, string? userName, CancellationToken cancellationToken)
+        {
+            user.UserName = userName;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> GetNormalizedUserNameAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(user.NormalizedUserName);
+
+        public Task SetNormalizedUserNameAsync(ApplicationUser user, string? normalizedName, CancellationToken cancellationToken)
+        {
+            user.NormalizedUserName = normalizedName;
+            return Task.CompletedTask;
+        }
+
+        public Task<IdentityResult> CreateAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(IdentityResult.Success);
+
+        public Task<IdentityResult> UpdateAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(IdentityResult.Success);
+
+        public Task<IdentityResult> DeleteAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+            Task.FromResult(IdentityResult.Success);
+
+        public Task<ApplicationUser?> FindByIdAsync(string userId, CancellationToken cancellationToken) =>
+            Task.FromResult(user.Id.ToString() == userId ? user : null);
+
+        public Task<ApplicationUser?> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken) =>
+            Task.FromResult(user.NormalizedUserName == normalizedUserName ? user : null);
+
+        public void Dispose()
+        {
+        }
     }
 }

@@ -5,6 +5,7 @@ using Xenoh.Application.Features.Users.Commands.DeleteBodyweightEntry;
 using Xenoh.Application.Features.Users.Commands.LogBodyweight;
 using Xenoh.Application.Features.Users.Commands.UpdateMyAvatar;
 using Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
+using Xenoh.Application.Features.Reports.Commands.CreateUserReport;
 using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
@@ -168,6 +169,20 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{userId:guid}/reports")]
+    public async Task<IActionResult> ReportUser(Guid userId, [FromBody] CreateUserReportCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { ReportedUserId = userId }, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachRatings;
 
 namespace Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 
@@ -10,5 +11,10 @@ public sealed record CoachProfileResponse(
     string Email,
     string? AvatarUrl,
     string? Bio,
-    int TotalClients
+    int TotalClients,
+    decimal? AverageRating,
+    int RatingCount,
+    bool CanRate,
+    CoachRatingResponse? MyRating,
+    List<CoachRatingResponse> Ratings
 );

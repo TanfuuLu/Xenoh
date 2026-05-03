@@ -137,7 +137,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                         {
                             s.ActualReps,
                             s.ActualWeight,
-                            MuscleGroup = e.PrimaryMuscleGroup.ToString()
+                            e.PrimaryMuscleGroup,
+                            e.SecondaryMuscleGroups
                         })).ToList()
                 }).ToList()
             })
@@ -155,12 +156,63 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                   .Sum(s => (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))
         )).ToList();
 
-        var allSets = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
-        var muscleGroups = allSets
-            .GroupBy(s => s.MuscleGroup)
-            .Select(g => new MuscleGroupPoint(g.Key, g.Count()))
-            .OrderByDescending(m => m.CompletedSets)
+        var weightedEntries = weeks
+            .SelectMany(w => w.Days.SelectMany(d => d.Sets.SelectMany(s =>
+            {
+                var setVolume = (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m);
+                var entries = new List<WeightedMuscleEntry>
+                {
+                    new(w.WeekNumber, w.Name, s.PrimaryMuscleGroup, setVolume, setVolume, 0m, 1)
+                };
+
+                entries.AddRange(s.SecondaryMuscleGroups
+                    .Distinct()
+                    .Where(m => m != s.PrimaryMuscleGroup)
+                    .Select(m => new WeightedMuscleEntry(
+                        w.WeekNumber,
+                        w.Name,
+                        m,
+                        setVolume * 0.5m,
+                        0m,
+                        setVolume * 0.5m,
+                        0)));
+
+                return entries;
+            })))
             .ToList();
+
+        var totalWeightedVolume = weightedEntries.Sum(e => e.TotalVolume);
+        var muscleGroups = weightedEntries
+            .GroupBy(e => e.MuscleGroup)
+            .Select(g =>
+            {
+                var total = g.Sum(e => e.TotalVolume);
+                return new MuscleGroupPoint(
+                    g.Key.ToString(),
+                    g.Sum(e => e.CompletedSets),
+                    total,
+                    g.Sum(e => e.PrimaryVolume),
+                    g.Sum(e => e.SecondaryVolume),
+                    totalWeightedVolume == 0m ? 0m : Math.Round(total / totalWeightedVolume * 100, 1));
+            })
+            .OrderByDescending(m => m.TotalVolume)
+            .ThenByDescending(m => m.CompletedSets)
+            .ToList();
+
+        var muscleGroupHeatmap = weightedEntries
+            .GroupBy(e => e.MuscleGroup)
+            .Select(g => new MuscleGroupHeatmapPoint(
+                g.Key.ToString(),
+                g.Sum(e => e.TotalVolume),
+                weeks.Select(w => new MuscleGroupHeatmapWeekPoint(
+                    w.WeekNumber,
+                    w.Name,
+                    g.Where(e => e.WeekNumber == w.WeekNumber).Sum(e => e.TotalVolume)
+                )).ToList()))
+            .OrderByDescending(m => m.TotalVolume)
+            .ToList();
+
+        var muscleGroupBalance = BuildMuscleGroupBalance(weightedEntries);
 
         var totalCompleted = weeks.SelectMany(w => w.Days).Count(d => d.IsCompleted);
         var nonRestDays    = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
@@ -169,7 +221,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         var avgPerWeek     = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
 
         return new PlanAnalyticsResponse(totalCompleted, totalVolume, consistency, avgPerWeek,
-            weeklyCompliance, weeklyVolume, muscleGroups);
+            weeklyCompliance, weeklyVolume, muscleGroups, muscleGroupHeatmap, muscleGroupBalance);
     }
 
     public async Task AddAsync(Plan plan, CancellationToken ct) =>
@@ -191,4 +243,39 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         allDays.Count,
         allDays.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)),
         p.IsActive, p.CreatedAt);
+
+    private static MuscleGroupBalancePoint BuildMuscleGroupBalance(List<WeightedMuscleEntry> entries)
+    {
+        var front = Sum(entries, MuscleGroup.Chest, MuscleGroup.Shoulders, MuscleGroup.Biceps,
+            MuscleGroup.Abs, MuscleGroup.Quads, MuscleGroup.Adductors, MuscleGroup.Abductors);
+        var back = Sum(entries, MuscleGroup.Back, MuscleGroup.Triceps, MuscleGroup.Forearms,
+            MuscleGroup.Hamstrings, MuscleGroup.Glutes, MuscleGroup.Calves, MuscleGroup.Traps, MuscleGroup.Neck);
+        var upper = Sum(entries, MuscleGroup.Chest, MuscleGroup.Back, MuscleGroup.Shoulders,
+            MuscleGroup.Biceps, MuscleGroup.Triceps, MuscleGroup.Forearms, MuscleGroup.Abs,
+            MuscleGroup.Traps, MuscleGroup.Neck);
+        var lower = Sum(entries, MuscleGroup.Quads, MuscleGroup.Hamstrings, MuscleGroup.Glutes,
+            MuscleGroup.Calves, MuscleGroup.Adductors, MuscleGroup.Abductors);
+        var known = front + back;
+        var total = entries.Sum(e => e.TotalVolume);
+        var other = Math.Max(0m, total - known);
+        var max = new[] { front, back, upper, lower, other }.Max();
+
+        return new MuscleGroupBalancePoint(front, back, upper, lower, other, max);
+    }
+
+    private static decimal Sum(List<WeightedMuscleEntry> entries, params MuscleGroup[] muscleGroups)
+    {
+        var set = muscleGroups.ToHashSet();
+        return entries.Where(e => set.Contains(e.MuscleGroup)).Sum(e => e.TotalVolume);
+    }
+
+    private sealed record WeightedMuscleEntry(
+        int WeekNumber,
+        string WeekName,
+        MuscleGroup MuscleGroup,
+        decimal TotalVolume,
+        decimal PrimaryVolume,
+        decimal SecondaryVolume,
+        int CompletedSets
+    );
 }

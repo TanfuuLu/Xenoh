@@ -2,13 +2,17 @@ using System.Globalization;
 using System.Text;
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Coaches.Queries.GetCoaches;
 
 public sealed class GetCoachesHandler(
-    UserManager<ApplicationUser> userManager
+    UserManager<ApplicationUser> userManager,
+    ICoachRatingRepository ratingRepo,
+    ICurrentUserService currentUser
 ) : IRequestHandler<GetCoachesQuery, List<CoachResponse>>
 {
     public async ValueTask<List<CoachResponse>> Handle(GetCoachesQuery request, CancellationToken cancellationToken)
@@ -35,16 +39,27 @@ public sealed class GetCoachesHandler(
             });
         }
 
-        return filtered
+        var ordered = filtered
             .OrderBy(c => c.FirstName)
             .ThenBy(c => c.LastName)
-            .Select(c => new CoachResponse(
-                c.Id,
-                $"{c.FirstName} {c.LastName}",
-                c.Email!,
-                c.AvatarUrl
-            ))
             .ToList();
+
+        var responses = new List<CoachResponse>();
+        foreach (var coach in ordered)
+        {
+            var summary = await ratingRepo.GetSummaryAsync(coach.Id, currentUser.UserId, cancellationToken);
+            responses.Add(new CoachResponse(
+                coach.Id,
+                $"{coach.FirstName} {coach.LastName}",
+                coach.Email!,
+                coach.AvatarUrl,
+                summary.AverageRating,
+                summary.RatingCount,
+                summary.MyRating
+            ));
+        }
+
+        return responses;
     }
 
     /// <summary>

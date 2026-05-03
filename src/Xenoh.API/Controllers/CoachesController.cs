@@ -1,6 +1,9 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.CoachRatings.Commands.CreateCoachRating;
+using Xenoh.Application.Features.CoachRatings.Commands.DeleteCoachRating;
+using Xenoh.Application.Features.CoachRatings.Commands.UpdateCoachRating;
 using Xenoh.Application.Features.Coaches.Queries.GetCoaches;
 using Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 
@@ -33,6 +36,48 @@ public sealed class CoachesController(IMediator mediator) : ControllerBase
         {
             var result = await mediator.Send(new GetCoachProfileQuery(coachId), ct);
             return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{coachId:guid}/rating")]
+    public async Task<IActionResult> CreateRating(Guid coachId, [FromBody] CreateCoachRatingCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { CoachId = coachId }, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{coachId:guid}/rating")]
+    public async Task<IActionResult> UpdateRating(Guid coachId, [FromBody] UpdateCoachRatingCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { CoachId = coachId }, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{coachId:guid}/rating")]
+    public async Task<IActionResult> DeleteRating(Guid coachId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new DeleteCoachRatingCommand(coachId), ct);
+            return NoContent();
         }
         catch (InvalidOperationException ex)
         {

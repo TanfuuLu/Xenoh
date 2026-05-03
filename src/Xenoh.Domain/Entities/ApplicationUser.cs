@@ -33,6 +33,11 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<CoachClientRelationship> Clients { get; set; } = [];
 
     public ICollection<Notification> Notifications { get; set; } = [];
+    public ICollection<CoachRating> CoachRatingsReceived { get; set; } = [];
+    public ICollection<CoachRating> CoachRatingsGiven { get; set; } = [];
+    public ICollection<UserReport> ReportsMade { get; set; } = [];
+    public ICollection<UserReport> ReportsReceived { get; set; } = [];
+    public ICollection<UserReport> ReportsReviewed { get; set; } = [];
 
     // XP / Leveling
     public long TotalXp { get; set; } = 0;
