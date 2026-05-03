@@ -11,6 +11,7 @@ public sealed class RequestCoachHandler(
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
     INotificationService notificationService,
+    ISubscriptionService subscriptionService,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<RequestCoachCommand, CoachRelationshipResponse>
 {
@@ -28,6 +29,11 @@ public sealed class RequestCoachHandler(
         var coachRoles = await userManager.GetRolesAsync(coach);
         if (!coachRoles.Contains(UserRole.Coach))
             throw new InvalidOperationException("The specified user is not a coach.");
+
+        var maxClients = await subscriptionService.GetMaxClientsAsync(request.CoachId, cancellationToken);
+        var currentClientCount = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);
+        if (maxClients != int.MaxValue && currentClientCount >= maxClients)
+            throw new InvalidOperationException("This coach has reached their client limit on their current subscription.");
 
         var client = await userManager.FindByIdAsync(clientId.ToString())
             ?? throw new InvalidOperationException("Client not found.");

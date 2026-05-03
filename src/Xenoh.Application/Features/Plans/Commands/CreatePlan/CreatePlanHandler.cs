@@ -1,6 +1,7 @@
 using Mediator;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.Subscriptions;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -8,11 +9,10 @@ namespace Xenoh.Application.Features.Plans.Commands.CreatePlan;
 
 public sealed class CreatePlanHandler(
     IPlanRepository planRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    ISubscriptionService subscriptionService
 ) : IRequestHandler<CreatePlanCommand, PlanResponse>
 {
-    private const int MaxPlansPerUser = 3;
-
     public async ValueTask<PlanResponse> Handle(CreatePlanCommand request, CancellationToken cancellationToken)
     {
         if (request.EndDate <= request.StartDate)
@@ -20,10 +20,11 @@ public sealed class CreatePlanHandler(
 
         var userId = currentUser.UserId;
 
+        var maxPlans = await subscriptionService.GetMaxPlansAsync(userId, cancellationToken);
         var planCount = await planRepo.CountByOwnerAsync(userId, cancellationToken);
-        if (planCount >= MaxPlansPerUser)
+        if (maxPlans != int.MaxValue && planCount >= maxPlans)
             throw new InvalidOperationException(
-                $"You have reached the maximum of {MaxPlansPerUser} plans. Please delete a plan before creating a new one.");
+                $"Your current plan allows a maximum of {maxPlans} plans. Upgrade to Pro for unlimited plans.");
 
         var plan = new Plan
         {

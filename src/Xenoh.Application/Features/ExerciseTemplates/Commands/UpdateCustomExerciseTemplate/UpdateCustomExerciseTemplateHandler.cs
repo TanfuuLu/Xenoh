@@ -9,7 +9,8 @@ namespace Xenoh.Application.Features.ExerciseTemplates.Commands.UpdateCustomExer
 
 public sealed class UpdateCustomExerciseTemplateHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    ISubscriptionService subscriptionService
 ) : IRequestHandler<UpdateCustomExerciseTemplateCommand, ExerciseTemplateResponse>
 {
     public async ValueTask<ExerciseTemplateResponse> Handle(
@@ -17,6 +18,10 @@ public sealed class UpdateCustomExerciseTemplateHandler(
         CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
+
+        if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
+            throw new InvalidOperationException("Editing custom exercises requires an active Pro subscription. Upgrade to unlock this feature.");
+
         var template = await db.ExerciseTemplates
             .FirstOrDefaultAsync(t => t.Id == request.Id && t.OwnerId == userId && !t.IsArchived, cancellationToken)
             ?? throw new InvalidOperationException("Custom exercise not found.");

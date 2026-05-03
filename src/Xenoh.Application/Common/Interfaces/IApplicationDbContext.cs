@@ -23,6 +23,8 @@ public interface IApplicationDbContext
     DbSet<PlanComment> PlanComments { get; }
     DbSet<WeeklyWorkoutComment> WeeklyWorkoutComments { get; }
     DbSet<Notification> Notifications { get; }
+    DbSet<UserSubscription> UserSubscriptions { get; }
+    DbSet<PaymentOrder> PaymentOrders { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
