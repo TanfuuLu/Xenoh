@@ -5,6 +5,7 @@ using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Auth.Commands.Register;
 using Xenoh.Domain.Entities;
+using Xenoh.Domain.Enums;
 using TokenEntity = Xenoh.Domain.Entities.RefreshToken;
 
 namespace Xenoh.Application.Features.Auth.Commands.ExternalLogin;
@@ -33,6 +34,11 @@ public sealed class ExchangeExternalLoginTicketHandler(
 
         ticket.UsedAt = now;
         await db.SaveChangesAsync(cancellationToken);
+
+        // Ensure every social-login user has a role (Individual by default)
+        var existingRoles = await userManager.GetRolesAsync(ticket.User);
+        if (existingRoles.Count == 0)
+            await userManager.AddToRoleAsync(ticket.User, UserRole.Individual);
 
         return await CreateAuthResponseAsync(ticket.User, cancellationToken);
     }

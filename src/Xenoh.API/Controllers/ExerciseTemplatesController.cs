@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExerciseTemplate;
+using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExerciseTemplateForClient;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.DeleteCustomExerciseTemplate;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.UpdateCustomExerciseTemplate;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
@@ -64,6 +65,27 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
         {
             await mediator.Send(new DeleteCustomExerciseTemplateCommand(id), ct);
             return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("custom/for-client/{clientId:guid}")]
+    [Authorize(Roles = UserRole.Coach)]
+    public async Task<IActionResult> CreateCustomForClient(
+        [FromRoute] Guid clientId,
+        [FromBody] CreateCustomExerciseTemplateForClientCommand command,
+        CancellationToken ct)
+    {
+        if (clientId != command.ClientId)
+            return BadRequest(new { message = "Route clientId does not match request clientId." });
+
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {

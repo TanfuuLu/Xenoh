@@ -21,7 +21,7 @@ namespace Xenoh.API.Controllers;
 public sealed class CoachClientController(IMediator mediator) : ControllerBase
 {
     [HttpPost("request")]
-    [Authorize(Roles = UserRole.Individual)]
+    [Authorize(Roles = $"{UserRole.Individual},{UserRole.Coach}")]
     public async Task<IActionResult> RequestCoach([FromBody] RequestCoachCommand command, CancellationToken ct)
     {
         try
@@ -73,7 +73,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("my-coach")]
-    [Authorize(Roles = UserRole.Individual)]
+    [Authorize(Roles = $"{UserRole.Individual},{UserRole.Coach}")]
     public async Task<IActionResult> GetMyCoach(CancellationToken ct)
     {
         var result = await mediator.Send(new GetMyCoachQuery(), ct);

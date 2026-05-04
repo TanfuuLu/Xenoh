@@ -1,13 +1,16 @@
 using System.Text.RegularExpressions;
 using Mediator;
+using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
+using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 
 namespace Xenoh.Application.Features.Subscriptions.Commands.HandleSePayWebhook;
 
 public sealed class HandleSePayWebhookHandler(
     IPaymentOrderRepository paymentOrderRepo,
-    ISubscriptionRepository subscriptionRepo
+    ISubscriptionRepository subscriptionRepo,
+    UserManager<ApplicationUser> userManager
 ) : IRequestHandler<HandleSePayWebhookCommand, WebhookResult>
 {
     private static readonly Regex TransferCodePattern =
@@ -71,6 +74,22 @@ public sealed class HandleSePayWebhookHandler(
         subscription.UpdatedAt = DateTime.UtcNow;
 
         await subscriptionRepo.SaveChangesAsync(cancellationToken);
+
+        // Sync Coach role: grant when ProCoach activates, revoke on any other tier
+        var user = await userManager.FindByIdAsync(order.UserId.ToString());
+        if (user is not null)
+        {
+            if (order.RequestedTier == PlanTier.ProCoach)
+            {
+                if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
+                    await userManager.AddToRoleAsync(user, UserRole.Coach);
+            }
+            else
+            {
+                if (await userManager.IsInRoleAsync(user, UserRole.Coach))
+                    await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
+            }
+        }
 
         return new WebhookResult(true, "Subscription activated.");
     }

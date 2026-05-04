@@ -1,14 +1,17 @@
 using Mediator;
+using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
+using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 
 namespace Xenoh.Application.Features.Subscriptions.Commands.DevActivateSubscription;
 
 public sealed class DevActivateSubscriptionHandler(
     IPaymentOrderRepository paymentOrderRepo,
     ISubscriptionRepository subscriptionRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    UserManager<ApplicationUser> userManager
 ) : IRequestHandler<DevActivateSubscriptionCommand, DevActivateResult>
 {
     public async ValueTask<DevActivateResult> Handle(
@@ -44,6 +47,22 @@ public sealed class DevActivateSubscriptionHandler(
         subscription.UpdatedAt = DateTime.UtcNow;
 
         await subscriptionRepo.SaveChangesAsync(cancellationToken);
+
+        // Sync Coach role: grant when ProCoach activates, revoke on any other tier
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is not null)
+        {
+            if (order.RequestedTier == PlanTier.ProCoach)
+            {
+                if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
+                    await userManager.AddToRoleAsync(user, UserRole.Coach);
+            }
+            else
+            {
+                if (await userManager.IsInRoleAsync(user, UserRole.Coach))
+                    await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
+            }
+        }
 
         return new DevActivateResult(
             true,

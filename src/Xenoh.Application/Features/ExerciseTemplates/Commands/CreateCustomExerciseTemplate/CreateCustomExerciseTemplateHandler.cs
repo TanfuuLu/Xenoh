@@ -13,8 +13,6 @@ public sealed class CreateCustomExerciseTemplateHandler(
     ISubscriptionService subscriptionService
 ) : IRequestHandler<CreateCustomExerciseTemplateCommand, ExerciseTemplateResponse>
 {
-    private const int CustomExerciseLimit = 5;
-
     public async ValueTask<ExerciseTemplateResponse> Handle(
         CreateCustomExerciseTemplateCommand request,
         CancellationToken cancellationToken)
@@ -25,12 +23,6 @@ public sealed class CreateCustomExerciseTemplateHandler(
 
         if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
             throw new InvalidOperationException("Creating custom exercises requires an active Pro subscription. Upgrade to unlock this feature.");
-
-        var activeCustomCount = await db.ExerciseTemplates
-            .CountAsync(t => t.OwnerId == userId && !t.IsArchived, cancellationToken);
-
-        if (activeCustomCount >= CustomExerciseLimit)
-            throw new InvalidOperationException("You can create up to 5 custom exercises.");
 
         var template = new ExerciseTemplate
         {

@@ -15,9 +15,9 @@ public sealed class RegisterHandler(
 {
     public async ValueTask<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        var allowedRoles = new[] { UserRole.Individual, UserRole.Coach };
+        var allowedRoles = new[] { UserRole.Individual };
         if (!allowedRoles.Contains(request.Role))
-            throw new InvalidOperationException($"Role '{request.Role}' is not valid. Allowed: Individual, Coach.");
+            throw new InvalidOperationException($"Role '{request.Role}' is not allowed. Registration is open to Individual accounts only.");
 
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
