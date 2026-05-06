@@ -11,6 +11,58 @@ namespace Xenoh.Application.Tests.Features.Plans;
 public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
 {
     [Fact]
+    public async Task GetCoachOverviewAsync_ExcludesCoachPersonalPlans()
+    {
+        var coachId = UserId;
+        var clientId = Guid.NewGuid();
+        await using var seedCtx = CreateContext();
+
+        var coach = new ApplicationUser
+        {
+            Id = coachId,
+            FirstName = "Coach",
+            LastName = "Owner",
+            Email = "coach@example.com"
+        };
+        var client = new ApplicationUser
+        {
+            Id = clientId,
+            FirstName = "Client",
+            LastName = "Lifter",
+            Email = "client@example.com"
+        };
+
+        seedCtx.Users.AddRange(coach, client);
+        seedCtx.Plans.AddRange(
+            new Plan
+            {
+                Name = "Coach Personal",
+                OwnerId = coachId,
+                PlanType = PlanType.Self,
+                StartDate = DateOnly.FromDateTime(DateTime.Today),
+                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(28))
+            },
+            new Plan
+            {
+                Name = "Client Assigned",
+                OwnerId = clientId,
+                CreatedByCoachId = coachId,
+                PlanType = PlanType.Coach,
+                StartDate = DateOnly.FromDateTime(DateTime.Today),
+                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(28))
+            });
+
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetCoachOverviewAsync(coachId, CancellationToken.None);
+
+        result.Should().ContainSingle();
+        result[0].Name.Should().Be("Client Assigned");
+        result[0].OwnerId.Should().Be(clientId);
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_WithPrimaryOnlySet_UsesFullVolume()
     {
         var planId = await SeedPlanAsync(new ExerciseSeed(
@@ -84,6 +136,24 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         result!.MuscleGroupVolume.Should().BeEmpty();
         result.MuscleGroupHeatmap.Should().BeEmpty();
         result.MuscleGroupBalance.MaxVolume.Should().Be(0m);
+        result.Insights.Should().NotBeEmpty();
+        result.TrainingScore.Should().BeInRange(0, 100);
+    }
+
+    [Fact]
+    public async Task GetAnalyticsAsync_IncludesTrainingScoreAndInsights()
+    {
+        var planId = await SeedPlanAsync(
+            new ExerciseSeed(1, MuscleGroup.Chest, [], 10, 100m),
+            new ExerciseSeed(2, MuscleGroup.Chest, [], 10, 70m));
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetAnalyticsAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.TrainingScore.Should().BeInRange(0, 100);
+        result.Insights.Should().Contain(i => i.Type == "Recommendation");
+        result.Insights.Should().Contain(i => i.Type == "VolumeTrend");
     }
 
     [Fact]

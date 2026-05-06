@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentOrderRepository, PaymentOrderRepository>();
         services.AddScoped<ICoachRatingRepository, CoachRatingRepository>();
         services.AddScoped<IUserReportRepository, UserReportRepository>();
+        services.AddScoped<INutritionRepository, NutritionRepository>();
 
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {

@@ -20,7 +20,7 @@ public interface IPlanRepository
     /// <summary>Tracked: plan that the caller owns or created (for delete).</summary>
     Task<Plan?> FindByIdAndCallerAsync(Guid planId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Read-only: all plans created or owned by the coach (overview).</summary>
+    /// <summary>Read-only: client-owned plans created by the coach.</summary>
     Task<List<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, CancellationToken ct = default);
 
     Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct = default);

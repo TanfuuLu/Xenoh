@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
@@ -63,7 +64,10 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
           .AsNoTracking()
           .Include(p => p.WeeklyWorkouts)
           .Include(p => p.Owner)
-          .Where(p => (p.OwnerId == coachId && p.PlanType == PlanType.Self) || p.CreatedByCoachId == coachId)
+          .Where(p =>
+              p.PlanType == PlanType.Coach &&
+              p.CreatedByCoachId == coachId &&
+              p.OwnerId != coachId)
           .OrderByDescending(p => p.CreatedAt)
           .Select(p => new CoachPlanResponse(
               p.Id, p.Name, p.StartDate, p.EndDate,
@@ -130,13 +134,20 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                 Days = w.DailyWorkouts.Select(d => new
                 {
                     d.IsCompleted,
+                    d.Status,
                     IsRest = d.Status == DayStatus.Rest,
+                    IsMissed = d.Status == DayStatus.Missed,
+                    HasWarning = d.Exercises.Any(e => e.Sets.Any(s =>
+                        s.IsCompleted &&
+                        ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
+                         (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))),
                     Sets = d.Exercises.SelectMany(e => e.Sets
                         .Where(s => s.IsCompleted)
                         .Select(s => new
                         {
                             s.ActualReps,
                             s.ActualWeight,
+                            s.Rpe,
                             e.PrimaryMuscleGroup,
                             e.SecondaryMuscleGroups
                         })).ToList()
@@ -216,11 +227,27 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 
         var totalCompleted = weeks.SelectMany(w => w.Days).Count(d => d.IsCompleted);
         var nonRestDays    = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
+        var missedDays     = weeks.SelectMany(w => w.Days).Count(d => d.IsMissed);
+        var warningDays    = weeks.SelectMany(w => w.Days).Count(d => d.HasWarning);
+        var completedSets  = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
+        var rpeValues      = completedSets.Where(s => s.Rpe is not null).Select(s => s.Rpe!.Value).ToList();
+        var avgRpe         = rpeValues.Count == 0 ? (decimal?)null : Math.Round(rpeValues.Average(), 1);
+        var highRpeSets    = rpeValues.Count(r => r >= 9m);
         var totalVolume    = weeklyVolume.Sum(w => w.TotalVolume);
         var consistency    = nonRestDays == 0 ? 0m : Math.Round((decimal)totalCompleted / nonRestDays * 100, 1);
         var avgPerWeek     = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
+        var insightResult  = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
+            consistency,
+            nonRestDays,
+            missedDays,
+            warningDays,
+            avgRpe,
+            highRpeSets,
+            weeklyVolume,
+            muscleGroups));
 
         return new PlanAnalyticsResponse(totalCompleted, totalVolume, consistency, avgPerWeek,
+            insightResult.TrainingScore, insightResult.Insights,
             weeklyCompliance, weeklyVolume, muscleGroups, muscleGroupHeatmap, muscleGroupBalance);
     }
 

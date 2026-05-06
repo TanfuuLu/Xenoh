@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xenoh.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260505070105_DisableUserAchievements")]
+    partial class DisableUserAchievements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -645,89 +648,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.HasIndex("RecipientId", "IsRead", "CreatedAt");
 
                     b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionDailyLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Calories")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("CarbsG")
-                        .HasColumnType("decimal(7,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("FatG")
-                        .HasColumnType("decimal(7,2)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<decimal>("ProteinG")
-                        .HasColumnType("decimal(7,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Date")
-                        .IsUnique();
-
-                    b.ToTable("NutritionDailyLogs");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionProfile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ActivityLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("CustomCalorieTarget")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("FatPerKg")
-                        .HasColumnType("decimal(4,2)");
-
-                    b.Property<int>("Goal")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("ProteinPerKg")
-                        .HasColumnType("decimal(4,2)");
-
-                    b.Property<decimal?>("TargetWeightKg")
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("NutritionProfiles");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
@@ -1372,28 +1292,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Recipient");
                 });
 
-            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionDailyLog", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("NutritionDailyLogs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionProfile", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
-                        .WithOne("NutritionProfile")
-                        .HasForeignKey("Xenoh.Domain.Entities.NutritionProfile", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
@@ -1593,10 +1491,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("ExternalAuthTickets");
 
                     b.Navigation("Notifications");
-
-                    b.Navigation("NutritionDailyLogs");
-
-                    b.Navigation("NutritionProfile");
 
                     b.Navigation("PasswordResetCodes");
 

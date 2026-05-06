@@ -25,6 +25,8 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<UserSubscription> UserSubscriptions { get; }
     DbSet<PaymentOrder> PaymentOrders { get; }
+    DbSet<NutritionProfile> NutritionProfiles { get; }
+    DbSet<NutritionDailyLog> NutritionDailyLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -9,11 +9,22 @@ public sealed record PlanAnalyticsResponse(
     decimal TotalVolume,
     decimal ConsistencyPercent,
     decimal AvgSessionsPerWeek,
+    int TrainingScore,
+    List<TrainingInsightResponse> Insights,
     List<WeekCompliancePoint> WeeklyCompliance,
     List<WeekVolumePoint> WeeklyVolume,
     List<MuscleGroupPoint> MuscleGroupVolume,
     List<MuscleGroupHeatmapPoint> MuscleGroupHeatmap,
     MuscleGroupBalancePoint MuscleGroupBalance
+);
+
+public sealed record TrainingInsightResponse(
+    string Type,
+    string Severity,
+    string Title,
+    string Message,
+    string MetricLabel,
+    string MetricValue
 );
 
 public sealed record WeekCompliancePoint(int WeekNumber, string WeekName, int CompletedDays, int TotalDays);

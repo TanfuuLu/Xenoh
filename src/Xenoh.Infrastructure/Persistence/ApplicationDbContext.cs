@@ -31,6 +31,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
     public DbSet<CoachRating> CoachRatings => Set<CoachRating>();
     public DbSet<UserReport> UserReports => Set<UserReport>();
+    public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();
+    public DbSet<NutritionDailyLog> NutritionDailyLogs => Set<NutritionDailyLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

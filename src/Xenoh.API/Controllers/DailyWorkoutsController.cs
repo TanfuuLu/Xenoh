@@ -38,7 +38,7 @@ public sealed class DailyWorkoutsController(IMediator mediator) : ControllerBase
             await mediator.Send(new MarkDayStatusCommand(dailyWorkoutId, status), ct);
             return NoContent();
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }

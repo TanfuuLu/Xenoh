@@ -11,11 +11,10 @@ public sealed class CreatePlanForUserHandler(
     IPlanRepository planRepo,
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser,
+    ISubscriptionService subscriptionService,
     INotificationService notificationService
 ) : IRequestHandler<CreatePlanForUserCommand, PlanResponse>
 {
-    private const int MaxPlansPerUser = 3;
-
     public async ValueTask<PlanResponse> Handle(CreatePlanForUserCommand request, CancellationToken cancellationToken)
     {
         if (request.EndDate <= request.StartDate)
@@ -27,9 +26,10 @@ public sealed class CreatePlanForUserHandler(
             coachId, request.UserId, cancellationToken)
             ?? throw new InvalidOperationException("You are not the coach of this user.");
 
+        var maxPlans = await subscriptionService.GetMaxPlansAsync(request.UserId, cancellationToken);
         var planCount = await planRepo.CountByOwnerAsync(request.UserId, cancellationToken);
-        if (planCount >= MaxPlansPerUser)
-            throw new InvalidOperationException($"This user has reached the maximum of {MaxPlansPerUser} plans.");
+        if (maxPlans != int.MaxValue && planCount >= maxPlans)
+            throw new InvalidOperationException($"This user has reached the maximum of {maxPlans} plans.");
 
         var plan = new Plan
         {

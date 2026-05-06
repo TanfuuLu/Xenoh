@@ -20,6 +20,7 @@ using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Seeders;
 using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
+using Xenoh.API.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,7 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IClaimsTransformation, TemporaryFeatureBypassClaimsTransformation>();
 
 builder.Services.AddMediator(static options =>
     options.ServiceLifetime = ServiceLifetime.Scoped);
