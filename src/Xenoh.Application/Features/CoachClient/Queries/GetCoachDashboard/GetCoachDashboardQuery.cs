@@ -13,11 +13,35 @@ public sealed record CoachClientDashboardResponse(
     DateOnly? LastWorkoutDate,
     int? PlanProgressPercent,
     decimal? LatestBodyweightKg,
-    BigThreePRs BigThreePRs
+    BigThreePRs BigThreePRs,
+    Guid? ActivePlanId,
+    string? ActivePlanName,
+    DateOnly? ActivePlanStartDate,
+    DateOnly? ActivePlanEndDate,
+    int? ActivePlanProgressPercent,
+    int? DaysSinceLastWorkout,
+    int MissedWorkoutDays,
+    int CompletedWorkoutDays,
+    int TotalWorkoutDays,
+    string AttentionLevel,
+    List<string> AttentionReasons
 );
 
 public sealed record BigThreePRs(
     decimal? Squat,
     decimal? Bench,
     decimal? Deadlift
+);
+
+public sealed record CoachPlanMonitoringSnapshot(
+    Guid OwnerId,
+    Guid? ActivePlanId,
+    string? ActivePlanName,
+    DateOnly? ActivePlanStartDate,
+    DateOnly? ActivePlanEndDate,
+    int? ActivePlanProgressPercent,
+    int MissedWorkoutDays,
+    int CompletedWorkoutDays,
+    int TotalWorkoutDays,
+    int ExpectedProgressPercent
 );

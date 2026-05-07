@@ -35,17 +35,17 @@ public sealed class GetCoachDashboardHandler(
 
         var lastWorkoutDates = await workoutHistoryRepo.GetLastDatesForUsersAsync(clientIds, cancellationToken);
         var planProgress = await planRepo.GetProgressByOwnersAsync(clientIds, cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var planMonitoring = await planRepo.GetMonitoringByOwnersAsync(clientIds, today, cancellationToken);
         var latestBodyweights = await bodyweightRepo.GetLatestWeightsForUsersAsync(clientIds, cancellationToken);
         var competitionLifts = await userPrRepo.GetCompetitionLiftsForUsersAsync(clientIds, cancellationToken);
 
-        // Batch-fetch avatar URLs for all clients in one query
         var clientIdStrings = clientIds.Select(id => id.ToString()).ToList();
         var avatarUrls = await userManager.Users
             .Where(u => clientIdStrings.Contains(u.Id.ToString()))
             .Select(u => new { u.Id, u.AvatarUrl })
             .ToDictionaryAsync(u => Guid.Parse(u.Id.ToString()), u => u.AvatarUrl, cancellationToken);
 
-        // Aggregate plan progress per client
         var progressByClient = planProgress
             .GroupBy(p => p.OwnerId)
             .ToDictionary(
@@ -57,29 +57,48 @@ public sealed class GetCoachDashboardHandler(
                     return total > 0 ? (int?)Math.Round(completed * 100.0 / total) : null;
                 });
 
-        // Group Big3 PRs per client
         var prsByClient = competitionLifts
             .GroupBy(x => x.UserId)
             .ToDictionary(
                 g => g.Key,
                 g => g.ToDictionary(x => x.LiftType, x => (decimal?)x.Weight));
 
+        var monitoringByClient = planMonitoring.ToDictionary(p => p.OwnerId);
+
         return activeClients.Select(r =>
         {
             var clientPrs = prsByClient.GetValueOrDefault(r.ClientId, []);
+            var monitoring = monitoringByClient.GetValueOrDefault(r.ClientId);
+            var lastWorkoutDate = lastWorkoutDates.GetValueOrDefault(r.ClientId);
+            int? daysSinceLastWorkout = lastWorkoutDate is null
+                ? null
+                : today.DayNumber - lastWorkoutDate.Value.DayNumber;
+            var attention = CoachAttentionAnalyzer.Analyze(monitoring, daysSinceLastWorkout);
+
             return new CoachClientDashboardResponse(
                 r.ClientId,
                 r.FullName,
                 r.Email,
                 avatarUrls.GetValueOrDefault(r.ClientId),
-                lastWorkoutDates.GetValueOrDefault(r.ClientId),
+                lastWorkoutDate,
                 progressByClient.GetValueOrDefault(r.ClientId),
                 latestBodyweights.GetValueOrDefault(r.ClientId),
                 new BigThreePRs(
                     clientPrs.GetValueOrDefault(CompetitionLiftType.Squat),
                     clientPrs.GetValueOrDefault(CompetitionLiftType.Bench),
                     clientPrs.GetValueOrDefault(CompetitionLiftType.Deadlift)
-                )
+                ),
+                monitoring?.ActivePlanId,
+                monitoring?.ActivePlanName,
+                monitoring?.ActivePlanStartDate,
+                monitoring?.ActivePlanEndDate,
+                monitoring?.ActivePlanProgressPercent,
+                daysSinceLastWorkout,
+                monitoring?.MissedWorkoutDays ?? 0,
+                monitoring?.CompletedWorkoutDays ?? 0,
+                monitoring?.TotalWorkoutDays ?? 0,
+                attention.Level,
+                attention.Reasons
             );
         }).ToList();
     }

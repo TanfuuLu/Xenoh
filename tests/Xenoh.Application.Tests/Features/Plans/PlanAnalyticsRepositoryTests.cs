@@ -63,6 +63,79 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
     }
 
     [Fact]
+    public async Task GetMonitoringByOwnersAsync_WithNoClients_ReturnsEmpty()
+    {
+        await using var ctx = CreateContext();
+
+        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([], DateOnly.FromDateTime(DateTime.UtcNow), CancellationToken.None);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetMonitoringByOwnersAsync_ReturnsActivePlanAdherence()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await using var seedCtx = CreateContext();
+        var plan = new Plan
+        {
+            Name = "Client Block",
+            OwnerId = UserId,
+            PlanType = PlanType.Coach,
+            StartDate = today.AddDays(-2),
+            EndDate = today.AddDays(1)
+        };
+        seedCtx.Plans.Add(plan);
+
+        for (var i = 0; i < 4; i++)
+        {
+            var week = new WeeklyWorkout
+            {
+                PlanId = plan.Id,
+                WeekNumber = 1,
+                Name = "Week 1",
+                StartDate = today.AddDays(-2),
+                EndDate = today.AddDays(4)
+            };
+            var day = new DailyWorkout
+            {
+                WeeklyWorkoutId = week.Id,
+                Date = today.AddDays(i - 2),
+                DayOfWeek = today.AddDays(i - 2).DayOfWeek,
+                Status = i == 1 ? DayStatus.Missed : DayStatus.Normal
+            };
+            var exercise = new Exercise
+            {
+                DailyWorkoutId = day.Id,
+                Name = $"Exercise {i}",
+                PrimaryMuscleGroup = MuscleGroup.Chest,
+                PlannedSets = 1,
+                PlannedReps = 5,
+                IsCompleted = i == 0
+            };
+
+            seedCtx.WeeklyWorkouts.Add(week);
+            seedCtx.DailyWorkouts.Add(day);
+            seedCtx.Exercises.Add(exercise);
+        }
+
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([UserId], today, CancellationToken.None);
+
+        result.Should().ContainSingle();
+        var snapshot = result[0];
+        snapshot.ActivePlanId.Should().Be(plan.Id);
+        snapshot.ActivePlanName.Should().Be("Client Block");
+        snapshot.CompletedWorkoutDays.Should().Be(1);
+        snapshot.TotalWorkoutDays.Should().Be(4);
+        snapshot.MissedWorkoutDays.Should().Be(1);
+        snapshot.ActivePlanProgressPercent.Should().Be(25);
+        snapshot.ExpectedProgressPercent.Should().Be(75);
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_WithPrimaryOnlySet_UsesFullVolume()
     {
         var planId = await SeedPlanAsync(new ExerciseSeed(

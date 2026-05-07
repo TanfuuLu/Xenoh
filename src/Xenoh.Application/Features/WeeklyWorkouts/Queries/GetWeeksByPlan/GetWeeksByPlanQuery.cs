@@ -13,5 +13,7 @@ public sealed record WeeklyWorkoutResponse(
     Guid PlanId,
     int TotalDays,
     int CompletedDays,
-    bool HasWarning
+    bool HasWarning,
+    bool IsCompleted,
+    int EffectiveTotalDays
 );

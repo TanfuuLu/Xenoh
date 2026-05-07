@@ -9,6 +9,8 @@ public class WeeklyWorkout : BaseEntity
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
 
+    public bool IsCompleted { get; set; }
+
     public Guid PlanId { get; set; }
     public Plan Plan { get; set; } = null!;
 

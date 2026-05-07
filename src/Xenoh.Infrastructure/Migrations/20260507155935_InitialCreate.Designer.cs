@@ -12,8 +12,8 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260501041439_AddExerciseCaloriesAndTimers")]
-    partial class AddExerciseCaloriesAndTimers
+    [Migration("20260507155935_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -203,6 +203,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -228,6 +231,9 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<long>("TotalXp")
+                        .HasColumnType("bigint");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
@@ -295,17 +301,56 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("TerminationRequestedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"Status\" <> 2");
 
                     b.HasIndex("CoachId");
 
                     b.ToTable("CoachClientRelationships");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CoachId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("CoachId", "ClientId")
+                        .IsUnique();
+
+                    b.ToTable("CoachRatings");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
@@ -492,6 +537,14 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsCompetitionLift")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -501,6 +554,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("PrimaryMuscleGroup")
                         .HasColumnType("integer");
@@ -514,7 +570,42 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OwnerId", "IsArchived");
+
                     b.ToTable("ExerciseTemplates");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.ExternalAuthTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TicketHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "UsedAt", "ExpiresAt");
+
+                    b.ToTable("ExternalAuthTickets");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.Notification", b =>
@@ -557,6 +648,203 @@ namespace Xenoh.Infrastructure.Migrations
                     b.HasIndex("RecipientId", "IsRead", "CreatedAt");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionDailyLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Calories")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CarbsG")
+                        .HasColumnType("decimal(7,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("FatG")
+                        .HasColumnType("decimal(7,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("ProteinG")
+                        .HasColumnType("decimal(7,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("NutritionDailyLogs");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActivityLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CustomCalorieTarget")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("FatPerKg")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<int>("Goal")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("ProteinPerKg")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<decimal?>("TargetWeightKg")
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("NutritionProfiles");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResetToken")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Email", "UsedAt", "ExpiresAt");
+
+                    b.ToTable("PasswordResetCodes");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PaymentOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedTier")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("SePayReferenceCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SePayTransactionId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransferCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SePayTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"SePayTransactionId\" IS NOT NULL");
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("TransferCode")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("PaymentOrders");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.Plan", b =>
@@ -740,6 +1028,89 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("UserExercisePRHistories");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ReportedUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReporterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedUserId");
+
+                    b.HasIndex("ReporterId");
+
+                    b.HasIndex("ReviewedById");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("UserReports");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tier")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserSubscriptions");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.WeeklyWorkout", b =>
                 {
                     b.Property<Guid>("Id")
@@ -751,6 +1122,9 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -912,6 +1286,25 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Coach");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachRating", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Client")
+                        .WithMany("CoachRatingsGiven")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Coach")
+                        .WithMany("CoachRatingsReceived")
+                        .HasForeignKey("CoachId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Coach");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.WeeklyWorkout", "WeeklyWorkout")
@@ -953,6 +1346,27 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Exercise");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.ExerciseTemplate", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Owner")
+                        .WithMany("CustomExerciseTemplates")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.ExternalAuthTicket", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("ExternalAuthTickets")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.Notification", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Recipient")
@@ -962,6 +1376,58 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Recipient");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionDailyLog", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("NutritionDailyLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.NutritionProfile", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("NutritionProfile")
+                        .HasForeignKey("Xenoh.Domain.Entities.NutritionProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("PasswordResetCodes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PaymentOrder", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.UserSubscription", "Subscription")
+                        .WithMany("PaymentOrders")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.Plan", b =>
@@ -1042,6 +1508,43 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserReport", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "ReportedUser")
+                        .WithMany("ReportsReceived")
+                        .HasForeignKey("ReportedUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Reporter")
+                        .WithMany("ReportsMade")
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "ReviewedBy")
+                        .WithMany("ReportsReviewed")
+                        .HasForeignKey("ReviewedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ReportedUser");
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("ReviewedBy");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserSubscription", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("Subscription")
+                        .HasForeignKey("Xenoh.Domain.Entities.UserSubscription", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.WeeklyWorkout", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.Plan", "Plan")
@@ -1085,13 +1588,35 @@ namespace Xenoh.Infrastructure.Migrations
                 {
                     b.Navigation("Clients");
 
+                    b.Navigation("CoachRatingsGiven");
+
+                    b.Navigation("CoachRatingsReceived");
+
                     b.Navigation("CoachRelationship");
 
+                    b.Navigation("CustomExerciseTemplates");
+
+                    b.Navigation("ExternalAuthTickets");
+
                     b.Navigation("Notifications");
+
+                    b.Navigation("NutritionDailyLogs");
+
+                    b.Navigation("NutritionProfile");
+
+                    b.Navigation("PasswordResetCodes");
 
                     b.Navigation("Plans");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("ReportsMade");
+
+                    b.Navigation("ReportsReceived");
+
+                    b.Navigation("ReportsReviewed");
+
+                    b.Navigation("Subscription");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
@@ -1109,6 +1634,11 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("WeeklyWorkouts");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserSubscription", b =>
+                {
+                    b.Navigation("PaymentOrders");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.WeeklyWorkout", b =>

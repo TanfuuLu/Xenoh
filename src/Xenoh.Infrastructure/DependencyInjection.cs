@@ -40,7 +40,6 @@ public static class DependencyInjection
         services.AddScoped<ICoachRatingRepository, CoachRatingRepository>();
         services.AddScoped<IUserReportRepository, UserReportRepository>();
         services.AddScoped<INutritionRepository, NutritionRepository>();
-
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         {
             options.Password.RequireDigit = false;

@@ -5,6 +5,7 @@ using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.XP;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Domain.Entities;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 
@@ -50,6 +51,11 @@ public sealed class MarkSetCompleteHandler(
 
         dailyWorkout.IsCompleted = allExercisesDone;
         dailyWorkout.UpdatedAt = DateTime.UtcNow;
+
+        // Auto-complete the week when all effective days are done / rest / missed
+        var week = dailyWorkout.WeeklyWorkout;
+        week.IsCompleted = IsWeekComplete(week);
+        week.UpdatedAt = DateTime.UtcNow;
 
         // Log workout history once per day (for streak tracking)
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -131,6 +137,16 @@ public sealed class MarkSetCompleteHandler(
         }
 
         return CreateExerciseHandler.ToResponse(exercise, prWeight);
+    }
+
+    private static bool IsWeekComplete(WeeklyWorkout week)
+    {
+        var plan = week.Plan;
+        var effective = week.DailyWorkouts
+            .Where(d => d.Date >= plan.StartDate && d.Date <= plan.EndDate)
+            .ToList();
+        return effective.Count > 0 && effective.All(d =>
+            d.IsCompleted || d.Status == DayStatus.Rest || d.Status == DayStatus.Missed);
     }
 
     private async Task<decimal?> GetPersonalRecordWeight(Guid userId, Guid exerciseTemplateId, CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
+using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Domain.Entities;
@@ -30,6 +31,9 @@ public interface IPlanRepository
 
     /// <summary>Read-only: for each owner, the total and completed day counts across all their plans.</summary>
     Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(IEnumerable<Guid> ownerIds, CancellationToken ct = default);
+
+    /// <summary>Read-only: active plan and adherence status for coach client monitoring.</summary>
+    Task<List<CoachPlanMonitoringSnapshot>> GetMonitoringByOwnersAsync(IEnumerable<Guid> ownerIds, DateOnly today, CancellationToken ct = default);
 
     /// <summary>Bulk deactivate other active plans of the owner (ExecuteUpdate).</summary>
     Task DeactivateOthersAsync(Guid ownerId, Guid excludePlanId, CancellationToken ct = default);

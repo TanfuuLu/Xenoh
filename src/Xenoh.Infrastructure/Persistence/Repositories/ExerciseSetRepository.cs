@@ -19,6 +19,10 @@ public sealed class ExerciseSetRepository(ApplicationDbContext db) : IExerciseSe
           .Include(s => s.Exercise)
               .ThenInclude(e => e.DailyWorkout)
                   .ThenInclude(d => d.WeeklyWorkout)
+                      .ThenInclude(w => w.DailyWorkouts)
+          .Include(s => s.Exercise)
+              .ThenInclude(e => e.DailyWorkout)
+                  .ThenInclude(d => d.WeeklyWorkout)
                       .ThenInclude(w => w.Plan)
           .FirstOrDefaultAsync(s => s.Id == setId, ct);
 

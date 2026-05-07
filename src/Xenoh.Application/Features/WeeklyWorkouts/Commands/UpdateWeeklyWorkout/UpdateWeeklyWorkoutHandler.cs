@@ -35,6 +35,7 @@ public sealed class UpdateWeeklyWorkoutHandler(
 
         await weeklyWorkoutRepo.SaveChangesAsync(cancellationToken);
 
+        int effectiveDays = week.DailyWorkouts.Count(d => d.Date >= plan.StartDate && d.Date <= plan.EndDate);
         return new WeeklyWorkoutResponse(
             week.Id,
             week.WeekNumber,
@@ -42,12 +43,16 @@ public sealed class UpdateWeeklyWorkoutHandler(
             week.StartDate,
             week.EndDate,
             week.PlanId,
-            week.DailyWorkouts.Count,
-            week.DailyWorkouts.Count(d => d.IsCompleted),
+            effectiveDays,
+            week.DailyWorkouts.Count(d =>
+                d.Date >= plan.StartDate && d.Date <= plan.EndDate &&
+                (d.IsCompleted || d.Status == DayStatus.Rest || d.Status == DayStatus.Missed)),
             week.DailyWorkouts.Any(d => d.Exercises.Any(e => e.Sets.Any(s =>
                 s.IsCompleted &&
                 ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
-                 (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))))
+                 (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight))))),
+            week.IsCompleted,
+            effectiveDays
         );
     }
 }

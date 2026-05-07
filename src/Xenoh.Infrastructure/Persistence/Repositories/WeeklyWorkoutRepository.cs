@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.WeeklyWorkouts.Queries.GetWeeksByPlan;
 using Xenoh.Domain.Entities;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Infrastructure.Persistence.Repositories;
 
@@ -16,17 +17,26 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
         db.WeeklyWorkouts
           .AsNoTracking()
           .Include(w => w.DailyWorkouts)
+              .ThenInclude(d => d.Exercises)
+                  .ThenInclude(e => e.Sets)
+          .Include(w => w.Plan)
           .Where(w => w.PlanId == planId)
           .OrderBy(w => w.WeekNumber)
           .Select(w => new WeeklyWorkoutResponse(
               w.Id, w.WeekNumber, w.Name,
               w.StartDate, w.EndDate, w.PlanId,
-              w.DailyWorkouts.Count,
-              w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)),
+              // TotalDays = effective days (within plan date range)
+              w.DailyWorkouts.Count(d => d.Date >= w.Plan.StartDate && d.Date <= w.Plan.EndDate),
+              // CompletedDays = effective days that are done / rest / missed
+              w.DailyWorkouts.Count(d =>
+                  d.Date >= w.Plan.StartDate && d.Date <= w.Plan.EndDate &&
+                  (d.IsCompleted || d.Status == DayStatus.Rest || d.Status == DayStatus.Missed)),
               w.DailyWorkouts.Any(d => d.Exercises.Any(e => e.Sets.Any(s =>
                   s.IsCompleted &&
                   ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||
-                   (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))))))
+                   (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight))))),
+              w.IsCompleted,
+              w.DailyWorkouts.Count(d => d.Date >= w.Plan.StartDate && d.Date <= w.Plan.EndDate)))
           .ToListAsync(ct);
 
     public Task<WeeklyWorkout?> FindForMutationAsync(Guid weekId, CancellationToken ct) =>

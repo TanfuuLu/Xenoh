@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
@@ -97,6 +98,78 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .ToListAsync(ct);
 
         return rows.Select(r => (r.OwnerId, r.TotalDays, r.CompletedDays)).ToList();
+    }
+
+    public async Task<List<CoachPlanMonitoringSnapshot>> GetMonitoringByOwnersAsync(
+        IEnumerable<Guid> ownerIds,
+        DateOnly today,
+        CancellationToken ct)
+    {
+        var ids = ownerIds.ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var plans = await db.Plans
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.OwnerId) &&
+                p.StartDate <= today &&
+                p.EndDate >= today)
+            .Select(p => new
+            {
+                p.Id,
+                p.OwnerId,
+                p.Name,
+                p.StartDate,
+                p.EndDate,
+                p.IsActive,
+                p.CreatedAt,
+                Days = p.WeeklyWorkouts
+                    .SelectMany(w => w.DailyWorkouts)
+                    .Where(d => d.Status != DayStatus.Rest)
+                    .Select(d => new
+                    {
+                        d.Date,
+                        d.Status,
+                        IsCompleted = d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)
+                    })
+                    .ToList()
+            })
+            .ToListAsync(ct);
+
+        return plans
+            .GroupBy(p => p.OwnerId)
+            .Select(g =>
+            {
+                var plan = g
+                    .OrderByDescending(p => p.IsActive)
+                    .ThenByDescending(p => p.StartDate)
+                    .ThenByDescending(p => p.CreatedAt)
+                    .First();
+
+                var totalDays = plan.Days.Count;
+                var completedDays = plan.Days.Count(d => d.IsCompleted);
+                var missedDays = plan.Days.Count(d => d.Status == DayStatus.Missed);
+                var elapsedDays = plan.Days.Count(d => d.Date <= today);
+                var progress = totalDays == 0
+                    ? 0
+                    : (int)Math.Round(completedDays * 100.0 / totalDays);
+                var expectedProgress = totalDays == 0
+                    ? 0
+                    : (int)Math.Round(elapsedDays * 100.0 / totalDays);
+
+                return new CoachPlanMonitoringSnapshot(
+                    plan.OwnerId,
+                    plan.Id,
+                    plan.Name,
+                    plan.StartDate,
+                    plan.EndDate,
+                    progress,
+                    missedDays,
+                    completedDays,
+                    totalDays,
+                    expectedProgress);
+            })
+            .ToList();
     }
 
     public Task DeactivateOthersAsync(Guid ownerId, Guid excludePlanId, CancellationToken ct) =>

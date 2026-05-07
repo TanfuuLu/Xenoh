@@ -35,6 +35,8 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
     public Task<DailyWorkout?> FindWithPlanAsync(Guid dailyWorkoutId, CancellationToken ct) =>
         db.DailyWorkouts
           .Include(d => d.WeeklyWorkout)
+              .ThenInclude(w => w.DailyWorkouts)
+          .Include(d => d.WeeklyWorkout)
               .ThenInclude(w => w.Plan)
           .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId, ct);
 

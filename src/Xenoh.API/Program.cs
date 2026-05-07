@@ -20,7 +20,6 @@ using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Seeders;
 using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
-using Xenoh.API.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +30,6 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<IClaimsTransformation, TemporaryFeatureBypassClaimsTransformation>();
 
 builder.Services.AddMediator(static options =>
     options.ServiceLifetime = ServiceLifetime.Scoped);
@@ -141,6 +139,85 @@ using (var scope = app.Services.CreateScope())
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+        }
+
+        // Seed admin superuser account
+        const string adminEmail = "admin@xenoh.app";
+        const string adminPassword = "Admin@Xenoh123!";
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        if (adminUser is null)
+        {
+            adminUser = new ApplicationUser
+            {
+                Email = adminEmail,
+                UserName = adminEmail,
+                FirstName = "Admin",
+                LastName = "Xenoh",
+            };
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (createResult.Succeeded)
+            {
+                await userManager.AddToRolesAsync(adminUser, [UserRole.Admin, UserRole.Individual, UserRole.Coach]);
+            }
+        }
+        if (adminUser is not null)
+        {
+            var existingSub = await db.UserSubscriptions.FirstOrDefaultAsync(s => s.UserId == adminUser.Id);
+            if (existingSub is null)
+            {
+                db.UserSubscriptions.Add(new Xenoh.Domain.Entities.UserSubscription
+                {
+                    UserId = adminUser.Id,
+                    Tier = PlanTier.ProCoach,
+                    ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+                });
+                await db.SaveChangesAsync();
+            }
+            else if (existingSub.Tier != PlanTier.ProCoach)
+            {
+                existingSub.Tier = PlanTier.ProCoach;
+                existingSub.ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        // Seed coach demo account
+        const string coachEmail = "coach@xenoh.app";
+        const string coachPassword = "Coach@Xenoh123!";
+        var coachUser = await userManager.FindByEmailAsync(coachEmail);
+        if (coachUser is null)
+        {
+            coachUser = new ApplicationUser
+            {
+                Email = coachEmail,
+                UserName = coachEmail,
+                FirstName = "Demo",
+                LastName = "Coach",
+            };
+            var coachResult = await userManager.CreateAsync(coachUser, coachPassword);
+            if (coachResult.Succeeded)
+                await userManager.AddToRolesAsync(coachUser, [UserRole.Coach, UserRole.Individual]);
+        }
+        if (coachUser is not null)
+        {
+            var coachSub = await db.UserSubscriptions.FirstOrDefaultAsync(s => s.UserId == coachUser.Id);
+            if (coachSub is null)
+            {
+                db.UserSubscriptions.Add(new Xenoh.Domain.Entities.UserSubscription
+                {
+                    UserId = coachUser.Id,
+                    Tier = PlanTier.ProCoach,
+                    ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+                });
+                await db.SaveChangesAsync();
+            }
+            else if (coachSub.Tier != PlanTier.ProCoach)
+            {
+                coachSub.Tier = PlanTier.ProCoach;
+                coachSub.ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+                await db.SaveChangesAsync();
+            }
         }
 
         var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
