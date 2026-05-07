@@ -5,6 +5,7 @@ using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExercise
 using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExerciseTemplateForClient;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.DeleteCustomExerciseTemplate;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.UpdateCustomExerciseTemplate;
+using Xenoh.Application.Features.ExerciseTemplates.Queries.GetClientExerciseTemplates;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 using Xenoh.Domain.Enums;
 
@@ -20,6 +21,24 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     {
         var result = await mediator.Send(new GetExerciseTemplatesQuery(muscleGroup), ct);
         return Ok(result);
+    }
+
+    [HttpGet("for-client/{clientId:guid}")]
+    [Authorize(Roles = UserRole.Coach)]
+    public async Task<IActionResult> GetForClient(
+        [FromRoute] Guid clientId,
+        [FromQuery] MuscleGroup? muscleGroup,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetClientExerciseTemplatesQuery(clientId, muscleGroup), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("custom")]

@@ -8,7 +8,13 @@ namespace Xenoh.Infrastructure.Persistence.Repositories;
 
 public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerciseTemplateRepository
 {
-    public Task<List<ExerciseTemplateResponse>> GetAllAsync(Guid userId, MuscleGroup? muscleGroup, CancellationToken ct)
+    public Task<List<ExerciseTemplateResponse>> GetAllAsync(Guid userId, MuscleGroup? muscleGroup, CancellationToken ct) =>
+        GetAvailableForUserAsync(userId, muscleGroup, ct);
+
+    public Task<List<ExerciseTemplateResponse>> GetAvailableForUserAsync(
+        Guid userId,
+        MuscleGroup? muscleGroup,
+        CancellationToken ct)
     {
         var query = db.ExerciseTemplates
             .AsNoTracking()

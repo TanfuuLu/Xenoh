@@ -34,7 +34,11 @@ public sealed class CreateExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
-        var template = await exerciseTemplateRepo.FindAvailableByIdAsync(request.ExerciseTemplateId, userId, cancellationToken)
+        var templateOwnerId = plan.PlanType == PlanType.Coach && plan.CreatedByCoachId == userId
+            ? plan.OwnerId
+            : userId;
+
+        var template = await exerciseTemplateRepo.FindAvailableByIdAsync(request.ExerciseTemplateId, templateOwnerId, cancellationToken)
             ?? throw new InvalidOperationException("Exercise template not found.");
 
         var exercise = new Exercise

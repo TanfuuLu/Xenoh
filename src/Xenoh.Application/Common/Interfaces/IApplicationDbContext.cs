@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Common.Interfaces;
@@ -25,6 +26,10 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<UserSubscription> UserSubscriptions { get; }
     DbSet<PaymentOrder> PaymentOrders { get; }
+    DbSet<CoachRating> CoachRatings { get; }
+    DbSet<UserReport> UserReports { get; }
+    DbSet<IdentityRole<Guid>> Roles { get; }
+    DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }
     DbSet<NutritionDailyLog> NutritionDailyLogs { get; }
 
