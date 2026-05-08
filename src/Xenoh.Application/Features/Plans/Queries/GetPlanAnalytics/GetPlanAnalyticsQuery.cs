@@ -15,8 +15,29 @@ public sealed record PlanAnalyticsResponse(
     List<WeekVolumePoint> WeeklyVolume,
     List<MuscleGroupPoint> MuscleGroupVolume,
     List<MuscleGroupHeatmapPoint> MuscleGroupHeatmap,
-    MuscleGroupBalancePoint MuscleGroupBalance
+    MuscleGroupBalancePoint MuscleGroupBalance,
+    PowerliftingSection? Powerlifting = null
 );
+
+public sealed record PowerliftingSection(
+    LiftSeries Squat,
+    LiftSeries Bench,
+    LiftSeries Deadlift,
+    List<DotsOverTimeResponsePoint> Dots
+);
+
+public sealed record LiftSeries(
+    string Lift,
+    List<LiftE1RmResponsePoint> E1Rm,
+    List<LiftPrEventResponse> PrTimeline,
+    decimal? CurrentE1Rm,
+    decimal? CurrentTrainingMax,
+    bool IsPlateau
+);
+
+public sealed record LiftE1RmResponsePoint(DateOnly WeekStart, decimal E1Rm);
+public sealed record LiftPrEventResponse(DateOnly Date, decimal Weight, int Reps, decimal E1Rm);
+public sealed record DotsOverTimeResponsePoint(DateOnly WeekStart, decimal Dots, decimal BodyweightKg);
 
 public sealed record TrainingInsightResponse(
     string Type,

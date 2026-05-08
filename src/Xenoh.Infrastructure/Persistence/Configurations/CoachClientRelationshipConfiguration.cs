@@ -23,5 +23,7 @@ public class CoachClientRelationshipConfiguration : IEntityTypeConfiguration<Coa
         builder.HasIndex(r => r.ClientId)
             .IsUnique()
             .HasFilter("\"Status\" <> 2");
+
+        builder.HasIndex(r => new { r.Status, r.EndDate });
     }
 }

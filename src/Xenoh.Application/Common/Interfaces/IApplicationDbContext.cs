@@ -28,6 +28,7 @@ public interface IApplicationDbContext
     DbSet<PaymentOrder> PaymentOrders { get; }
     DbSet<CoachRating> CoachRatings { get; }
     DbSet<UserReport> UserReports { get; }
+    DbSet<UserBlock> UserBlocks { get; }
     DbSet<IdentityRole<Guid>> Roles { get; }
     DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }

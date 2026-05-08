@@ -30,7 +30,10 @@ public sealed class RejectTerminationHandler(
             ? relationship.CoachId
             : relationship.ClientId;
 
-        relationship.Status = RelationshipStatus.Active;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        relationship.Status = relationship.EndDate is { } end && end < today
+            ? RelationshipStatus.Expired
+            : RelationshipStatus.Active;
         relationship.TerminationRequestedBy = null;
         relationship.UpdatedAt = DateTime.UtcNow;
 

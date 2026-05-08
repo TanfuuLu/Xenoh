@@ -7,6 +7,12 @@ public sealed record RequestCoachCommand : IRequest<CoachRelationshipResponse>
 {
     [Required]
     public required Guid CoachId { get; init; }
+
+    [Required]
+    public required DateOnly StartDate { get; init; }
+
+    [Required]
+    public required DateOnly EndDate { get; init; }
 }
 
 public sealed record CoachRelationshipResponse(
@@ -18,5 +24,9 @@ public sealed record CoachRelationshipResponse(
     string CoachName,
     string Status,
     DateTime CreatedAt,
-    Guid? TerminationRequestedBy
+    Guid? TerminationRequestedBy,
+    DateOnly StartDate,
+    DateOnly? EndDate,
+    Guid? RenewalRequestedBy,
+    DateOnly? ProposedEndDate
 );

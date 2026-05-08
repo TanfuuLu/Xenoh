@@ -12,6 +12,7 @@ namespace Xenoh.Application.Features.Coaches.Queries.GetCoaches;
 public sealed class GetCoachesHandler(
     UserManager<ApplicationUser> userManager,
     ICoachRatingRepository ratingRepo,
+    IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<GetCoachesQuery, List<CoachResponse>>
 {
@@ -19,7 +20,10 @@ public sealed class GetCoachesHandler(
     {
         var coaches = await userManager.GetUsersInRoleAsync(UserRole.Coach);
 
-        IEnumerable<ApplicationUser> filtered = coaches;
+        var currentUserId = currentUser.UserId;
+        var blockedIds = await userBlockRepo.GetBlockedOrBlockerIdsAsync(currentUserId, cancellationToken);
+        IEnumerable<ApplicationUser> filtered = coaches
+            .Where(c => c.Id != currentUserId && !blockedIds.Contains(c.Id));
 
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
@@ -27,7 +31,7 @@ public sealed class GetCoachesHandler(
             // Ví dụ: "binh" khớp với "Bình", "nguyen" khớp với "Nguyễn"
             var keyword = StripDiacritics(request.Name.Trim().ToLower());
 
-            filtered = coaches.Where(c =>
+            filtered = filtered.Where(c =>
             {
                 var firstName  = StripDiacritics(c.FirstName.ToLower());
                 var lastName   = StripDiacritics(c.LastName.ToLower());

@@ -16,6 +16,7 @@ using Xenoh.Infrastructure.Hubs;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure;
+using Xenoh.Infrastructure.BackgroundServices;
 using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Seeders;
@@ -97,6 +98,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+
+builder.Services.AddHostedService<ContractExpiryService>();
 
 builder.Services.AddCors(options =>
 {

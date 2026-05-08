@@ -1,12 +1,16 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.CoachClient.Commands.AcceptRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
+using Xenoh.Application.Features.CoachClient.Commands.RejectRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RejectTermination;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
+using Xenoh.Application.Features.CoachClient.Commands.RequestRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RequestTermination;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
+using Xenoh.Application.Features.CoachClient.Queries.GetClientPowerlifting;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyCoach;
@@ -122,6 +126,54 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
     }
 
+    public sealed record RequestRenewalRequest(DateOnly ProposedEndDate);
+
+    [HttpPost("{relationshipId:guid}/request-renewal")]
+    public async Task<IActionResult> RequestRenewal(Guid relationshipId, [FromBody] RequestRenewalRequest body, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new RequestRenewalCommand
+            {
+                RelationshipId = relationshipId,
+                ProposedEndDate = body.ProposedEndDate
+            }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/accept-renewal")]
+    public async Task<IActionResult> AcceptRenewal(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new AcceptRenewalCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/reject-renewal")]
+    public async Task<IActionResult> RejectRenewal(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new RejectRenewalCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     /// <summary>
     /// [Coach only] Trả về danh sách tất cả clients (Pending + Active).
     /// </summary>
@@ -142,5 +194,24 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetCoachDashboardQuery(), ct);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// [Coach only] Powerlifting analytics for one of the coach's clients —
+    /// per-lift e1RM series, PR timeline, current training max, DOTS-over-time.
+    /// </summary>
+    [HttpGet("clients/{clientId:guid}/powerlifting")]
+    [Authorize(Roles = UserRole.Coach)]
+    public async Task<IActionResult> GetClientPowerlifting(Guid clientId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetClientPowerliftingQuery(clientId), ct);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 }

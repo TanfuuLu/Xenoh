@@ -41,6 +41,9 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<UserReport> ReportsReceived { get; set; } = [];
     public ICollection<UserReport> ReportsReviewed { get; set; } = [];
 
+    public ICollection<UserBlock> BlocksMade { get; set; } = [];
+    public ICollection<UserBlock> BlocksReceived { get; set; } = [];
+
     // XP / Leveling
     public long TotalXp { get; set; } = 0;
     public int  Level   { get; set; } = 1;

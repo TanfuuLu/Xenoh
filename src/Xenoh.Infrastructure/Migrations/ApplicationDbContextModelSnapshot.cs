@@ -295,6 +295,18 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ProposedEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("RenewalRequestedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -311,6 +323,8 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasFilter("\"Status\" <> 2");
 
                     b.HasIndex("CoachId");
+
+                    b.HasIndex("Status", "EndDate");
 
                     b.ToTable("CoachClientRelationships");
                 });
@@ -952,6 +966,38 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockedId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedId");
+
+                    b.HasIndex("BlockerId", "BlockedId")
+                        .IsUnique();
+
+                    b.ToTable("UserBlocks");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.UserExercisePR", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1475,6 +1521,25 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.UserBlock", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Blocked")
+                        .WithMany("BlocksReceived")
+                        .HasForeignKey("BlockedId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Blocker")
+                        .WithMany("BlocksMade")
+                        .HasForeignKey("BlockerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Blocked");
+
+                    b.Navigation("Blocker");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.UserExercisePR", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ExerciseTemplate", null)
@@ -1583,6 +1648,10 @@ namespace Xenoh.Infrastructure.Migrations
 
             modelBuilder.Entity("Xenoh.Domain.Entities.ApplicationUser", b =>
                 {
+                    b.Navigation("BlocksMade");
+
+                    b.Navigation("BlocksReceived");
+
                     b.Navigation("Clients");
 
                     b.Navigation("CoachRatingsGiven");

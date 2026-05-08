@@ -53,7 +53,11 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.Coach.FirstName + " " + r.Coach.LastName,
               r.Status.ToString(),
               r.CreatedAt,
-              null))
+              null,
+              r.StartDate,
+              r.EndDate,
+              r.RenewalRequestedBy,
+              r.ProposedEndDate))
           .ToListAsync(ct);
 
     public async Task<CoachRelationshipResponse?> GetByClientWithDetailsAsync(Guid clientId, CancellationToken ct)
@@ -73,7 +77,11 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
             $"{r.Coach.FirstName} {r.Coach.LastName}",
             r.Status.ToString(),
             r.CreatedAt,
-            r.TerminationRequestedBy);
+            r.TerminationRequestedBy,
+            r.StartDate,
+            r.EndDate,
+            r.RenewalRequestedBy,
+            r.ProposedEndDate);
     }
 
     public Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct) =>
@@ -95,7 +103,11 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
                 .OrderByDescending(w => w.Date)
                 .Select(w => (DateOnly?)w.Date)
                 .FirstOrDefault(),
-              r.TerminationRequestedBy))
+              r.TerminationRequestedBy,
+              r.StartDate,
+              r.EndDate,
+              r.RenewalRequestedBy,
+              r.ProposedEndDate))
           .ToListAsync(ct);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>

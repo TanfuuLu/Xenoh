@@ -8,6 +8,7 @@ namespace Xenoh.Application.Features.Reports.Commands.CreateUserReport;
 
 public sealed class CreateUserReportHandler(
     IUserReportRepository reportRepo,
+    IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<CreateUserReportCommand, UserReportResponse>
@@ -19,6 +20,9 @@ public sealed class CreateUserReportHandler(
 
         if (string.IsNullOrWhiteSpace(request.Details))
             throw new InvalidOperationException("Report details are required.");
+
+        if (await userBlockRepo.IsEitherBlockedAsync(currentUser.UserId, request.ReportedUserId, cancellationToken))
+            throw new InvalidOperationException("Cannot report this user.");
 
         var reporter = await userManager.FindByIdAsync(currentUser.UserId.ToString())
             ?? throw new InvalidOperationException("User not found.");

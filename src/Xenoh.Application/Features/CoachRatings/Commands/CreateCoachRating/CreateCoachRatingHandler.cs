@@ -9,6 +9,7 @@ namespace Xenoh.Application.Features.CoachRatings.Commands.CreateCoachRating;
 
 public sealed class CreateCoachRatingHandler(
     ICoachRatingRepository ratingRepo,
+    IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<CreateCoachRatingCommand, CoachRatingResponse>
@@ -21,6 +22,9 @@ public sealed class CreateCoachRatingHandler(
         var clientId = currentUser.UserId;
         if (clientId == request.CoachId)
             throw new InvalidOperationException("You cannot rate yourself.");
+
+        if (await userBlockRepo.IsEitherBlockedAsync(clientId, request.CoachId, cancellationToken))
+            throw new InvalidOperationException("Cannot rate this coach.");
 
         var coach = await userManager.FindByIdAsync(request.CoachId.ToString())
             ?? throw new InvalidOperationException("Coach not found.");

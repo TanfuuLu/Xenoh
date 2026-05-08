@@ -14,4 +14,10 @@ public class CoachClientRelationship : BaseEntity
     public RelationshipStatus Status { get; set; } = RelationshipStatus.Pending;
 
     public Guid? TerminationRequestedBy { get; set; }
+
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+
+    public Guid? RenewalRequestedBy { get; set; }
+    public DateOnly? ProposedEndDate { get; set; }
 }

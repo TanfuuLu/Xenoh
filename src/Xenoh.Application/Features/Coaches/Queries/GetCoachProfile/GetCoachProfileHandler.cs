@@ -10,6 +10,7 @@ namespace Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
 public sealed class GetCoachProfileHandler(
     ICoachClientRepository coachClientRepo,
     ICoachRatingRepository ratingRepo,
+    IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachProfileQuery, CoachProfileResponse>
@@ -21,6 +22,9 @@ public sealed class GetCoachProfileHandler(
 
         var isCoach = await userManager.IsInRoleAsync(coach, UserRole.Coach);
         if (!isCoach)
+            throw new InvalidOperationException("Coach not found.");
+
+        if (await userBlockRepo.IsEitherBlockedAsync(currentUser.UserId, request.CoachId, cancellationToken))
             throw new InvalidOperationException("Coach not found.");
 
         var totalClients = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);

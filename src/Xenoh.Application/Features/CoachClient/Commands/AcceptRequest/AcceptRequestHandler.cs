@@ -49,7 +49,11 @@ public sealed class AcceptRequestHandler(
             $"{coach!.FirstName} {coach.LastName}",
             relationship.Status.ToString(),
             relationship.CreatedAt,
-            null
+            null,
+            relationship.StartDate,
+            relationship.EndDate,
+            relationship.RenewalRequestedBy,
+            relationship.ProposedEndDate
         );
     }
 }

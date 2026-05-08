@@ -9,6 +9,7 @@ namespace Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 
 public sealed class RequestCoachHandler(
     ICoachClientRepository coachClientRepo,
+    IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser,
     INotificationService notificationService,
     ISubscriptionService subscriptionService,
@@ -18,6 +19,15 @@ public sealed class RequestCoachHandler(
     public async ValueTask<CoachRelationshipResponse> Handle(RequestCoachCommand request, CancellationToken cancellationToken)
     {
         var clientId = currentUser.UserId;
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (request.StartDate < today)
+            throw new InvalidOperationException("Start date cannot be in the past.");
+        if (request.EndDate <= request.StartDate)
+            throw new InvalidOperationException("End date must be after start date.");
+
+        if (await userBlockRepo.IsEitherBlockedAsync(clientId, request.CoachId, cancellationToken))
+            throw new InvalidOperationException("Cannot connect with this user.");
 
         var existing = await coachClientRepo.FindByClientAsync(clientId, cancellationToken);
         if (existing is not null)
@@ -42,7 +52,9 @@ public sealed class RequestCoachHandler(
         {
             ClientId = clientId,
             CoachId = request.CoachId,
-            Status = RelationshipStatus.Pending
+            Status = RelationshipStatus.Pending,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate
         };
 
         await coachClientRepo.AddAsync(relationship, cancellationToken);
@@ -65,6 +77,10 @@ public sealed class RequestCoachHandler(
             $"{coach.FirstName} {coach.LastName}",
             relationship.Status.ToString(),
             relationship.CreatedAt,
+            null,
+            relationship.StartDate,
+            relationship.EndDate,
+            null,
             null
         );
     }

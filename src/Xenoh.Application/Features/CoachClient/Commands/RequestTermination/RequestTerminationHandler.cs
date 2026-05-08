@@ -22,8 +22,10 @@ public sealed class RequestTerminationHandler(
             request.RelationshipId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Relationship not found.");
 
-        if (relationship.Status != RelationshipStatus.Active)
-            throw new InvalidOperationException("Only active relationships can have a termination request.");
+        if (relationship.Status != RelationshipStatus.Active &&
+            relationship.Status != RelationshipStatus.Expired &&
+            relationship.Status != RelationshipStatus.PendingRenewal)
+            throw new InvalidOperationException("Only active, expired or pending-renewal relationships can have a termination request.");
 
         var otherPartyId = userId == relationship.ClientId
             ? relationship.CoachId
@@ -31,6 +33,8 @@ public sealed class RequestTerminationHandler(
 
         relationship.Status = RelationshipStatus.PendingTermination;
         relationship.TerminationRequestedBy = userId;
+        relationship.RenewalRequestedBy = null;
+        relationship.ProposedEndDate = null;
         relationship.UpdatedAt = DateTime.UtcNow;
 
         await coachClientRepo.SaveChangesAsync(cancellationToken);
