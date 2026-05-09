@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.Plans.Commands.CreateAiStarterPlan;
 using Xenoh.Application.Features.Plans.Commands.ActivatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlanForUser;
@@ -11,6 +12,7 @@ using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetMyPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanById;
+using Xenoh.Application.Features.Plans.Queries.ReviewPlanBalance;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
@@ -43,6 +45,22 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
 
     [HttpPost]
     public async Task<IActionResult> CreatePlan([FromBody] CreatePlanCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return CreatedAtAction(nameof(GetById), new { planId = result.Id }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("starter-ai")]
+    public async Task<IActionResult> CreateAiStarterPlan(
+        [FromBody] CreateAiStarterPlanCommand command,
+        CancellationToken ct)
     {
         try
         {
@@ -145,6 +163,23 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{planId:guid}/balance-check")]
+    public async Task<IActionResult> ReviewPlanBalance(
+        Guid planId,
+        [FromQuery] string? lang,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new ReviewPlanBalanceQuery(planId, lang), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

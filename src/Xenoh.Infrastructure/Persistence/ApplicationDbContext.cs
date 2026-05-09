@@ -34,6 +34,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();
     public DbSet<NutritionDailyLog> NutritionDailyLogs => Set<NutritionDailyLog>();
+    public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

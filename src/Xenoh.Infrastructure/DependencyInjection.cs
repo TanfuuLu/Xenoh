@@ -69,6 +69,14 @@ public static class DependencyInjection
         services.AddSingleton<ISePayBankInfo, SePayBankInfo>();
         services.Configure<SePayOptions>(configuration.GetSection(SePayOptions.SectionName));
 
+        // OpenAI-backed user analysis
+        services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
+        services.AddHttpClient<IUserAnalysisAi, OpenAiUserAnalysisAi>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+
         return services;
     }
 }

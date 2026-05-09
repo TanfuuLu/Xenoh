@@ -33,6 +33,7 @@ public interface IApplicationDbContext
     DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }
     DbSet<NutritionDailyLog> NutritionDailyLogs { get; }
+    DbSet<UserAnalysis> UserAnalyses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

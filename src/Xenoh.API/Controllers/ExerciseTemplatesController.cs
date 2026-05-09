@@ -7,6 +7,7 @@ using Xenoh.Application.Features.ExerciseTemplates.Commands.DeleteCustomExercise
 using Xenoh.Application.Features.ExerciseTemplates.Commands.UpdateCustomExerciseTemplate;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetClientExerciseTemplates;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
+using Xenoh.Application.Features.ExerciseTemplates.Queries.GetLastExercisePerformance;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
@@ -21,6 +22,25 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     {
         var result = await mediator.Send(new GetExerciseTemplatesQuery(muscleGroup), ct);
         return Ok(result);
+    }
+
+    [HttpGet("{exerciseTemplateId:guid}/last-performance")]
+    public async Task<IActionResult> GetLastPerformance(
+        [FromRoute] Guid exerciseTemplateId,
+        [FromQuery] Guid dailyWorkoutId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(
+                new GetLastExercisePerformanceQuery(exerciseTemplateId, dailyWorkoutId),
+                ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("for-client/{clientId:guid}")]
