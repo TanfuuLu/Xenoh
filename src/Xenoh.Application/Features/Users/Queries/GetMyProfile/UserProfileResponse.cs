@@ -1,3 +1,5 @@
+using Xenoh.Application.Features.Coaches;
+
 namespace Xenoh.Application.Features.Users.Queries.GetMyProfile;
 
 public sealed record Big3PrsResponse(
@@ -25,5 +27,7 @@ public sealed record UserProfileResponse(
     int Level,
     long TotalXp,
     long XpToNextLevel,
-    string Title
+    string Title,
+    CoachMarketplaceProfileDto? CoachMarketplaceProfile = null,
+    List<CoachPackageDto>? CoachPackages = null
 );

@@ -161,6 +161,85 @@ Plan snapshot:
         return new PlanBalanceAiResult(json);
     }
 
+    public async Task<WorkoutGuidanceAiResult> GenerateWorkoutGuidanceAsync(
+        WorkoutGuidanceAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var languageInstruction = request.Language == "vi"
+            ? "Respond entirely in Vietnamese."
+            : "Respond entirely in English.";
+
+        var systemPrompt = $$"""
+You are a practical strength coach inside Xenoh. Give advisory guidance for a single planned workout.
+
+Rules:
+- Use only the provided snapshot. Do not invent exercises, injuries, or medical claims.
+- Be specific about sets, load, RPE, missed work, and recent performance when present.
+- Suggestions must be advisory only; never say the app changed the workout.
+- If data is sparse, acknowledge that and recommend what to log.
+- {{languageInstruction}}
+
+Return JSON ONLY matching this exact shape:
+{
+  "headline": "string (<= 90 chars)",
+  "readiness": "Low|Moderate|High",
+  "recommendedAdjustments": ["string"],
+  "cautionFlags": ["string"],
+  "nextBestActions": ["string"]
+}
+""";
+
+        var userPrompt = $"""
+Workout snapshot:
+```json
+{request.SnapshotJson}
+```
+""";
+
+        var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.25, cancellationToken);
+        return new WorkoutGuidanceAiResult(json);
+    }
+
+    public async Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(
+        CoachClientBriefAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var languageInstruction = request.Language == "vi"
+            ? "Respond entirely in Vietnamese."
+            : "Respond entirely in English.";
+
+        var systemPrompt = $$"""
+You are a coach dashboard assistant for Xenoh. Summarize a client's current training state for their coach.
+
+Rules:
+- Be concise, useful, and specific to the snapshot.
+- Call out adherence, active plan progress, recent training, bodyweight trend, PRs, and risks when available.
+- No medical claims, diagnoses, or shaming language.
+- suggestedMessage must be a short message the coach can send after reviewing.
+- {{languageInstruction}}
+
+Return JSON ONLY matching this exact shape:
+{
+  "headline": "string (<= 90 chars)",
+  "attentionLevel": "None|Low|Medium|High",
+  "progressSummary": "string (1-3 sentences)",
+  "risks": ["string"],
+  "opportunities": ["string"],
+  "suggestedMessage": "string (<= 400 chars)"
+}
+""";
+
+        var userPrompt = $"""
+Client snapshot:
+```json
+{request.SnapshotJson}
+```
+""";
+
+        var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.3, cancellationToken);
+        return new CoachClientBriefAiResult(json);
+    }
+
     private async Task<string> SendJsonPromptAsync(
         string systemPrompt,
         string userPrompt,

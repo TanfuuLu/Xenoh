@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
@@ -13,6 +14,7 @@ public sealed class GetCoachesHandler(
     UserManager<ApplicationUser> userManager,
     ICoachRatingRepository ratingRepo,
     IUserBlockRepository userBlockRepo,
+    IApplicationDbContext db,
     ICurrentUserService currentUser
 ) : IRequestHandler<GetCoachesQuery, List<CoachResponse>>
 {
@@ -48,10 +50,18 @@ public sealed class GetCoachesHandler(
             .ThenBy(c => c.LastName)
             .ToList();
 
+        var coachIds = ordered.Select(c => c.Id).ToList();
+        var marketplaceProfiles = await db.CoachMarketplaceProfiles
+            .AsNoTracking()
+            .Include(p => p.Packages)
+            .Where(p => coachIds.Contains(p.CoachId))
+            .ToDictionaryAsync(p => p.CoachId, cancellationToken);
+
         var responses = new List<CoachResponse>();
         foreach (var coach in ordered)
         {
             var summary = await ratingRepo.GetSummaryAsync(coach.Id, currentUser.UserId, cancellationToken);
+            marketplaceProfiles.TryGetValue(coach.Id, out var marketplaceProfile);
             responses.Add(new CoachResponse(
                 coach.Id,
                 $"{coach.FirstName} {coach.LastName}",
@@ -59,7 +69,12 @@ public sealed class GetCoachesHandler(
                 coach.AvatarUrl,
                 summary.AverageRating,
                 summary.RatingCount,
-                summary.MyRating
+                summary.MyRating,
+                marketplaceProfile?.Headline,
+                marketplaceProfile?.Specialties ?? [],
+                marketplaceProfile?.ExperienceYears,
+                CoachMarketplaceProfileMapper.StartingPackagePrice(marketplaceProfile?.Packages),
+                marketplaceProfile?.Packages.Count ?? 0
             ));
         }
 

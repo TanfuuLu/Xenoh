@@ -28,6 +28,24 @@ public sealed record PlanBalanceAiResult(
     string Json
 );
 
+public sealed record WorkoutGuidanceAiRequest(
+    string Language,
+    string SnapshotJson
+);
+
+public sealed record WorkoutGuidanceAiResult(
+    string Json
+);
+
+public sealed record CoachClientBriefAiRequest(
+    string Language,
+    string SnapshotJson
+);
+
+public sealed record CoachClientBriefAiResult(
+    string Json
+);
+
 public interface IUserAnalysisAi
 {
     Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken);
@@ -38,5 +56,13 @@ public interface IUserAnalysisAi
 
     Task<PlanBalanceAiResult> ReviewPlanBalanceAsync(
         PlanBalanceAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<WorkoutGuidanceAiResult> GenerateWorkoutGuidanceAsync(
+        WorkoutGuidanceAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(
+        CoachClientBriefAiRequest request,
         CancellationToken cancellationToken);
 }

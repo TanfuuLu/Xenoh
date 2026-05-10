@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.Coaches;
 using Xenoh.Application.Features.CoachRatings;
 
 namespace Xenoh.Application.Features.Coaches.Queries.GetCoachProfile;
@@ -16,5 +17,7 @@ public sealed record CoachProfileResponse(
     int RatingCount,
     bool CanRate,
     CoachRatingResponse? MyRating,
-    List<CoachRatingResponse> Ratings
+    List<CoachRatingResponse> Ratings,
+    CoachMarketplaceProfileDto? MarketplaceProfile,
+    List<CoachPackageDto> Packages
 );

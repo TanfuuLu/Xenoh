@@ -1,8 +1,10 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.XP;
+using Xenoh.Application.Features.Coaches;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -12,6 +14,7 @@ public sealed class GetMyProfileHandler(
     IWorkoutHistoryRepository workoutHistoryRepo,
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
+    IApplicationDbContext db,
     UserManager<ApplicationUser> userManager,
     ICurrentUserService currentUser
 ) : IRequestHandler<GetMyProfileQuery, UserProfileResponse>
@@ -44,6 +47,10 @@ public sealed class GetMyProfileHandler(
         long   totalXp  = user.TotalXp;
         long   xpToNext = XpCalculator.XpToNextLevel(level);
         string title    = XpCalculator.GetTitle(level);
+        var marketplaceProfile = await db.CoachMarketplaceProfiles
+            .AsNoTracking()
+            .Include(p => p.Packages)
+            .FirstOrDefaultAsync(p => p.CoachId == userId, cancellationToken);
 
         return new UserProfileResponse(
             user.Id,
@@ -64,7 +71,9 @@ public sealed class GetMyProfileHandler(
             level,
             totalXp,
             xpToNext,
-            title
+            title,
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
+            CoachMarketplaceProfileMapper.ToPackageDtos(marketplaceProfile?.Packages)
         );
     }
 

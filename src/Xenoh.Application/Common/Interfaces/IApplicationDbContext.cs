@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Domain.Entities;
 
@@ -6,6 +7,7 @@ namespace Xenoh.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    ChangeTracker ChangeTracker { get; }
     DbSet<ApplicationUser> ApplicationUsers { get; }
     DbSet<Plan> Plans { get; }
     DbSet<WeeklyWorkout> WeeklyWorkouts { get; }
@@ -13,6 +15,8 @@ public interface IApplicationDbContext
     DbSet<Exercise> Exercises { get; }
     DbSet<ExerciseSet> ExerciseSets { get; }
     DbSet<CoachClientRelationship> CoachClientRelationships { get; }
+    DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles { get; }
+    DbSet<CoachPackage> CoachPackages { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<PasswordResetCode> PasswordResetCodes { get; }
     DbSet<ExternalAuthTicket> ExternalAuthTickets { get; }
@@ -34,6 +38,7 @@ public interface IApplicationDbContext
     DbSet<NutritionProfile> NutritionProfiles { get; }
     DbSet<NutritionDailyLog> NutritionDailyLogs { get; }
     DbSet<UserAnalysis> UserAnalyses { get; }
+    DbSet<AiFeatureCache> AiFeatureCaches { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

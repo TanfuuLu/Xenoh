@@ -1,5 +1,6 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
@@ -12,6 +13,7 @@ public sealed class GetCoachProfileHandler(
     ICoachRatingRepository ratingRepo,
     IUserBlockRepository userBlockRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext db,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachProfileQuery, CoachProfileResponse>
 {
@@ -31,6 +33,10 @@ public sealed class GetCoachProfileHandler(
         var ratingSummary = await ratingRepo.GetSummaryAsync(request.CoachId, currentUser.UserId, cancellationToken);
         var canRate = await ratingRepo.CanClientRateCoachAsync(request.CoachId, currentUser.UserId, cancellationToken);
         var ratings = await ratingRepo.GetByCoachAsync(request.CoachId, cancellationToken);
+        var marketplaceProfile = await db.CoachMarketplaceProfiles
+            .AsNoTracking()
+            .Include(p => p.Packages)
+            .FirstOrDefaultAsync(p => p.CoachId == request.CoachId, cancellationToken);
 
         return new CoachProfileResponse(
             coach.Id,
@@ -43,7 +49,9 @@ public sealed class GetCoachProfileHandler(
             ratingSummary.RatingCount,
             canRate,
             ratingSummary.MyRating,
-            ratings
+            ratings,
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
+            CoachMarketplaceProfileMapper.ToPackageDtos(marketplaceProfile?.Packages)
         );
     }
 }

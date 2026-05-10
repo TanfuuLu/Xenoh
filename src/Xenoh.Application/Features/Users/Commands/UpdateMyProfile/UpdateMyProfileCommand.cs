@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Mediator;
+using Xenoh.Application.Features.Coaches;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Enums;
 
@@ -23,4 +24,8 @@ public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
     public Gender? Gender { get; init; }
 
     public DateOnly? DateOfBirth { get; init; }
+
+    public CoachMarketplaceProfileDto? CoachMarketplaceProfile { get; init; }
+
+    public List<CoachPackageInput>? CoachPackages { get; init; }
 }

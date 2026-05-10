@@ -10,6 +10,7 @@ using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Application.Features.CoachClient.Commands.RequestRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RequestTermination;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
+using Xenoh.Application.Features.CoachClient.Queries.GetCoachClientAiBrief;
 using Xenoh.Application.Features.CoachClient.Queries.GetClientPowerlifting;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
@@ -212,6 +213,28 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+    }
+
+    [HttpGet("clients/{clientId:guid}/ai-brief")]
+    [Authorize(Roles = UserRole.Coach)]
+    public async Task<IActionResult> GetClientAiBrief(
+        Guid clientId,
+        [FromQuery] string? lang,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetCoachClientAiBriefQuery(clientId, lang), ct);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

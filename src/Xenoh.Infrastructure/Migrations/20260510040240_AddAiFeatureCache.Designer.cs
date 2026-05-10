@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xenoh.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510040240_AddAiFeatureCache")]
+    partial class AddAiFeatureCache
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -382,115 +385,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.HasIndex("Status", "EndDate");
 
                     b.ToTable("CoachClientRelationships");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.CoachMarketplaceProfile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.PrimitiveCollection<string[]>("Achievements")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string>("Availability")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.PrimitiveCollection<string[]>("Certifications")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string>("ClientResultsSummary")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid>("CoachId")
-                        .HasColumnType("uuid");
-
-                    b.PrimitiveCollection<string[]>("CoachingMethods")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string>("CoachingStyle")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int?>("ExperienceYears")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Headline")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.PrimitiveCollection<string[]>("Languages")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<string>("ResponseTime")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.PrimitiveCollection<string[]>("Specialties")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CoachId")
-                        .IsUnique();
-
-                    b.ToTable("CoachMarketplaceProfiles");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.CoachPackage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CoachMarketplaceProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
-
-                    b.Property<string>("DurationLabel")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
-
-                    b.Property<decimal?>("PriceAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CoachMarketplaceProfileId", "DisplayOrder");
-
-                    b.ToTable("CoachPackages");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CoachRating", b =>
@@ -1547,28 +1441,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Coach");
                 });
 
-            modelBuilder.Entity("Xenoh.Domain.Entities.CoachMarketplaceProfile", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Coach")
-                        .WithOne("CoachMarketplaceProfile")
-                        .HasForeignKey("Xenoh.Domain.Entities.CoachMarketplaceProfile", "CoachId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Coach");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.CoachPackage", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.CoachMarketplaceProfile", "CoachMarketplaceProfile")
-                        .WithMany("Packages")
-                        .HasForeignKey("CoachMarketplaceProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CoachMarketplaceProfile");
-                });
-
             modelBuilder.Entity("Xenoh.Domain.Entities.CoachRating", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Client")
@@ -1903,8 +1775,6 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Navigation("Clients");
 
-                    b.Navigation("CoachMarketplaceProfile");
-
                     b.Navigation("CoachRatingsGiven");
 
                     b.Navigation("CoachRatingsReceived");
@@ -1934,11 +1804,6 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("ReportsReviewed");
 
                     b.Navigation("Subscription");
-                });
-
-            modelBuilder.Entity("Xenoh.Domain.Entities.CoachMarketplaceProfile", b =>
-                {
-                    b.Navigation("Packages");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
