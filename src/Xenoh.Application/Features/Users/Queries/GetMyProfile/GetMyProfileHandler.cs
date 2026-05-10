@@ -49,7 +49,6 @@ public sealed class GetMyProfileHandler(
         string title    = XpCalculator.GetTitle(level);
         var marketplaceProfile = await db.CoachMarketplaceProfiles
             .AsNoTracking()
-            .Include(p => p.Packages)
             .FirstOrDefaultAsync(p => p.CoachId == userId, cancellationToken);
 
         return new UserProfileResponse(
@@ -72,8 +71,7 @@ public sealed class GetMyProfileHandler(
             totalXp,
             xpToNext,
             title,
-            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
-            CoachMarketplaceProfileMapper.ToPackageDtos(marketplaceProfile?.Packages)
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile)
         );
     }
 

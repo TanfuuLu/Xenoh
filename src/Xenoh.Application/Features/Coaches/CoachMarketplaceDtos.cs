@@ -11,26 +11,8 @@ public sealed record CoachMarketplaceProfileDto(
     string? ClientResultsSummary,
     string? Availability,
     string? ResponseTime,
-    string? CoachingStyle
-);
-
-public sealed record CoachPackageDto(
-    Guid Id,
-    string Name,
-    decimal? PriceAmount,
-    string Currency,
-    string DurationLabel,
-    string? Description,
-    string? Type,
-    int DisplayOrder
-);
-
-public sealed record CoachPackageInput(
-    string Name,
-    decimal? PriceAmount,
-    string? Currency,
-    string DurationLabel,
-    string? Description,
-    string? Type,
-    int DisplayOrder
+    string? CoachingStyle,
+    decimal? MonthlyPriceAmount,
+    decimal? SessionPriceAmount,
+    string Currency
 );

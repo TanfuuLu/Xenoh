@@ -28,6 +28,5 @@ public sealed record UserProfileResponse(
     long TotalXp,
     long XpToNextLevel,
     string Title,
-    CoachMarketplaceProfileDto? CoachMarketplaceProfile = null,
-    List<CoachPackageDto>? CoachPackages = null
+    CoachMarketplaceProfileDto? CoachMarketplaceProfile = null
 );

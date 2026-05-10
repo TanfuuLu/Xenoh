@@ -20,4 +20,9 @@ public class CoachClientRelationship : BaseEntity
 
     public Guid? RenewalRequestedBy { get; set; }
     public DateOnly? ProposedEndDate { get; set; }
+
+    public CoachingType? SelectedCoachingType { get; set; }
+    public int? SelectedQuantity { get; set; }
+    public decimal? SelectedPriceAmount { get; set; }
+    public string? SelectedCurrency { get; set; }
 }

@@ -25,5 +25,9 @@ public class CoachClientRelationshipConfiguration : IEntityTypeConfiguration<Coa
             .HasFilter("\"Status\" <> 2");
 
         builder.HasIndex(r => new { r.Status, r.EndDate });
+
+        builder.Property(r => r.SelectedPriceAmount).HasPrecision(18, 2);
+        builder.Property(r => r.SelectedCurrency).HasMaxLength(8);
+        builder.Property(r => r.SelectedQuantity);
     }
 }

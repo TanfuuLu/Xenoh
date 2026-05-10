@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.CoachClient;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Domain.Entities;
@@ -11,12 +12,12 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
 {
     public Task<CoachClientRelationship?> FindByClientAsync(Guid clientId, CancellationToken ct) =>
         db.CoachClientRelationships
+          .AsNoTracking()
           .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, ct);
 
     public Task<CoachClientRelationship?> FindByIdForCoachAsync(Guid id, Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships
           .Include(r => r.Client)
-          .Include(r => r.Coach)
           .FirstOrDefaultAsync(r => r.Id == id && r.CoachId == coachId, ct);
 
     public Task<CoachClientRelationship?> FindByIdForParticipantAsync(Guid id, Guid userId, CancellationToken ct) =>
@@ -41,53 +42,20 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
     public Task<List<CoachRelationshipResponse>> GetPendingByCoachAsync(Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships
           .AsNoTracking()
-          .Include(r => r.Client)
-          .Include(r => r.Coach)
           .Where(r => r.CoachId == coachId && r.Status == RelationshipStatus.Pending)
-          .Select(r => new CoachRelationshipResponse(
-              r.Id,
-              r.ClientId,
-              r.Client.FirstName + " " + r.Client.LastName,
-              r.Client.AvatarUrl,
-              r.CoachId,
-              r.Coach.FirstName + " " + r.Coach.LastName,
-              r.Status.ToString(),
-              r.CreatedAt,
-              null,
-              r.StartDate,
-              r.EndDate,
-              r.RenewalRequestedBy,
-              r.ProposedEndDate))
+          .Select(CoachRelationshipMapper.ResponseProjection)
           .ToListAsync(ct);
 
-    public async Task<CoachRelationshipResponse?> GetByClientWithDetailsAsync(Guid clientId, CancellationToken ct)
-    {
-        var r = await db.CoachClientRelationships
+    public Task<CoachRelationshipResponse?> GetByClientWithDetailsAsync(Guid clientId, CancellationToken ct) =>
+        db.CoachClientRelationships
             .AsNoTracking()
-            .Include(r => r.Client)
-            .Include(r => r.Coach)
-            .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, ct);
-
-        return r is null ? null : new CoachRelationshipResponse(
-            r.Id,
-            r.ClientId,
-            $"{r.Client.FirstName} {r.Client.LastName}",
-            r.Client.AvatarUrl,
-            r.CoachId,
-            $"{r.Coach.FirstName} {r.Coach.LastName}",
-            r.Status.ToString(),
-            r.CreatedAt,
-            r.TerminationRequestedBy,
-            r.StartDate,
-            r.EndDate,
-            r.RenewalRequestedBy,
-            r.ProposedEndDate);
-    }
+            .Where(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended)
+            .Select(CoachRelationshipMapper.ResponseProjection)
+            .FirstOrDefaultAsync(ct);
 
     public Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships
           .AsNoTracking()
-          .Include(r => r.Client)
           .Where(r => r.CoachId == coachId)
           .Where(r => r.Status != RelationshipStatus.Ended)
           .OrderByDescending(r => r.CreatedAt)
@@ -107,7 +75,11 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.StartDate,
               r.EndDate,
               r.RenewalRequestedBy,
-              r.ProposedEndDate))
+              r.ProposedEndDate,
+              r.SelectedCoachingType.HasValue ? r.SelectedCoachingType.Value.ToString() : null,
+              r.SelectedQuantity,
+              r.SelectedPriceAmount,
+              r.SelectedCurrency))
           .ToListAsync(ct);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>

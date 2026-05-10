@@ -1,7 +1,9 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.CoachClient;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -13,6 +15,7 @@ public sealed class RequestCoachHandler(
     ICurrentUserService currentUser,
     INotificationService notificationService,
     ISubscriptionService subscriptionService,
+    IApplicationDbContext db,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<RequestCoachCommand, CoachRelationshipResponse>
 {
@@ -25,6 +28,19 @@ public sealed class RequestCoachHandler(
             throw new InvalidOperationException("Start date cannot be in the past.");
         if (request.EndDate <= request.StartDate)
             throw new InvalidOperationException("End date must be after start date.");
+        if (!Enum.TryParse<CoachingType>(request.CoachingType, ignoreCase: true, out var selectedCoachingType))
+            throw new InvalidOperationException("Invalid coaching type.");
+        if (request.Quantity is < 1 or > 120)
+            throw new InvalidOperationException("Quantity must be between 1 and 120.");
+
+        var expectedEndDate = selectedCoachingType switch
+        {
+            CoachingType.Monthly => request.StartDate.AddMonths(request.Quantity),
+            CoachingType.Session => request.StartDate.AddDays(request.Quantity),
+            _ => throw new InvalidOperationException("Invalid coaching type.")
+        };
+        if (request.EndDate != expectedEndDate)
+            throw new InvalidOperationException("End date must match the selected coaching quantity.");
 
         if (await userBlockRepo.IsEitherBlockedAsync(clientId, request.CoachId, cancellationToken))
             throw new InvalidOperationException("Cannot connect with this user.");
@@ -40,6 +56,23 @@ public sealed class RequestCoachHandler(
         if (!coachRoles.Contains(UserRole.Coach))
             throw new InvalidOperationException("The specified user is not a coach.");
 
+        var marketplaceProfile = await db.CoachMarketplaceProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.CoachId == request.CoachId, cancellationToken)
+            ?? throw new InvalidOperationException("This coach has not configured pricing yet.");
+
+        var selectedPrice = selectedCoachingType switch
+        {
+            CoachingType.Monthly => marketplaceProfile.MonthlyPriceAmount,
+            CoachingType.Session => marketplaceProfile.SessionPriceAmount,
+            _ => null
+        };
+
+        if (selectedPrice is null)
+            throw new InvalidOperationException("This coach has not configured pricing for the selected coaching type.");
+        if (selectedPrice < 0)
+            throw new InvalidOperationException("Selected coaching price is invalid.");
+
         var maxClients = await subscriptionService.GetMaxClientsAsync(request.CoachId, cancellationToken);
         var currentClientCount = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);
         if (maxClients != int.MaxValue && currentClientCount >= maxClients)
@@ -54,7 +87,11 @@ public sealed class RequestCoachHandler(
             CoachId = request.CoachId,
             Status = RelationshipStatus.Pending,
             StartDate = request.StartDate,
-            EndDate = request.EndDate
+            EndDate = request.EndDate,
+            SelectedCoachingType = selectedCoachingType,
+            SelectedQuantity = request.Quantity,
+            SelectedPriceAmount = selectedPrice,
+            SelectedCurrency = marketplaceProfile.Currency
         };
 
         await coachClientRepo.AddAsync(relationship, cancellationToken);
@@ -68,20 +105,6 @@ public sealed class RequestCoachHandler(
             "CoachRequest",
             cancellationToken);
 
-        return new CoachRelationshipResponse(
-            relationship.Id,
-            clientId,
-            $"{client.FirstName} {client.LastName}",
-            client.AvatarUrl,
-            request.CoachId,
-            $"{coach.FirstName} {coach.LastName}",
-            relationship.Status.ToString(),
-            relationship.CreatedAt,
-            null,
-            relationship.StartDate,
-            relationship.EndDate,
-            null,
-            null
-        );
+        return CoachRelationshipMapper.ToResponse(relationship, client, coach);
     }
 }

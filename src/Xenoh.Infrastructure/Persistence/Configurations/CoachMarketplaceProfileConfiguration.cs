@@ -21,17 +21,15 @@ public class CoachMarketplaceProfileConfiguration : IEntityTypeConfiguration<Coa
         builder.Property(p => p.Availability).HasMaxLength(500);
         builder.Property(p => p.ResponseTime).HasMaxLength(500);
         builder.Property(p => p.CoachingStyle).HasMaxLength(500);
+        builder.Property(p => p.MonthlyPriceAmount).HasPrecision(18, 2);
+        builder.Property(p => p.SessionPriceAmount).HasPrecision(18, 2);
+        builder.Property(p => p.Currency).HasMaxLength(8).IsRequired();
 
         builder.HasIndex(p => p.CoachId).IsUnique();
 
         builder.HasOne(p => p.Coach)
             .WithOne(u => u.CoachMarketplaceProfile)
             .HasForeignKey<CoachMarketplaceProfile>(p => p.CoachId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(p => p.Packages)
-            .WithOne(p => p.CoachMarketplaceProfile)
-            .HasForeignKey(p => p.CoachMarketplaceProfileId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

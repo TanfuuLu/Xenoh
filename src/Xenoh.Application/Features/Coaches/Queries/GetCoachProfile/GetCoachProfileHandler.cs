@@ -35,7 +35,6 @@ public sealed class GetCoachProfileHandler(
         var ratings = await ratingRepo.GetByCoachAsync(request.CoachId, cancellationToken);
         var marketplaceProfile = await db.CoachMarketplaceProfiles
             .AsNoTracking()
-            .Include(p => p.Packages)
             .FirstOrDefaultAsync(p => p.CoachId == request.CoachId, cancellationToken);
 
         return new CoachProfileResponse(
@@ -50,8 +49,7 @@ public sealed class GetCoachProfileHandler(
             canRate,
             ratingSummary.MyRating,
             ratings,
-            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
-            CoachMarketplaceProfileMapper.ToPackageDtos(marketplaceProfile?.Packages)
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile)
         );
     }
 }

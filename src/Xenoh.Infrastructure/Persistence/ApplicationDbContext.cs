@@ -17,7 +17,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ExerciseSet> ExerciseSets => Set<ExerciseSet>();
     public DbSet<CoachClientRelationship> CoachClientRelationships => Set<CoachClientRelationship>();
     public DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles => Set<CoachMarketplaceProfile>();
-    public DbSet<CoachPackage> CoachPackages => Set<CoachPackage>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
     public DbSet<ExternalAuthTicket> ExternalAuthTickets => Set<ExternalAuthTicket>();

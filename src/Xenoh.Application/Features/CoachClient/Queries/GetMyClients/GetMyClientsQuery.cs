@@ -17,5 +17,9 @@ public sealed record ClientResponse(
     DateOnly StartDate,
     DateOnly? EndDate,
     Guid? RenewalRequestedBy,
-    DateOnly? ProposedEndDate
+    DateOnly? ProposedEndDate,
+    string? SelectedCoachingType,
+    int? SelectedQuantity,
+    decimal? SelectedPriceAmount,
+    string? SelectedCurrency
 );

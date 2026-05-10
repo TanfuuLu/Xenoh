@@ -53,7 +53,6 @@ public sealed class GetCoachesHandler(
         var coachIds = ordered.Select(c => c.Id).ToList();
         var marketplaceProfiles = await db.CoachMarketplaceProfiles
             .AsNoTracking()
-            .Include(p => p.Packages)
             .Where(p => coachIds.Contains(p.CoachId))
             .ToDictionaryAsync(p => p.CoachId, cancellationToken);
 
@@ -73,8 +72,10 @@ public sealed class GetCoachesHandler(
                 marketplaceProfile?.Headline,
                 marketplaceProfile?.Specialties ?? [],
                 marketplaceProfile?.ExperienceYears,
-                CoachMarketplaceProfileMapper.StartingPackagePrice(marketplaceProfile?.Packages),
-                marketplaceProfile?.Packages.Count ?? 0
+                CoachMarketplaceProfileMapper.StartingPrice(marketplaceProfile),
+                marketplaceProfile?.Currency ?? "VND",
+                marketplaceProfile?.MonthlyPriceAmount is not null ||
+                    marketplaceProfile?.SessionPriceAmount is not null
             ));
         }
 

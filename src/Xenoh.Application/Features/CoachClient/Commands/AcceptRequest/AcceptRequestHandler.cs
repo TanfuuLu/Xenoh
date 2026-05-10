@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.CoachClient;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -40,20 +41,6 @@ public sealed class AcceptRequestHandler(
             "CoachRequest",
             cancellationToken);
 
-        return new CoachRelationshipResponse(
-            relationship.Id,
-            relationship.ClientId,
-            $"{relationship.Client.FirstName} {relationship.Client.LastName}",
-            relationship.Client.AvatarUrl,
-            coachId,
-            $"{coach!.FirstName} {coach.LastName}",
-            relationship.Status.ToString(),
-            relationship.CreatedAt,
-            null,
-            relationship.StartDate,
-            relationship.EndDate,
-            relationship.RenewalRequestedBy,
-            relationship.ProposedEndDate
-        );
+        return CoachRelationshipMapper.ToResponse(relationship, relationship.Client, coach!);
     }
 }

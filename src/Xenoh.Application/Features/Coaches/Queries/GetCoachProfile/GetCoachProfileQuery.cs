@@ -18,6 +18,5 @@ public sealed record CoachProfileResponse(
     bool CanRate,
     CoachRatingResponse? MyRating,
     List<CoachRatingResponse> Ratings,
-    CoachMarketplaceProfileDto? MarketplaceProfile,
-    List<CoachPackageDto> Packages
+    CoachMarketplaceProfileDto? MarketplaceProfile
 );

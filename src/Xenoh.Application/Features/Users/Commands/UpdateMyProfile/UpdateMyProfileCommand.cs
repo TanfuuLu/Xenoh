@@ -26,6 +26,4 @@ public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
     public DateOnly? DateOfBirth { get; init; }
 
     public CoachMarketplaceProfileDto? CoachMarketplaceProfile { get; init; }
-
-    public List<CoachPackageInput>? CoachPackages { get; init; }
 }

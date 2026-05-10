@@ -19,32 +19,18 @@ public static class CoachMarketplaceProfileMapper
             profile.ClientResultsSummary,
             profile.Availability,
             profile.ResponseTime,
-            profile.CoachingStyle
+            profile.CoachingStyle,
+            profile.MonthlyPriceAmount,
+            profile.SessionPriceAmount,
+            profile.Currency
         );
     }
 
-    public static List<CoachPackageDto> ToPackageDtos(IEnumerable<CoachPackage>? packages)
+    public static decimal? StartingPrice(CoachMarketplaceProfile? profile)
     {
-        return packages?
-            .OrderBy(p => p.DisplayOrder)
-            .ThenBy(p => p.Name)
-            .Select(p => new CoachPackageDto(
-                p.Id,
-                p.Name,
-                p.PriceAmount,
-                p.Currency,
-                p.DurationLabel,
-                p.Description,
-                p.Type,
-                p.DisplayOrder))
-            .ToList() ?? [];
-    }
-
-    public static decimal? StartingPackagePrice(IEnumerable<CoachPackage>? packages)
-    {
-        var prices = packages?
-            .Where(p => p.PriceAmount.HasValue)
-            .Select(p => p.PriceAmount!.Value)
+        var prices = new[] { profile?.MonthlyPriceAmount, profile?.SessionPriceAmount }
+            .Where(p => p is not null)
+            .Select(p => p!.Value)
             .ToList();
 
         return prices is { Count: > 0 } ? prices.Min() : null;

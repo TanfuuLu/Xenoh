@@ -16,8 +16,10 @@ public class CoachMarketplaceProfile
     public string? Availability { get; set; }
     public string? ResponseTime { get; set; }
     public string? CoachingStyle { get; set; }
+    public decimal? MonthlyPriceAmount { get; set; }
+    public decimal? SessionPriceAmount { get; set; }
+    public string Currency { get; set; } = "VND";
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public ApplicationUser Coach { get; set; } = null!;
-    public ICollection<CoachPackage> Packages { get; set; } = [];
 }

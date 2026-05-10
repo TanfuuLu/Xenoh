@@ -17,6 +17,7 @@ public sealed record CoachResponse(
     string? Headline,
     string[] Specialties,
     int? ExperienceYears,
-    decimal? StartingPackagePrice,
-    int PackageCount
+    decimal? StartingPrice,
+    string Currency,
+    bool HasContractPrices
 );
