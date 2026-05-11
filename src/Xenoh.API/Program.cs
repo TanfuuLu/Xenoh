@@ -271,6 +271,8 @@ using (var scope = app.Services.CreateScope())
 
         if (syncedAny)
             await db.SaveChangesAsync();
+
+        await DemoDataSeeder.SeedAsync(db, userManager);
     }
     catch (Exception ex)
     {

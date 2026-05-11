@@ -63,19 +63,8 @@ public sealed class MarkSetCompleteHandler(
         if (!alreadyLogged)
             await workoutHistoryRepo.AddAsync(new WorkoutHistory { UserId = userId, Date = today }, cancellationToken);
 
+        await ExerciseXpAwarder.AwardIfEligibleAsync(userManager, userId, exercise);
         await exerciseSetRepo.SaveChangesAsync(cancellationToken);
-
-        // Award XP for this completed set
-        int xpEarned = XpCalculator.ComputeSetXp(
-            set.ActualWeight, set.PlannedWeight,
-            set.ActualReps, set.PlannedReps,
-            set.Exercise.ExerciseTemplate.IsCompetitionLift);
-
-        var xpUser = await userManager.FindByIdAsync(userId.ToString())
-            ?? throw new InvalidOperationException("User not found.");
-        xpUser.TotalXp += xpEarned;
-        xpUser.Level    = XpCalculator.ComputeLevel(xpUser.TotalXp);
-        await userManager.UpdateAsync(xpUser);
 
         // PR upsert: use actual weight if provided, else fall back to planned weight
         decimal? prWeight = null;

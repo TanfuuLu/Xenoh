@@ -1,7 +1,10 @@
 using Mediator;
+using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.XP;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
+using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Exercises.Commands.FinishExerciseTimer;
 
@@ -9,7 +12,8 @@ public sealed class FinishExerciseTimerHandler(
     IExerciseRepository exerciseRepo,
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    UserManager<ApplicationUser> userManager
 ) : IRequestHandler<FinishExerciseTimerCommand, ExerciseResponse>
 {
     public async ValueTask<ExerciseResponse> Handle(
@@ -34,6 +38,7 @@ public sealed class FinishExerciseTimerHandler(
             exercise.DurationSeconds = Math.Max(0, (int)Math.Round((endedAtUtc - exercise.StartedAtUtc.Value).TotalSeconds));
             exercise.UpdatedAt = endedAtUtc;
 
+            await ExerciseXpAwarder.AwardIfEligibleAsync(userManager, userId, exercise);
             await exerciseRepo.SaveChangesAsync(cancellationToken);
         }
 

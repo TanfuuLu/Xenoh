@@ -17,7 +17,8 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
 
     private async Task<(Guid SetId, Guid ExerciseTemplateId)> SeedAsync(
         bool alreadyCompleted = false,
-        Guid? ownerOverride = null)
+        Guid? ownerOverride = null,
+        int? durationSeconds = null)
     {
         await using var ctx = CreateContext();
 
@@ -62,7 +63,8 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             PlannedSets = 1,
             PlannedReps = 5,
             PlannedWeight = 100m,
-            DailyWorkoutId = day.Id
+            DailyWorkoutId = day.Id,
+            DurationSeconds = durationSeconds
         };
 
         var set = new ExerciseSet
@@ -85,14 +87,14 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         return (set.Id, template.Id);
     }
 
-    private MarkSetCompleteHandler CreateHandler(ApplicationDbContext ctx) =>
+    private MarkSetCompleteHandler CreateHandler(ApplicationDbContext ctx, ApplicationUser? user = null) =>
         new(
             new ExerciseSetRepository(ctx),
             new WorkoutHistoryRepository(ctx),
             new UserPrRepository(ctx),
             CurrentUser(),
             new FakeNotificationService(),
-            new TestUserManager(new ApplicationUser { Id = UserId }));
+            new TestUserManager(user ?? new ApplicationUser { Id = UserId }));
 
     // ─── RPE tests ───────────────────────────────────────────────────────────
 
@@ -169,6 +171,51 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         var response = await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
 
         response.Sets.Single().IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_CompletedExerciseAtOneMinute_DoesNotAwardXp()
+    {
+        var (setId, _) = await SeedAsync(durationSeconds: 60);
+        var user = new ApplicationUser { Id = UserId };
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx, user);
+
+        await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        user.TotalXp.Should().Be(0);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.Exercises.Single().XpAwarded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_CompletedExerciseOverOneMinute_AwardsXpOnce()
+    {
+        var (setId, _) = await SeedAsync(durationSeconds: 61);
+        var user = new ApplicationUser { Id = UserId };
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx, user);
+
+        await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        user.TotalXp.Should().Be(200);
+        user.Level.Should().Be(1);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.Exercises.Single().XpAwarded.Should().BeTrue();
     }
 
     [Fact]

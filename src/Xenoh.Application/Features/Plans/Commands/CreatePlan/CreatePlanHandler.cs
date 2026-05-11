@@ -32,7 +32,8 @@ public sealed class CreatePlanHandler(
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             PlanType = PlanType.Self,
-            OwnerId = userId
+            OwnerId = userId,
+            IsActive = planCount == 0
         };
 
         plan.WeeklyWorkouts = PlanWeekGenerator.Generate(plan);
