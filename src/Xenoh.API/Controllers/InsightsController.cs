@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
 
 namespace Xenoh.API.Controllers;
@@ -16,6 +17,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// the underlying training/body data changes.
     /// </summary>
     [HttpGet("me")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> GetMyAnalysis([FromQuery] string? lang, CancellationToken ct)
     {
         try

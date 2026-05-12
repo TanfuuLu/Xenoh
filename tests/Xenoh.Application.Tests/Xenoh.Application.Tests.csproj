@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Xenoh.API\Xenoh.API.csproj" />
     <ProjectReference Include="..\..\src\Xenoh.Application\Xenoh.Application.csproj" />
     <ProjectReference Include="..\..\src\Xenoh.Infrastructure\Xenoh.Infrastructure.csproj" />
   </ItemGroup>

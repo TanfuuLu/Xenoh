@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
@@ -70,7 +71,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("pending-requests")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetPendingRequests(CancellationToken ct)
     {
         var result = await mediator.Send(new GetPendingRequestsQuery(), ct);
@@ -179,7 +180,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     /// [Coach only] Trả về danh sách tất cả clients (Pending + Active).
     /// </summary>
     [HttpGet("my-clients")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetMyClients(CancellationToken ct)
     {
         var result = await mediator.Send(new GetMyClientsQuery(), ct);
@@ -190,7 +191,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     /// [Coach only] Dashboard: per-client stats — last workout, plan progress, Big 3 PRs, bodyweight.
     /// </summary>
     [HttpGet("dashboard")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetDashboard(CancellationToken ct)
     {
         var result = await mediator.Send(new GetCoachDashboardQuery(), ct);
@@ -202,7 +203,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     /// per-lift e1RM series, PR timeline, current training max, DOTS-over-time.
     /// </summary>
     [HttpGet("clients/{clientId:guid}/powerlifting")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientPowerlifting(Guid clientId, CancellationToken ct)
     {
         try
@@ -217,7 +218,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("clients/{clientId:guid}/ai-brief")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientAiBrief(
         Guid clientId,
         [FromQuery] string? lang,

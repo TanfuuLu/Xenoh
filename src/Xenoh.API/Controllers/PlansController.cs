@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.Plans.Commands.CreateAiStarterPlan;
 using Xenoh.Application.Features.Plans.Commands.ActivatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
@@ -58,6 +59,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("starter-ai")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> CreateAiStarterPlan(
         [FromBody] CreateAiStarterPlanCommand command,
         CancellationToken ct)
@@ -77,7 +79,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     /// [Coach only] Lấy tất cả plans: cá nhân của coach + plans đã tạo cho clients.
     /// </summary>
     [HttpGet("coach-overview")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetCoachPlans(CancellationToken ct)
     {
         var result = await mediator.Send(new GetCoachPlansQuery(), ct);
@@ -85,7 +87,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("for-user")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> CreatePlanForUser([FromBody] CreatePlanForUserCommand command, CancellationToken ct)
     {
         try
@@ -153,6 +155,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     /// Idempotent: deactivating an already-inactive plan returns 200 with current state.
     /// </summary>
     [HttpGet("{planId:guid}/analytics")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> GetPlanAnalytics(Guid planId, CancellationToken ct)
     {
         try
@@ -167,6 +170,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("{planId:guid}/balance-check")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> ReviewPlanBalance(
         Guid planId,
         [FromQuery] string? lang,

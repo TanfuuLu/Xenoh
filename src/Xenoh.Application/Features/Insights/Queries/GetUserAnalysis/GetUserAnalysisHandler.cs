@@ -43,7 +43,7 @@ public sealed class GetUserAnalysisHandler(
         {
             var cachedContent = JsonSerializer.Deserialize<AnalysisContent>(existing.ContentJson, JsonOptions)
                 ?? throw new InvalidOperationException("Cached analysis is corrupted.");
-            return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent);
+            return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent, BuildMetrics(snapshot));
         }
 
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
@@ -76,8 +76,92 @@ public sealed class GetUserAnalysisHandler(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new UserAnalysisResponse(language, now, Cached: false, content);
+        return new UserAnalysisResponse(language, now, Cached: false, content, BuildMetrics(snapshot));
     }
+
+    private static AnalysisMetrics BuildMetrics(Snapshot snapshot)
+    {
+        var planCompletionPercent = Percent(snapshot.Plan?.CompletedDays ?? 0, snapshot.Plan?.TotalDays ?? 0);
+        var bodyweightPoints = snapshot.RecentBodyweight
+            .OrderBy(p => p.Date)
+            .Select(p => new AnalysisBodyweightPoint(p.Date, p.Weight))
+            .ToList();
+
+        decimal? latestWeight = bodyweightPoints.LastOrDefault()?.Weight;
+        decimal? delta = bodyweightPoints.Count >= 2
+            ? Math.Round(bodyweightPoints[^1].Weight - bodyweightPoints[0].Weight, 1)
+            : null;
+
+        var totalMuscleVolume = snapshot.MuscleVolumes.Sum(m => m.Volume);
+        var totalMuscleSets = snapshot.MuscleVolumes.Sum(m => m.Sets);
+        var muscleBalance = snapshot.MuscleVolumes
+            .Select(m =>
+            {
+                var share = totalMuscleVolume > 0
+                    ? Percent(m.Volume, totalMuscleVolume)
+                    : Percent(m.Sets, totalMuscleSets);
+                return new AnalysisMuscleBalancePoint(m.Muscle, m.Sets, Math.Round(m.Volume, 1), share);
+            })
+            .ToList();
+
+        return new AnalysisMetrics(
+            new AnalysisAdherenceMetrics(
+                snapshot.Plan?.Name,
+                snapshot.Plan?.StartDate,
+                snapshot.Plan?.EndDate,
+                snapshot.Plan?.TotalDays ?? 0,
+                snapshot.Plan?.CompletedDays ?? 0,
+                planCompletionPercent,
+                ToWeekComparison(snapshot.CurrentWeek, snapshot.CurrentWeekVolume),
+                ToWeekComparison(snapshot.PreviousWeek, snapshot.PreviousWeekVolume)
+            ),
+            new AnalysisBodyweightMetrics(
+                bodyweightPoints,
+                latestWeight,
+                delta,
+                delta is null ? "Unknown" : delta > 0 ? "Up" : delta < 0 ? "Down" : "Stable"
+            ),
+            new AnalysisVolumeMetrics(
+                Math.Round(snapshot.RecentVolume, 1),
+                snapshot.RecentSetCount,
+                Math.Round(snapshot.CurrentWeekVolume, 1),
+                Math.Round(snapshot.PreviousWeekVolume, 1),
+                Math.Round(snapshot.CurrentWeekVolume - snapshot.PreviousWeekVolume, 1)
+            ),
+            muscleBalance,
+            new AnalysisEffortGapMetrics(
+                snapshot.HighRpeMisses
+                    .Select(e => new AnalysisEffortGapPoint(e.Exercise, e.Sets, e.AverageRpe, e.Pattern))
+                    .ToList(),
+                snapshot.LowRpeWins
+                    .Select(e => new AnalysisEffortGapPoint(e.Exercise, e.Sets, e.AverageRpe, e.Pattern))
+                    .ToList()
+            ),
+            snapshot.RecentPrs
+                .Select(p => new AnalysisRecentPrEntry(p.Exercise, p.Weight, p.Reps, p.AchievedAt))
+                .ToList()
+        );
+    }
+
+    private static AnalysisWeekComparison? ToWeekComparison(WeekSnapshot? week, decimal volume)
+    {
+        if (week is null) return null;
+
+        return new AnalysisWeekComparison(
+            week.WeekNumber,
+            week.StartDate,
+            week.EndDate,
+            week.TotalDays,
+            week.CompletedDays,
+            Percent(week.CompletedDays, week.TotalDays),
+            week.TotalExercises,
+            week.CompletedExercises,
+            Math.Round(volume, 1)
+        );
+    }
+
+    private static int Percent(decimal value, decimal total) =>
+        total <= 0 ? 0 : (int)Math.Round(value / total * 100m, MidpointRounding.AwayFromZero);
 
     /// <summary>
     /// Aggregates the user's training + body data into a compact snapshot the AI can reason over.
@@ -146,6 +230,8 @@ public sealed class GetUserAnalysisHandler(
             {
                 currentWeek = new WeekSnapshot(
                     current.WeekNumber,
+                    current.StartDate,
+                    current.EndDate,
                     current.Days.Count,
                     current.Days.Count(d => d.IsCompleted),
                     current.Days.Sum(d => d.Total),
@@ -157,6 +243,8 @@ public sealed class GetUserAnalysisHandler(
                 {
                     previousWeek = new WeekSnapshot(
                         prev.WeekNumber,
+                        prev.StartDate,
+                        prev.EndDate,
                         prev.Days.Count,
                         prev.Days.Count(d => d.IsCompleted),
                         prev.Days.Sum(d => d.Total),
@@ -244,6 +332,18 @@ public sealed class GetUserAnalysisHandler(
             .Take(5)
             .ToList();
 
+        var currentWeekVolume = currentWeek is null
+            ? 0m
+            : recentSets
+                .Where(s => currentWeek.StartDate <= s.Day && s.Day <= currentWeek.EndDate)
+                .Sum(s => (s.ActualReps ?? s.PlannedReps) * (s.ActualWeight ?? s.PlannedWeight ?? 0m));
+
+        var previousWeekVolume = previousWeek is null
+            ? 0m
+            : recentSets
+                .Where(s => previousWeek.StartDate <= s.Day && s.Day <= previousWeek.EndDate)
+                .Sum(s => (s.ActualReps ?? s.PlannedReps) * (s.ActualWeight ?? s.PlannedWeight ?? 0m));
+
         // Top 5 PRs (most recently achieved)
         var prs = await (
             from p in db.UserExercisePRs
@@ -273,6 +373,8 @@ public sealed class GetUserAnalysisHandler(
             previousWeek,
             Math.Round(totalVolume, 1),
             recentSets.Count,
+            Math.Round(currentWeekVolume, 1),
+            Math.Round(previousWeekVolume, 1),
             byMuscle,
             highRpeMisses,
             lowRpeWins,
@@ -316,6 +418,8 @@ public sealed class GetUserAnalysisHandler(
         WeekSnapshot? PreviousWeek,
         decimal RecentVolume,
         int RecentSetCount,
+        decimal CurrentWeekVolume,
+        decimal PreviousWeekVolume,
         IReadOnlyList<MuscleVolume> MuscleVolumes,
         IReadOnlyList<EffortGapEntry> HighRpeMisses,
         IReadOnlyList<EffortGapEntry> LowRpeWins,
@@ -332,6 +436,8 @@ public sealed class GetUserAnalysisHandler(
 
     private sealed record WeekSnapshot(
         int WeekNumber,
+        DateOnly StartDate,
+        DateOnly EndDate,
         int TotalDays,
         int CompletedDays,
         int TotalExercises,

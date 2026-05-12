@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Security.Claims;
 using Mediator;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Facebook;
@@ -12,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using Xenoh.API.Auth;
 using Xenoh.Infrastructure.Hubs;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -96,7 +98,17 @@ builder.Services.AddAuthentication(options =>
     options.Events = CreateExternalAuthEvents("Facebook", builder.Configuration);
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(SubscriptionPolicies.RequirePro, policy =>
+        policy.Requirements.Add(new ActiveSubscriptionRequirement(
+            PlanTier.ProIndividual,
+            PlanTier.ProCoach)));
+
+    options.AddPolicy(SubscriptionPolicies.RequireProCoach, policy =>
+        policy.Requirements.Add(new ActiveSubscriptionRequirement(PlanTier.ProCoach)));
+});
+builder.Services.AddScoped<IAuthorizationHandler, ActiveSubscriptionAuthorizationHandler>();
 builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<ContractExpiryService>();
