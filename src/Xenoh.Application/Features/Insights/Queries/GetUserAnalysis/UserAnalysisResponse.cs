@@ -4,13 +4,20 @@ public sealed record AnalysisSection(string Headline, string Detail);
 
 public sealed record AnalysisRecommendation(string Headline, IReadOnlyList<string> Actions);
 
+public sealed record AnalysisPlanReview(
+    string Headline,
+    IReadOnlyList<string> Mistakes,
+    IReadOnlyList<string> Suggestions
+);
+
 public sealed record AnalysisContent(
     AnalysisSection TrainingAdherence,
     AnalysisSection BodyMetrics,
     AnalysisSection VolumeStrength,
     AnalysisSection MuscleBalance,
     AnalysisSection EffortGap,
-    AnalysisRecommendation Recommendation
+    AnalysisRecommendation Recommendation,
+    AnalysisPlanReview? PlanReview = null
 );
 
 public sealed record AnalysisMetrics(

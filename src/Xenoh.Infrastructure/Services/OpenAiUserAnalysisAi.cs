@@ -27,7 +27,7 @@ public sealed class OpenAiUserAnalysisAi(
 
         var systemPrompt = $$"""
 You are a fitness analyst for the Xenoh training app. The user is reading a dashboard "insights" page.
-Given a JSON snapshot of their training and body-metric data, write a concise, encouraging, evidence-based analysis.
+Given a JSON snapshot of their training and body-metric data, write a concise, encouraging, evidence-based coaching review.
 
 Rules:
 - Be specific. Reference numbers from the snapshot (sets, kg, %, days).
@@ -36,6 +36,9 @@ Rules:
 - If data is missing or sparse, acknowledge it and suggest what to log next.
 - For muscleBalance, compare recent per-muscle volume and call out meaningful push/pull or upper/lower imbalance.
 - For effortGap, reason from sets where actual work missed plan at high RPE, or hit plan at low RPE.
+- Prioritize useful advice over describing charts. Tell the user what to change next.
+- recommendation.actions must be concrete coaching steps, not generic summaries.
+- planReview must call out likely plan mistakes from the available evidence: empty plan, low adherence, too much/too little volume, poor muscle balance, high RPE misses, or missing recovery signals. If no mistake is visible, say the plan looks acceptable and suggest what to keep monitoring.
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape (no markdown, no commentary):
@@ -45,7 +48,8 @@ Return JSON ONLY matching this exact shape (no markdown, no commentary):
   "volumeStrength":     { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
   "muscleBalance":      { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
   "effortGap":          { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string", "string", "string (max 3, each <= 120 chars)"] }
+  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string", "string", "string (max 3, each <= 120 chars)"] },
+  "planReview":         { "headline": "string (<= 90 chars)", "mistakes": ["string (max 3, each <= 140 chars)"], "suggestions": ["string (max 3, each <= 140 chars)"] }
 }
 """;
 
