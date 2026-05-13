@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Mediator;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Auth.Commands.Register;
 
@@ -21,6 +22,8 @@ public sealed record RegisterCommand : IRequest<AuthResponse>
 
     [Required]
     public required string Role { get; init; }
+
+    public Gender? Gender { get; init; }
 }
 
 public sealed record AuthResponse(

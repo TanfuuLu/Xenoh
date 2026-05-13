@@ -28,7 +28,9 @@ public sealed class RegisterHandler(
             Email = request.Email,
             UserName = request.Email,
             FirstName = request.FirstName,
-            LastName = request.LastName
+            LastName = request.LastName,
+            Gender = request.Gender,
+            AvatarUrl = GetDefaultAvatarUrl(request.Gender)
         };
 
         var createResult = await userManager.CreateAsync(user, request.Password);
@@ -63,5 +65,15 @@ public sealed class RegisterHandler(
             user.AvatarUrl,
             roles
         );
+    }
+
+    private static string GetDefaultAvatarUrl(Gender? gender)
+    {
+        return gender switch
+        {
+            Gender.Male => "/assets/avatars/default-male.svg",
+            Gender.Female => "/assets/avatars/default-female.svg",
+            _ => "/assets/avatars/default-neutral.svg"
+        };
     }
 }
