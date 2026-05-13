@@ -27,6 +27,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<Plan> Plans { get; set; } = [];
     public NutritionProfile? NutritionProfile { get; set; }
     public ICollection<NutritionDailyLog> NutritionDailyLogs { get; set; } = [];
+    public ICollection<FoodLog> FoodLogs { get; set; } = [];
 
     // As client
     public CoachClientRelationship? CoachRelationship { get; set; }

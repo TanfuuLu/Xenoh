@@ -36,6 +36,9 @@ public interface IApplicationDbContext
     DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }
     DbSet<NutritionDailyLog> NutritionDailyLogs { get; }
+    DbSet<FoodItem> FoodItems { get; }
+    DbSet<FoodServing> FoodServings { get; }
+    DbSet<FoodLog> FoodLogs { get; }
     DbSet<UserAnalysis> UserAnalyses { get; }
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
 

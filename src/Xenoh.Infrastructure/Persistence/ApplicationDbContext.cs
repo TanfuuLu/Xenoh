@@ -35,6 +35,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();
     public DbSet<NutritionDailyLog> NutritionDailyLogs => Set<NutritionDailyLog>();
+    public DbSet<FoodItem> FoodItems => Set<FoodItem>();
+    public DbSet<FoodServing> FoodServings => Set<FoodServing>();
+    public DbSet<FoodLog> FoodLogs => Set<FoodLog>();
     public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
     protected override void OnModelCreating(ModelBuilder builder)

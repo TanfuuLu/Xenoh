@@ -304,6 +304,31 @@ using (var scope = app.Services.CreateScope())
         if (syncedAny)
             await db.SaveChangesAsync();
 
+        // Seed FoodItems
+        var seededFoods = FoodItemSeeder.GetItems();
+        var existingFoodNames = await db.FoodItems
+            .Where(f => f.Source == Xenoh.Domain.Enums.FoodItemSource.Seed)
+            .Select(f => f.NameEn.ToLower())
+            .ToListAsync();
+        var existingFoodNameSet = existingFoodNames.ToHashSet();
+        foreach (var (food, servings) in seededFoods)
+        {
+            if (existingFoodNameSet.Contains(food.NameEn.ToLower()))
+                continue;
+            db.FoodItems.Add(food);
+            await db.SaveChangesAsync();
+            foreach (var (label, grams) in servings)
+            {
+                db.FoodServings.Add(new Xenoh.Domain.Entities.FoodServing
+                {
+                    FoodItemId = food.Id,
+                    Label = label,
+                    Grams = grams
+                });
+            }
+        }
+        await db.SaveChangesAsync();
+
     }
     catch (Exception ex)
     {
