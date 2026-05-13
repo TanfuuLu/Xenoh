@@ -11,7 +11,7 @@ public sealed record RegisterCommand : IRequest<AuthResponse>
     public required string Email { get; init; }
 
     [Required]
-    [MinLength(6)]
+    [MinLength(10)]
     public required string Password { get; init; }
 
     [Required]

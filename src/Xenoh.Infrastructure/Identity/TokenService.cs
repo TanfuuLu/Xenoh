@@ -44,4 +44,10 @@ public sealed class TokenService(IConfiguration configuration) : ITokenService
         rng.GetBytes(bytes);
         return Convert.ToBase64String(bytes);
     }
+
+    public string HashRefreshToken(string refreshToken)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken));
+        return Convert.ToHexString(bytes);
+    }
 }

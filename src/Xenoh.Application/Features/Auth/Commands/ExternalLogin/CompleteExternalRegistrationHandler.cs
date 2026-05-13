@@ -52,7 +52,7 @@ public sealed class CompleteExternalRegistrationHandler(
 
         await refreshTokenRepo.AddAsync(new TokenEntity
         {
-            Token = refreshTokenValue,
+            Token = tokenService.HashRefreshToken(refreshTokenValue),
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         }, cancellationToken);

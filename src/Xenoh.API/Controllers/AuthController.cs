@@ -18,13 +18,17 @@ namespace Xenoh.API.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(IMediator mediator) : ControllerBase
 {
+    private const string RefreshTokenCookieName = "xenoh.refresh";
+    private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
+
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterCommand command, CancellationToken ct)
     {
         try
         {
             var result = await mediator.Send(command, ct);
-            return Ok(result);
+            SetRefreshTokenCookie(result.RefreshToken);
+            return Ok(ToAuthResponseBody(result));
         }
         catch (InvalidOperationException ex)
         {
@@ -38,7 +42,8 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
-            return Ok(result);
+            SetRefreshTokenCookie(result.RefreshToken);
+            return Ok(ToAuthResponseBody(result));
         }
         catch (InvalidOperationException ex)
         {
@@ -47,12 +52,18 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command, CancellationToken ct)
+    public async Task<IActionResult> RefreshToken(CancellationToken ct)
     {
         try
         {
+            if (!Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken) ||
+                string.IsNullOrWhiteSpace(refreshToken))
+                return BadRequest(new { message = "Invalid refresh token." });
+
+            var command = new RefreshTokenCommand { RefreshToken = refreshToken };
             var result = await mediator.Send(command, ct);
-            return Ok(result);
+            SetRefreshTokenCookie(result.RefreshToken);
+            return Ok(ToAuthResponseBody(result));
         }
         catch (InvalidOperationException ex)
         {
@@ -71,9 +82,16 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
             accessToken = authHeader.Substring("Bearer ".Length).Trim();
         }
 
-        var command = new LogoutCommand { AccessToken = accessToken };
+        Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken);
+
+        var command = new LogoutCommand
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken
+        };
         await mediator.Send(command, ct);
         await HttpContext.SignOutAsync("External");
+        ClearRefreshTokenCookie();
         return NoContent();
     }
 
@@ -154,7 +172,8 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
-            return Ok(result);
+            SetRefreshTokenCookie(result.RefreshToken);
+            return Ok(ToAuthResponseBody(result));
         }
         catch (InvalidOperationException ex)
         {
@@ -171,11 +190,45 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
-            return Ok(result);
+            SetRefreshTokenCookie(result.RefreshToken);
+            return Ok(ToAuthResponseBody(result));
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        Response.Cookies.Append(RefreshTokenCookieName, refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/api/auth",
+            Expires = DateTimeOffset.UtcNow.Add(RefreshTokenLifetime),
+            MaxAge = RefreshTokenLifetime
+        });
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        Response.Cookies.Delete(RefreshTokenCookieName, new CookieOptions
+        {
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/api/auth"
+        });
+    }
+
+    private static object ToAuthResponseBody(AuthResponse result) => new
+    {
+        result.UserId,
+        result.AccessToken,
+        result.Email,
+        result.FullName,
+        result.AvatarUrl,
+        result.Roles
+    };
 }

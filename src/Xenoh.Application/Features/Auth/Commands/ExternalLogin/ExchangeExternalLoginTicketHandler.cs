@@ -51,7 +51,7 @@ public sealed class ExchangeExternalLoginTicketHandler(
 
         var refreshToken = new TokenEntity
         {
-            Token = refreshTokenValue,
+            Token = tokenService.HashRefreshToken(refreshTokenValue),
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };

@@ -20,15 +20,17 @@ public sealed class PaymentsController(
         var authHeader = Request.Headers.Authorization.ToString();
 
         logger.LogInformation(
-            "SePay webhook arrived — id={Id} amount={Amount} type={Type} code={Code} content={Content} auth={Auth}",
-            payload.Id, payload.TransferAmount, payload.TransferType,
-            payload.Code, payload.Content,
-            string.IsNullOrWhiteSpace(authHeader) ? "(none)" : authHeader[..Math.Min(authHeader.Length, 20)] + "…");
+            "SePay webhook arrived - id={Id} amount={Amount} type={Type} code={Code} authPresent={AuthPresent}",
+            payload.Id,
+            payload.TransferAmount,
+            payload.TransferType,
+            payload.Code,
+            !string.IsNullOrWhiteSpace(authHeader));
 
         if (!webhookVerifier.Verify(authHeader))
         {
             logger.LogWarning(
-                "SePay webhook REJECTED — Apikey mismatch from {RemoteIp}",
+                "SePay webhook rejected - Apikey mismatch from {RemoteIp}",
                 HttpContext.Connection.RemoteIpAddress);
             return Unauthorized();
         }
@@ -47,7 +49,7 @@ public sealed class PaymentsController(
 
         var result = await mediator.Send(command, ct);
 
-        logger.LogInformation("SePay webhook result — id={Id} message={Message}", payload.Id, result.Message);
+        logger.LogInformation("SePay webhook result - id={Id} success={Success}", payload.Id, result.Success);
 
         return Ok(new { success = result.Success, message = result.Message });
     }

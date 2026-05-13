@@ -26,6 +26,8 @@ using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
 
 var builder = WebApplication.CreateBuilder(args);
 
+ValidateRequiredConfiguration(builder.Configuration, builder.Environment);
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -117,10 +119,23 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins(
-                  "http://localhost:5173",
-                  "http://localhost:5174",
-                  "http://localhost:5175")
+        var frontendUrl = builder.Configuration["Authentication:FrontendUrl"]?.TrimEnd('/');
+        var origins = new[]
+            {
+                frontendUrl,
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "https://localhost:5173",
+                "https://localhost:5174",
+                "https://localhost:5175"
+            }
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(origin => origin!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        policy.WithOrigins(origins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -156,6 +171,8 @@ using (var scope = app.Services.CreateScope())
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
 
+        if (app.Environment.IsDevelopment())
+        {
         // Seed admin superuser account
         const string adminEmail = "admin@xenoh.app";
         const string adminPassword = "Admin@Xenoh123!";
@@ -235,6 +252,9 @@ using (var scope = app.Services.CreateScope())
             }
         }
 
+        await DemoDataSeeder.SeedAsync(db, userManager);
+        }
+
         var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
         var existingTemplateNames = await db.ExerciseTemplates
             .Select(t => t.Name.ToLower())
@@ -284,7 +304,6 @@ using (var scope = app.Services.CreateScope())
         if (syncedAny)
             await db.SaveChangesAsync();
 
-        await DemoDataSeeder.SeedAsync(db, userManager);
     }
     catch (Exception ex)
     {
@@ -369,4 +388,42 @@ static string BuildFrontendRedirectUrl(IConfiguration configuration, string path
 
     var queryString = string.Join("&", query.Select(q => $"{Uri.EscapeDataString(q.Key)}={Uri.EscapeDataString(q.Value)}"));
     return $"{url}?{queryString}";
+}
+
+static void ValidateRequiredConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
+{
+    if (environment.IsDevelopment())
+        return;
+
+    var requiredKeys = new[]
+    {
+        "ConnectionStrings:DefaultConnection",
+        "Jwt:Key",
+        "Jwt:Issuer",
+        "Jwt:Audience",
+        "Smtp:Host",
+        "Smtp:Username",
+        "Smtp:Password",
+        "Authentication:FrontendUrl",
+        "Authentication:Google:ClientId",
+        "Authentication:Google:ClientSecret",
+        "Authentication:Facebook:AppId",
+        "Authentication:Facebook:AppSecret",
+        "SePay:ApiKey",
+        "OpenAi:ApiKey"
+    };
+
+    var missingKeys = requiredKeys
+        .Where(key =>
+        {
+            var value = configuration[key];
+            return string.IsNullOrWhiteSpace(value) ||
+                   value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
+                   value.Contains("_SECRET", StringComparison.OrdinalIgnoreCase);
+        })
+        .ToArray();
+
+    if (missingKeys.Length > 0)
+        throw new InvalidOperationException(
+            $"Missing or placeholder production configuration: {string.Join(", ", missingKeys)}");
 }

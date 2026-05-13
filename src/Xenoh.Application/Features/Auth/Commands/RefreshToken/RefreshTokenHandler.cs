@@ -18,7 +18,8 @@ public sealed class RefreshTokenHandler(
 {
     public async ValueTask<AuthResponse> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var storedToken = await refreshTokenRepo.FindActiveAsync(request.RefreshToken, cancellationToken)
+        var refreshTokenHash = tokenService.HashRefreshToken(request.RefreshToken);
+        var storedToken = await refreshTokenRepo.FindActiveAsync(refreshTokenHash, cancellationToken)
             ?? throw new InvalidOperationException("Invalid refresh token.");
 
         if (!storedToken.IsActive)
@@ -53,7 +54,7 @@ public sealed class RefreshTokenHandler(
 
         var newRefreshToken = new TokenEntity
         {
-            Token = newRefreshTokenValue,
+            Token = tokenService.HashRefreshToken(newRefreshTokenValue),
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };

@@ -32,7 +32,7 @@ public sealed class LoginHandler(
 
         var refreshToken = new TokenEntity
         {
-            Token = refreshTokenValue,
+            Token = tokenService.HashRefreshToken(refreshTokenValue),
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
