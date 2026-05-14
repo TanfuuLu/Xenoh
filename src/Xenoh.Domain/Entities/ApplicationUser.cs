@@ -20,6 +20,15 @@ public class ApplicationUser : IdentityUser<Guid>
     [MaxLength(300)]
     public string? AvatarUrl { get; set; }
 
+    [MaxLength(300)]
+    public string? FacebookUrl { get; set; }
+
+    [MaxLength(300)]
+    public string? InstagramUrl { get; set; }
+
+    [MaxLength(300)]
+    public string? ZaloUrl { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
     public ICollection<ExternalAuthTicket> ExternalAuthTickets { get; set; } = [];

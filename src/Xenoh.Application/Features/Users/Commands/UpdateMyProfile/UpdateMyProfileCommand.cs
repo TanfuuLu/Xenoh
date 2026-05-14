@@ -26,4 +26,16 @@ public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
     public DateOnly? DateOfBirth { get; init; }
 
     public CoachMarketplaceProfileDto? CoachMarketplaceProfile { get; init; }
+
+    [StringLength(300, ErrorMessage = "Facebook URL cannot exceed 300 characters.")]
+    [Url(ErrorMessage = "Facebook URL must be a valid URL.")]
+    public string? FacebookUrl { get; init; }
+
+    [StringLength(300, ErrorMessage = "Instagram URL cannot exceed 300 characters.")]
+    [Url(ErrorMessage = "Instagram URL must be a valid URL.")]
+    public string? InstagramUrl { get; init; }
+
+    [StringLength(300, ErrorMessage = "Zalo URL cannot exceed 300 characters.")]
+    [Url(ErrorMessage = "Zalo URL must be a valid URL.")]
+    public string? ZaloUrl { get; init; }
 }

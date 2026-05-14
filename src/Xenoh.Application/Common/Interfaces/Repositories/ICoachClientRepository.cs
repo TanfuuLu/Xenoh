@@ -15,6 +15,7 @@ public interface ICoachClientRepository
     Task<CoachRelationshipResponse?> GetByClientWithDetailsAsync(Guid clientId, CancellationToken ct = default);
     Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct = default);
     Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct = default);
+    Task<int> CountOverlappingActiveByCoachAsync(Guid coachId, DateOnly startDate, DateOnly endDate, CancellationToken ct = default);
     Task AddAsync(CoachClientRelationship relationship, CancellationToken ct = default);
     void Remove(CoachClientRelationship relationship);
     Task<int> SaveChangesAsync(CancellationToken ct = default);

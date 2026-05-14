@@ -71,7 +71,10 @@ public sealed class GetMyProfileHandler(
             totalXp,
             xpToNext,
             title,
-            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile)
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
+            user.FacebookUrl,
+            user.InstagramUrl,
+            user.ZaloUrl
         );
     }
 

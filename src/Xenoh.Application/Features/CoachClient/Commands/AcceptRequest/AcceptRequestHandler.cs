@@ -11,6 +11,7 @@ namespace Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 
 public sealed class AcceptRequestHandler(
     ICoachClientRepository coachClientRepo,
+    ISubscriptionService subscriptionService,
     ICurrentUserService currentUser,
     INotificationService notificationService,
     UserManager<ApplicationUser> userManager
@@ -25,6 +26,14 @@ public sealed class AcceptRequestHandler(
 
         if (relationship.Status != RelationshipStatus.Pending)
             throw new InvalidOperationException("Request has already been processed.");
+
+        var maxClients = await subscriptionService.GetMaxClientsAsync(coachId, cancellationToken);
+        var endDate = relationship.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1));
+        var overlappingCount = await coachClientRepo.CountOverlappingActiveByCoachAsync(
+            coachId, relationship.StartDate, endDate, cancellationToken);
+        if (maxClients != int.MaxValue && overlappingCount >= maxClients)
+            throw new InvalidOperationException(
+                "Accepting this request would exceed your client capacity during this period.");
 
         relationship.Status = RelationshipStatus.Active;
         relationship.UpdatedAt = DateTime.UtcNow;

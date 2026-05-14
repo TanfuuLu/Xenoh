@@ -87,6 +87,15 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
           .AsNoTracking()
           .CountAsync(r => r.CoachId == coachId && r.Status == RelationshipStatus.Active, ct);
 
+    public Task<int> CountOverlappingActiveByCoachAsync(Guid coachId, DateOnly startDate, DateOnly endDate, CancellationToken ct) =>
+        db.CoachClientRelationships
+          .AsNoTracking()
+          .CountAsync(r =>
+              r.CoachId == coachId &&
+              r.Status == RelationshipStatus.Active &&
+              r.StartDate <= endDate &&
+              (r.EndDate == null || r.EndDate >= startDate), ct);
+
     public async Task AddAsync(CoachClientRelationship relationship, CancellationToken ct)
     {
         await db.CoachClientRelationships.AddAsync(relationship, ct);

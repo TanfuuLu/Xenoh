@@ -180,7 +180,7 @@ public static class DemoDataSeeder
         CancellationToken cancellationToken)
     {
         var relationship = await db.CoachClientRelationships
-            .FirstOrDefaultAsync(r => r.ClientId == clientId, cancellationToken);
+            .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, cancellationToken);
 
         if (relationship is null)
         {

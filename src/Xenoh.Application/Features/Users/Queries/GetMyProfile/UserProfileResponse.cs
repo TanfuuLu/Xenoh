@@ -28,5 +28,8 @@ public sealed record UserProfileResponse(
     long TotalXp,
     long XpToNextLevel,
     string Title,
-    CoachMarketplaceProfileDto? CoachMarketplaceProfile = null
+    CoachMarketplaceProfileDto? CoachMarketplaceProfile = null,
+    string? FacebookUrl = null,
+    string? InstagramUrl = null,
+    string? ZaloUrl = null
 );

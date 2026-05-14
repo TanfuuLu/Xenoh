@@ -74,9 +74,11 @@ public sealed class RequestCoachHandler(
             throw new InvalidOperationException("Selected coaching price is invalid.");
 
         var maxClients = await subscriptionService.GetMaxClientsAsync(request.CoachId, cancellationToken);
-        var currentClientCount = await coachClientRepo.CountActiveByCoachAsync(request.CoachId, cancellationToken);
-        if (maxClients != int.MaxValue && currentClientCount >= maxClients)
-            throw new InvalidOperationException("This coach has reached their client limit on their current subscription.");
+        var overlappingCount = await coachClientRepo.CountOverlappingActiveByCoachAsync(
+            request.CoachId, request.StartDate, request.EndDate, cancellationToken);
+        if (maxClients != int.MaxValue && overlappingCount >= maxClients)
+            throw new InvalidOperationException(
+                "This coach is fully booked during your requested contract period.");
 
         var client = await userManager.FindByIdAsync(clientId.ToString())
             ?? throw new InvalidOperationException("Client not found.");

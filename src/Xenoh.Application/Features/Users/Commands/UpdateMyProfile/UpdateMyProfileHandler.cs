@@ -52,6 +52,9 @@ public sealed class UpdateMyProfileHandler(
         if (request.Height is not null) user.Height = request.Height;
         if (request.Gender is not null) user.Gender = request.Gender;
         if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
+        if (request.FacebookUrl is not null) user.FacebookUrl = string.IsNullOrWhiteSpace(request.FacebookUrl) ? null : request.FacebookUrl.Trim();
+        if (request.InstagramUrl is not null) user.InstagramUrl = string.IsNullOrWhiteSpace(request.InstagramUrl) ? null : request.InstagramUrl.Trim();
+        if (request.ZaloUrl is not null) user.ZaloUrl = string.IsNullOrWhiteSpace(request.ZaloUrl) ? null : request.ZaloUrl.Trim();
 
         if (request.CoachMarketplaceProfile is not null && !await userManager.IsInRoleAsync(user, UserRole.Coach))
             throw new InvalidOperationException("Only coaches can update coach marketplace profile fields.");
@@ -105,7 +108,10 @@ public sealed class UpdateMyProfileHandler(
             user.TotalXp,
             Xenoh.Application.Common.XP.XpCalculator.XpToNextLevel(user.Level),
             Xenoh.Application.Common.XP.XpCalculator.GetTitle(user.Level),
-            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile)
+            CoachMarketplaceProfileMapper.ToDto(marketplaceProfile),
+            user.FacebookUrl,
+            user.InstagramUrl,
+            user.ZaloUrl
         );
     }
 
