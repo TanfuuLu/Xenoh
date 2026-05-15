@@ -172,6 +172,12 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowCredentials();
     });
+
+    // Public share endpoints — allow any origin (no credentials needed, images are public)
+    options.AddPolicy("PublicSharePolicy", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 builder.Services.AddResponseCaching();
