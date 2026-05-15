@@ -19,7 +19,7 @@ public sealed class TokenBlacklistMiddleware
         if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
         {
             var token = authHeader.Substring("Bearer ".Length).Trim();
-            if (tokenBlacklist.IsTokenRevoked(token))
+            if (await tokenBlacklist.IsTokenRevokedAsync(token))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsJsonAsync(new { message = "Token has been revoked." });

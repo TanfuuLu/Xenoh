@@ -40,6 +40,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FoodLog> FoodLogs => Set<FoodLog>();
     public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
+    public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

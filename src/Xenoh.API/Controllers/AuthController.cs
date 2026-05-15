@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.Application.Features.Auth.Commands.ChangePassword;
 using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
 using Xenoh.Application.Features.Auth.Commands.ForgotPassword;
@@ -22,6 +23,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterCommand command, CancellationToken ct)
     {
         try
@@ -37,6 +39,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
     {
         try
@@ -111,6 +114,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("forgot-password/send-code")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> SendForgotPasswordCode([FromBody] SendForgotPasswordCodeCommand command, CancellationToken ct)
     {
         try
@@ -125,6 +129,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("forgot-password/reset")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordWithCodeCommand command, CancellationToken ct)
     {
         try

@@ -37,7 +37,7 @@ public sealed class LogoutHandler(
             await refreshTokenRepo.SaveChangesAsync(cancellationToken);
 
         if (!string.IsNullOrEmpty(request.AccessToken))
-            tokenBlacklist.RevokeToken(request.AccessToken);
+            await tokenBlacklist.RevokeTokenAsync(request.AccessToken);
 
         return Unit.Value;
     }

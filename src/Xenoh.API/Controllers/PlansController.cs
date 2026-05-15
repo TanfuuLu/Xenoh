@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Plans.Commands.CreateAiStarterPlan;
 using Xenoh.Application.Features.Plans.Commands.ActivatePlan;
@@ -60,6 +61,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
 
     [HttpPost("starter-ai")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting("ai")]
     public async Task<IActionResult> CreateAiStarterPlan(
         [FromBody] CreateAiStarterPlanCommand command,
         CancellationToken ct)
@@ -171,6 +173,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
 
     [HttpPost("{planId:guid}/balance-check")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting("ai")]
     public async Task<IActionResult> ReviewPlanBalance(
         Guid planId,
         [FromQuery] string? lang,

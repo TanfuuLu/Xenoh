@@ -1,7 +1,8 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using System.Security.Claims;
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -115,6 +116,37 @@ builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<ContractExpiryService>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    // Auth endpoints: 10 requests per minute per IP
+    options.AddPolicy("auth", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // AI endpoints: 5 requests per minute per authenticated user (falls back to IP)
+    options.AddPolicy("ai", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? ctx.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -141,6 +173,8 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
+
+builder.Services.AddResponseCaching();
 
 builder.Services.AddOpenApi(options =>
 {
@@ -348,6 +382,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("FrontendPolicy");
+app.UseResponseCaching();
+app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseTokenBlacklistMiddleware();

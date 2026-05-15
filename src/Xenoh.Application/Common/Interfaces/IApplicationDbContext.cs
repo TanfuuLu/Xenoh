@@ -41,6 +41,7 @@ public interface IApplicationDbContext
     DbSet<FoodLog> FoodLogs { get; }
     DbSet<UserAnalysis> UserAnalyses { get; }
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
+    DbSet<RevokedToken> RevokedTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

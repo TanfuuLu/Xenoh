@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 using Xenoh.Application.Features.DailyWorkouts.Commands.MarkDayStatus;
 using Xenoh.Application.Features.DailyWorkouts.Queries.GetDailyWorkoutGuidance;
@@ -50,6 +51,7 @@ public sealed class DailyWorkoutsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("/api/days/{dailyWorkoutId:guid}/ai-guidance")]
+    [EnableRateLimiting("ai")]
     public async Task<IActionResult> GetAiGuidance(
         Guid dailyWorkoutId,
         [FromQuery] string? lang,

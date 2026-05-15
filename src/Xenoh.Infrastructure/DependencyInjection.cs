@@ -55,7 +55,7 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
         services.AddScoped<ITokenService, TokenService>();
-        services.AddSingleton<ITokenBlacklist, InMemoryTokenBlacklist>();
+        services.AddScoped<ITokenBlacklist, DatabaseTokenBlacklist>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<INotificationService, NotificationService>();
@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddScoped<IEmailService, SmtpEmailService>();
 
+        services.AddScoped<IPrShareImageService, PrShareImageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
         services.AddSingleton<ISePayBankInfo, SePayBankInfo>();

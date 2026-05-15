@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
 
@@ -18,6 +19,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("me")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting("ai")]
     public async Task<IActionResult> GetMyAnalysis([FromQuery] string? lang, CancellationToken ct)
     {
         try
