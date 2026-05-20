@@ -1,8 +1,35 @@
-# Xenoh Backend API
+# Xenoh
 
-Xenoh Backend is the ASP.NET Core API for the Xenoh training platform. It handles authentication, user profiles, workout plans, coach-client relationships, exercise data, progress tracking, payments, notifications, and other server-side workflows used by the frontend application.
+Xenoh is a training journal and coaching platform for people who want a clear plan, a simple way to log sessions, and a reliable place to track progress. It is built for two main groups: individuals who train on their own, and coaches who write programs for clients.
 
-The project follows Clean Architecture. Business rules stay in the inner layers, infrastructure concerns stay outside, and the API layer remains thin.
+The product focuses on the daily training loop: create or receive a plan, open today's session, record sets and weights, review progress, and keep the coach-client relationship organized without spreadsheets or scattered messages.
+
+![Xenoh website preview](docs/images/xenoh-website-preview.png)
+
+## Website Overview
+
+The website presents Xenoh as a practical training system, not a generic fitness social app. The public pages explain how the product works, what individuals can do for free, and how coaches can manage active clients.
+
+The authenticated app supports the core workout workflow: users can view their training plan, complete today's session, browse exercises, track progress, and manage account settings. Coaches can work with client rosters, assign plans, and follow client activity from one place.
+
+## MVP Features
+
+- Public landing page introducing Xenoh, the training workflow, pricing, FAQ, and about information.
+- User registration, login, and authenticated access through JWT.
+- Individual training plan management.
+- Daily workout session view for logging sets, reps, weight, and completion state.
+- Exercise library for browsing and reusing movements.
+- Progress tracking for training history and personal records.
+- Coach-client relationship flow, including client requests and accepted coaching connections.
+- Coach tools for assigning plans and monitoring client training updates.
+- Payment-related backend support for coach subscriptions or active-client billing.
+- Notification-ready backend structure for important user and coach events.
+
+## Backend Summary
+
+This repository contains the ASP.NET Core backend API for Xenoh. It handles authentication, user profiles, workout plans, coach-client relationships, exercise data, progress tracking, payments, notifications, and other server-side workflows used by the frontend application.
+
+The backend follows Clean Architecture. Business rules stay in the inner layers, infrastructure concerns stay outside, and the API layer remains thin.
 
 ## Tech Stack
 
