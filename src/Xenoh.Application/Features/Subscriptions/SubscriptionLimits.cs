@@ -30,12 +30,12 @@ public static class SubscriptionLimits
 
     public static decimal GetPrice(PlanTier tier, int durationMonths) => (tier, durationMonths) switch
     {
-        (PlanTier.ProIndividual, 1)  => 10_000m,
-        (PlanTier.ProIndividual, 3)  => 30_000m,
-        (PlanTier.ProIndividual, 12) => 120_000m,
-        (PlanTier.ProCoach,      1)  => 20_000m,
-        (PlanTier.ProCoach,      3)  => 60_000m,
-        (PlanTier.ProCoach,      12) => 240_000m,
+        (PlanTier.ProIndividual, 1)  => 99_000m,
+        (PlanTier.ProIndividual, 3)  => 297_000m,
+        (PlanTier.ProIndividual, 12) => 1_188_000m,
+        (PlanTier.ProCoach,      1)  => 199_000m,
+        (PlanTier.ProCoach,      3)  => 597_000m,
+        (PlanTier.ProCoach,      12) => 2_388_000m,
         _ => throw new InvalidOperationException($"No price defined for tier {tier} / {durationMonths} months.")
     };
 }

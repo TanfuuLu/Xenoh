@@ -69,7 +69,7 @@ public sealed class SePayRenewalTests
             SubscriptionId = subscriptionId,
             RequestedTier = PlanTier.ProCoach,
             TransferCode = "XENOHABCDEF1212345678",
-            Amount = 20_000m,
+            Amount = 199_000m,
             DurationMonths = durationMonths,
             Status = PaymentStatus.Pending,
             ExpiresAt = DateTime.UtcNow.AddHours(1)
@@ -84,7 +84,7 @@ public sealed class SePayRenewalTests
             Code: transferCode,
             Content: transferCode,
             TransferType: "in",
-            TransferAmount: 20_000m,
+            TransferAmount: 199_000m,
             ReferenceCode: Guid.NewGuid().ToString("N"),
             Description: transferCode);
 
