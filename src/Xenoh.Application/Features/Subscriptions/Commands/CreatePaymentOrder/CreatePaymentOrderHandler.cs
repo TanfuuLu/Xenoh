@@ -23,6 +23,8 @@ public sealed class CreatePaymentOrderHandler(
         try { amount = SubscriptionLimits.GetPrice(request.RequestedTier, request.DurationMonths); }
         catch { throw new InvalidOperationException("Invalid tier/duration combination."); }
 
+        ValidateBankInfo();
+
         var userId = currentUser.UserId;
 
         // Expire any existing pending order for the same tier
@@ -74,4 +76,18 @@ public sealed class CreatePaymentOrderHandler(
             bankInfo.BankName,
             transferCode);
     }
+
+    private void ValidateBankInfo()
+    {
+        if (IsMissing(bankInfo.BankAccountNumber) ||
+            IsMissing(bankInfo.BankAccountName) ||
+            IsMissing(bankInfo.BankName))
+        {
+            throw new InvalidOperationException("SePay bank information is not configured.");
+        }
+    }
+
+    private static bool IsMissing(string value) =>
+        string.IsNullOrWhiteSpace(value) ||
+        value.StartsWith("YOUR_", StringComparison.OrdinalIgnoreCase);
 }
