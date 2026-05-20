@@ -1,12 +1,49 @@
 # Xenoh
 
-Training journal for lifters. Client management for coaches.
+Training journal for lifters. Coaching workspace for coaches.
 
-Xenoh helps users plan workouts, log sessions, track progress, and share training plans between coaches and clients. The screenshots below are captured from the real running website.
+Xenoh is a web app where athletes follow training plans, log workouts, track progress, manage nutrition, and work with coaches in one shared system.
 
 ![Xenoh home page](docs/images/real/home.png)
 
-## Preview
+## Product Highlights
+
+- Personal dashboard with today's workout, active plan, nutrition, next actions, streak, bodyweight, BMI, DOTS, and XP.
+- Plan timeline with weekly progress, compliance status, comments, and coach-client discussion.
+- Workout logger for sets, reps, weight, RPE, volume, rest time, PRs, AI suggestions, and completion tracking.
+- Progress analytics with training score, sessions, total volume, compliance, recommendations, and muscle-group heatmaps.
+- Coach profile with pricing, contract state, rating, report/block actions, and connection status.
+- Coach client dashboard with active clients, inactive clients, attention flags, missing plans, schedule timeline, and client performance cards.
+- Client detail page for coaches with body stats, plan progress, custom exercises, nutrition, and AI analysis.
+- AI insights for workout suggestions, plan balance checks, client risk/opportunity summaries, and plan analysis.
+
+## MVP Scope
+
+| Area | Features |
+| --- | --- |
+| Public website | Home, about, pricing, FAQ, Vietnamese/English language switch |
+| Auth | Register, login, JWT access token, refresh token cookie |
+| Athlete dashboard | Daily summary, training metrics, active plan, nutrition, next actions |
+| Plans | Active plan, weekly timeline, plan comments, balance check |
+| Workout logging | Exercise list, set completion, reps, weight, RPE, volume, timers, PR tracking |
+| Progress | Compliance, training score, total volume, heatmaps, recommendations |
+| Nutrition | Daily nutrition overview and food logging |
+| Coach marketplace | Coach profile, pricing, contracts, reviews, report/block |
+| Coach workspace | Client roster, schedule, client status flags, client performance overview |
+| AI | Workout suggestions, client insight, plan balance, plan analysis |
+| Billing | Subscription and coach billing support |
+
+## User Roles
+
+### Individual
+
+Individuals can train with their own plan, receive a coach-authored plan, complete daily workouts, record performance, review progress, and manage nutrition.
+
+### Coach
+
+Coaches can manage clients, assign plans, monitor progress, review client stats, write custom exercises, inspect nutrition, and use AI insight to spot risks or opportunities.
+
+## Public Pages
 
 ### About Page
 
@@ -19,55 +56,6 @@ Xenoh helps users plan workouts, log sessions, track progress, and share trainin
 ### Register
 
 ![Xenoh register page](docs/images/real/register.png)
-
-## What Xenoh Does
-
-- Build training plans.
-- Log sets, reps, weight, and completed work.
-- Track volume, streaks, progress, and personal records.
-- Let individuals train without a coach.
-- Let coaches assign plans and monitor clients.
-- Keep coach-client training history in one shared place.
-- Use AI to review plans, suggest training changes, and summarize client progress.
-
-## MVP Features
-
-| Area | MVP |
-| --- | --- |
-| Public site | Landing page, pricing, FAQ, about page |
-| Auth | Register, login, JWT-protected API |
-| Dashboard | Daily overview, streak, bodyweight, BMI, DOTS, XP, active plan |
-| Training | Plans, weekly timeline, workout logging, RPE, volume, PR tracking |
-| Progress | Training score, sessions, total volume, compliance, heatmaps |
-| Nutrition | Daily nutrition overview and food logging |
-| Coach tools | Client roster, schedule view, client profiles, plan assignment |
-| AI | AI suggestions, balance check, client insight, plan analysis |
-| Payments | Coach billing support |
-| Backend | Clean Architecture ASP.NET Core API |
-
-## App Features
-
-### Individual Training
-
-- Personal dashboard with streak, bodyweight, BMI, DOTS, XP, today's workout, nutrition, and next actions.
-- Active plan overview with week-by-week progress and completion status.
-- Workout session screen for logging sets, reps, weight, RPE, rest time, calories, and volume.
-- Exercise library and custom exercise support.
-- Progress analytics with training score, compliance, total volume, muscle-group heatmaps, and body-part distribution.
-
-### Coach And Client
-
-- Coach profile with pricing, contract status, reviews, reports, and block controls.
-- Coach client dashboard with active clients, attention flags, missing plans, inactive clients, and schedule timeline.
-- Client profile for coaches with body stats, plan progress, custom exercises, nutrition, and AI analysis.
-- Shared plan comments so coach and client can communicate inside the training context.
-
-### AI Features
-
-- AI workout suggestions from the dashboard and workout screens.
-- Plan balance check for weekly programming quality.
-- AI client insight with risks, opportunities, and progress summary.
-- AI plan analysis with mistakes to fix, suggested changes, completion metrics, workload, time, and RPE.
 
 ## Backend Stack
 
