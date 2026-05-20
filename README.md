@@ -2,23 +2,23 @@
 
 Training journal for lifters. Client management for coaches.
 
-Xenoh helps users plan workouts, log sessions, track progress, and share training plans between coaches and clients.
+Xenoh helps users plan workouts, log sessions, track progress, and share training plans between coaches and clients. The screenshots below are captured from the real running website.
 
-![Xenoh landing page](docs/images/xenoh-website-preview.png)
+![Xenoh home page](docs/images/real/home.png)
 
 ## Preview
 
-### Public Website
+### About Page
 
-![Xenoh hero section](docs/images/xenoh-hero.png)
+![Xenoh about page](docs/images/real/about.png)
 
-### Training Dashboard
+### Login
 
-![Xenoh dashboard](docs/images/xenoh-dashboard.png)
+![Xenoh login page](docs/images/real/login.png)
 
-### Coach And Client System
+### Register
 
-![Xenoh coach client flow](docs/images/xenoh-coach-client.png)
+![Xenoh register page](docs/images/real/register.png)
 
 ## What Xenoh Does
 
