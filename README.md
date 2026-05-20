@@ -28,6 +28,7 @@ Xenoh helps users plan workouts, log sessions, track progress, and share trainin
 - Let individuals train without a coach.
 - Let coaches assign plans and monitor clients.
 - Keep coach-client training history in one shared place.
+- Use AI to review plans, suggest training changes, and summarize client progress.
 
 ## MVP Features
 
@@ -35,10 +36,38 @@ Xenoh helps users plan workouts, log sessions, track progress, and share trainin
 | --- | --- |
 | Public site | Landing page, pricing, FAQ, about page |
 | Auth | Register, login, JWT-protected API |
-| Training | Plans, sessions, exercise library, progress history |
-| Coach tools | Client roster, plan assignment, client updates |
+| Dashboard | Daily overview, streak, bodyweight, BMI, DOTS, XP, active plan |
+| Training | Plans, weekly timeline, workout logging, RPE, volume, PR tracking |
+| Progress | Training score, sessions, total volume, compliance, heatmaps |
+| Nutrition | Daily nutrition overview and food logging |
+| Coach tools | Client roster, schedule view, client profiles, plan assignment |
+| AI | AI suggestions, balance check, client insight, plan analysis |
 | Payments | Coach billing support |
 | Backend | Clean Architecture ASP.NET Core API |
+
+## App Features
+
+### Individual Training
+
+- Personal dashboard with streak, bodyweight, BMI, DOTS, XP, today's workout, nutrition, and next actions.
+- Active plan overview with week-by-week progress and completion status.
+- Workout session screen for logging sets, reps, weight, RPE, rest time, calories, and volume.
+- Exercise library and custom exercise support.
+- Progress analytics with training score, compliance, total volume, muscle-group heatmaps, and body-part distribution.
+
+### Coach And Client
+
+- Coach profile with pricing, contract status, reviews, reports, and block controls.
+- Coach client dashboard with active clients, attention flags, missing plans, inactive clients, and schedule timeline.
+- Client profile for coaches with body stats, plan progress, custom exercises, nutrition, and AI analysis.
+- Shared plan comments so coach and client can communicate inside the training context.
+
+### AI Features
+
+- AI workout suggestions from the dashboard and workout screens.
+- Plan balance check for weekly programming quality.
+- AI client insight with risks, opportunities, and progress summary.
+- AI plan analysis with mistakes to fix, suggested changes, completion metrics, workload, time, and RPE.
 
 ## Backend Stack
 
