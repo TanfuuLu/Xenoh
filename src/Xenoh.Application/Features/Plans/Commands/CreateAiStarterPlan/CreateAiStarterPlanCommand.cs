@@ -18,6 +18,13 @@ public sealed record CreateAiStarterPlanCommand : IRequest<PlanResponse>
     public required int DaysPerWeek { get; init; }
 
     [Required]
+    [StringLength(50, MinimumLength = 3)]
+    public required string SplitPreference { get; init; }
+
+    [Range(30, 90)]
+    public required int SessionLengthMinutes { get; init; }
+
+    [Required]
     [StringLength(200, MinimumLength = 2)]
     public required string Equipment { get; init; }
 

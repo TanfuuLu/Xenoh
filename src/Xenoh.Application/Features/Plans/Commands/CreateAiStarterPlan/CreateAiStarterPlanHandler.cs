@@ -18,6 +18,16 @@ public sealed class CreateAiStarterPlanHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<CreateAiStarterPlanCommand, PlanResponse>
 {
+    private static readonly HashSet<string> AllowedSplitPreferences = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "full_body",
+        "upper_lower",
+        "push_pull_legs",
+        "bro_split"
+    };
+
+    private static readonly HashSet<int> AllowedSessionLengths = [30, 45, 60, 75, 90];
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -30,6 +40,10 @@ public sealed class CreateAiStarterPlanHandler(
     {
         if (request.EndDate <= request.StartDate)
             throw new InvalidOperationException("End date must be after start date.");
+        if (!AllowedSplitPreferences.Contains(request.SplitPreference))
+            throw new InvalidOperationException("Unsupported training split preference.");
+        if (!AllowedSessionLengths.Contains(request.SessionLengthMinutes))
+            throw new InvalidOperationException("Unsupported session length.");
 
         var userId = currentUser.UserId;
         var maxPlans = await subscriptionService.GetMaxPlansAsync(userId, cancellationToken);
@@ -62,6 +76,8 @@ public sealed class CreateAiStarterPlanHandler(
             request.Goal,
             request.Experience,
             request.DaysPerWeek,
+            request.SplitPreference,
+            request.SessionLengthMinutes,
             request.Equipment,
             request.StartDate,
             request.EndDate,
