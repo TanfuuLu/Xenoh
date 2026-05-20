@@ -2,99 +2,85 @@
 
 Training journal for lifters. Coaching workspace for coaches. AI-assisted insight for both.
 
-Xenoh is a web app where athletes follow training plans, log workouts, track progress, manage nutrition, and work with coaches in one shared system. The product is built around the real training workflow shown in the app screens: open the dashboard, continue today's workout, review the plan, log every set, check progress, and let coaches manage clients from the same data.
+Xenoh helps athletes follow plans, log workouts, track progress, manage nutrition, and work with coaches in one shared system.
 
-![Xenoh home page](docs/images/real/home.png)
+![Xenoh dashboard](docs/images/app/screen1.png)
 
-## What You Can See In The App
-
-The 9 product screens show these core experiences:
-
-| Screen | What it shows |
-| --- | --- |
-| Athlete dashboard | Daily training summary, streak, bodyweight, BMI, DOTS, XP, active plan, nutrition, and next actions |
-| Plan timeline | Current plan, week cards, completion status, warnings, balance check, and coach-client comments |
-| Workout session | Exercise-by-exercise logging with sets, reps, weight, RPE, volume, time, PR badges, AI suggestions, and completion controls |
-| Progress analytics | Training score, total sessions, total volume, compliance, recommendations, weekly muscle heatmaps, and body heatmap |
-| Coach profile | Coach bio, pricing, contract status, reviews, connected clients, report/block actions, and rating form |
-| Coach client roster | Active clients, inactive clients, missing plans, attention flags, schedule timeline, and client performance cards |
-| Client detail | Client body stats, plan progress, custom exercises, nutrition access, and coach-side plan creation |
-| AI client insight | Client summary, progress notes, risks, opportunities, and refreshable AI analysis |
-| AI plan analysis | Plan balance review, mistakes to fix, suggestions, total weeks, completion, muscle groups, total time, and average RPE |
-
-## Core Product Flow
-
-1. An athlete signs in and lands on a dashboard with today's training state.
-2. The athlete opens the active plan and sees weekly progress, current week, warnings, and comments.
-3. The athlete logs a workout set by set, including reps, weight, RPE, time, volume, and completion.
-4. Progress pages turn the logged data into compliance, volume, training score, recommendations, and heatmaps.
-5. A coach can connect with clients, track their training, assign plans, and inspect client details.
-6. AI features help review workouts, analyze plan balance, and summarize client risks or opportunities.
-
-## MVP Scope
+## MVP Features
 
 | Area | Features |
 | --- | --- |
-| Public website | Home, about, pricing, FAQ, Vietnamese/English language switch, login/register |
-| Auth | Register, login, JWT access token, refresh token cookie |
-| Athlete dashboard | Daily summary, streak, bodyweight, BMI, DOTS, XP, active plan, nutrition, next actions |
-| Plans | Active plan, weekly timeline, current week marker, completion percent, warnings, plan comments |
-| Workout logging | Exercise list, set completion, reps, weight, RPE, volume, timers, PR tracking, mark workout done |
-| Progress | Training score, session count, total volume, compliance, recommendations, weekly heatmaps |
-| Nutrition | Daily calories, nutrition target, food logging, coach access to client nutrition |
-| Coach profile | Bio, rating, pricing, contract, connected status, report, block, review submission |
-| Coach workspace | Client roster, schedule timeline, active/inactive flags, missing-plan flags, client performance |
-| Client management | Client stats, plan progress, custom exercises, nutrition, AI analysis, create plan |
-| AI | Workout suggestions, balance check, client insight, plan analysis, risks and opportunities |
+| Athlete dashboard | Daily workout, active plan, nutrition, next actions, streak, bodyweight, BMI, DOTS, XP |
+| Training plans | Weekly timeline, current week, completion status, below-target warnings, coach-client comments |
+| Workout logging | Exercises, sets, reps, weight, RPE, PR badges, volume, total time, AI suggestions |
+| Progress analytics | Training score, sessions, total volume, compliance, recommendations, muscle heatmaps |
+| Coach profile | Coach bio, pricing, contract status, reviews, rating, report, block, disconnect |
+| Coach workspace | Client roster, active/inactive status, attention flags, missing plans, schedule timeline |
+| Client management | Client stats, plan progress, custom exercises, nutrition access, AI analysis |
+| AI insight | Client summary, risks, opportunities, plan balance, mistakes to fix, programming suggestions |
 | Billing | Subscription and coach billing support |
 
-## User Roles
+## Product Screens
 
-### Individual
+### 1. Athlete Dashboard
 
-Individuals can train with their own plan or a coach-authored plan. They can continue today's workout, log completed sets, watch plan progress move forward, review heatmaps, and track nutrition from the same sidebar.
+Daily overview for the athlete: today's workout, plan progress, nutrition, next actions, streak, bodyweight, BMI, DOTS, and XP.
 
-### Coach
+![Athlete dashboard](docs/images/app/screen1.png)
 
-Coaches can manage client rosters, see who needs attention, inspect each client's stats, create or assign plans, write custom exercises, review nutrition, and use AI insight to identify risks and opportunities.
+### 2. Training Plan Timeline
 
-## Feature Summary
+The active plan is displayed as weekly cards with current-week status, completion percentage, warnings, and shared comments.
 
-### Athlete Dashboard
+![Training plan timeline](docs/images/app/screen2.png)
 
-The dashboard is the athlete's daily command center. It shows the current date, a welcome message, streak, bodyweight, BMI, DOTS score, XP progress, today's workout progress, active plan progress, nutrition, and next recommended actions.
+### 3. Workout Logging
 
-### Plan Management
+Athletes log each exercise set by set, including reps, weight, RPE, total volume, total time, PR context, and completion state.
 
-The plan page shows the full training block as weekly cards. Each week includes completion progress, current-week status, warnings when training is below target, completed weeks, comments, and a balance check action for reviewing plan quality.
+![Workout logging](docs/images/app/screen3.png)
 
-### Workout Logging
+### 4. Progress Analytics
 
-The workout page focuses on execution. Each exercise contains prescribed work, target load, muscle group, time, calories, completed sets, editable set inputs, RPE, PR context, total volume, total time, and a mark-done flow.
+Progress view turns training history into scores, compliance, recommendations, weekly muscle-group heatmaps, and body heatmaps.
 
-### Progress Analytics
+![Progress analytics](docs/images/app/screen4.png)
 
-Progress screens turn training history into readable analytics: training score, number of sessions, total volume, compliance percentage, weekly muscle-group heatmap, body heatmap, and practical recommendations when volume drops or compliance is uneven.
+### 5. Coach Profile
 
-### Coach Profile And Relationship
+Athletes can view coach details, pricing, contract information, connected-client count, reviews, and relationship actions.
 
-The coach profile shows coach identity, connection status, bio, experience, monthly and per-session pricing, contract details, connected client count, rating, review submission, report, block, and disconnect actions.
+![Coach profile](docs/images/app/screen5.png)
 
-### Coach Client Management
+### 6. Coach Client Roster
 
-The coach workspace shows active clients, clients needing attention, clients without plans, inactive clients, a schedule timeline, and client cards with contract dates, plan progress, last workout, bodyweight, and Big 3 PRs.
+Coaches manage active clients, inactive clients, attention flags, missing plans, schedule timeline, and client performance cards.
 
-### Client Detail For Coaches
+![Coach client roster](docs/images/app/screen6.png)
 
-The client detail page gives coaches a client-level view: streak, bodyweight, BMI, DOTS, height, gender, birthday, plan progress, assigned plans, custom exercises, nutrition access, and AI analysis.
+### 7. AI Plan Analysis
 
-### AI Insights
+AI reviews the structure of a training plan, highlights mistakes, suggests improvements, and summarizes completion, workload, time, and RPE.
 
-AI pages summarize client progress, risks, and opportunities. Plan analysis reviews structure, completion, total weeks, muscle groups, total time, average RPE, mistakes to fix, and suggestions for better balance.
+![AI plan analysis](docs/images/app/screen7.png)
 
-## Public Pages
+### 8. AI Client Insight
 
-### About Page
+AI summarizes a client's recent progress, risks, opportunities, PRs, consistency, and training direction.
+
+![AI client insight](docs/images/app/screen8.png)
+
+### 9. Coach Client Detail
+
+Coaches can inspect client stats, plan progress, assigned plans, custom exercises, nutrition, and AI analysis from one page.
+
+![Coach client detail](docs/images/app/screen9.png)
+
+## Public Website
+
+![Xenoh home page](docs/images/real/home.png)
+
+### About
 
 ![Xenoh about page](docs/images/real/about.png)
 
@@ -182,31 +168,9 @@ https://localhost:7017
 
 </details>
 
-<details>
-<summary>Development notes</summary>
-
-- Keep controllers thin.
-- Put business logic in `Xenoh.Application`.
-- Keep `Xenoh.Domain` pure.
-- Use repositories through Application interfaces.
-- Use Mapster for mapping.
-- Use async I/O.
-- Use `AsNoTracking()` for read-only EF queries.
-- Keep secrets in local config or deployment secret storage.
-
-Run tests:
-
-```powershell
-dotnet test
-```
-
-</details>
-
 ## Security
 
 Public config files contain placeholders only. Local secrets are ignored by Git.
-
-Before publishing or deploying:
 
 ```powershell
 git status --short
