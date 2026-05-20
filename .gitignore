@@ -20,6 +20,7 @@ appsettings.*.local.json
 ## Logs
 *.log
 logs/
+.codex-logs/
 
 ## OS
 .DS_Store
