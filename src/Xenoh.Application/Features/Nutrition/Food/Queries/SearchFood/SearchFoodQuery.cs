@@ -4,7 +4,7 @@ namespace Xenoh.Application.Features.Nutrition.Food.Queries.SearchFood;
 
 public sealed record SearchFoodQuery(string Query, string Language = "vi") : IRequest<List<FoodItemResponse>>;
 
-public sealed record FoodServingResponse(Guid Id, string Label, decimal Grams);
+public sealed record FoodServingResponse(Guid Id, string LabelVi, string? LabelEn, decimal Grams);
 
 public sealed record FoodItemResponse(
     Guid Id,

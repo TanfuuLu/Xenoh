@@ -36,7 +36,7 @@ public sealed class CreateCustomFoodHandler(
             await db.FoodServings.AddAsync(new FoodServing
             {
                 FoodItemId = food.Id,
-                Label = request.DefaultServingLabel,
+                LabelVi = request.DefaultServingLabel,
                 Grams = request.DefaultServingGrams.Value
             }, cancellationToken);
         }
@@ -57,7 +57,7 @@ public sealed class CreateCustomFoodHandler(
             saved.ProteinPer100g,
             saved.CarbsPer100g,
             saved.FatPer100g,
-            saved.Servings.Select(s => new FoodServingResponse(s.Id, s.Label, s.Grams)).ToList()
+            saved.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList()
         );
     }
 }

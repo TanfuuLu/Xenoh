@@ -26,16 +26,18 @@ public sealed class CreateFoodLogHandler(
             ?? throw new InvalidOperationException($"FoodItem {request.FoodItemId} not found.");
 
         decimal grams;
-        string? servingLabel = null;
+        string? servingLabelVi = null;
+        string? servingLabelEn = null;
         decimal? servingCount = null;
 
         if (request.ServingLabel is not null && request.ServingCount is not null)
         {
             var serving = food.Servings.FirstOrDefault(s =>
-                string.Equals(s.Label, request.ServingLabel, StringComparison.OrdinalIgnoreCase))
+                string.Equals(s.LabelVi, request.ServingLabel, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException($"Serving '{request.ServingLabel}' not found for food item.");
 
-            servingLabel = serving.Label;
+            servingLabelVi = serving.LabelVi;
+            servingLabelEn = serving.LabelEn;
             servingCount = request.ServingCount.Value;
             grams = serving.Grams * request.ServingCount.Value;
         }
@@ -55,7 +57,8 @@ public sealed class CreateFoodLogHandler(
             FoodItemId = food.Id,
             Date = request.Date,
             Grams = grams,
-            ServingLabel = servingLabel,
+            ServingLabelVi = servingLabelVi,
+            ServingLabelEn = servingLabelEn,
             ServingCount = servingCount,
             ComputedCalories = (int)Math.Round(food.CaloriesPer100g * ratio),
             ComputedProteinG = Math.Round(food.ProteinPer100g * ratio, 2),
@@ -74,7 +77,8 @@ public sealed class CreateFoodLogHandler(
             food.NameVi,
             food.NameEn,
             log.Grams,
-            log.ServingLabel,
+            log.ServingLabelVi,
+            log.ServingLabelEn,
             log.ServingCount,
             log.ComputedCalories,
             log.ComputedProteinG,

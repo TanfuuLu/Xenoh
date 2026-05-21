@@ -23,6 +23,11 @@ public sealed class RequestCoachHandler(
     {
         var clientId = currentUser.UserId;
 
+        // Only Pro users can use the Find-a-Coach request flow.
+        var clientTier = await subscriptionService.GetActiveTierAsync(clientId, cancellationToken);
+        if (clientTier < PlanTier.ProIndividual)
+            throw new InvalidOperationException("You need a Pro subscription to request a coach. Use a Coach Code instead.");
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         if (request.StartDate < today)
             throw new InvalidOperationException("Start date cannot be in the past.");

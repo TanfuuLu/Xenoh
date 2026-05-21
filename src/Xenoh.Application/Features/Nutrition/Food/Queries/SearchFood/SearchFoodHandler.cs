@@ -26,7 +26,7 @@ public sealed class SearchFoodHandler(IApplicationDbContext db)
                 f.ProteinPer100g,
                 f.CarbsPer100g,
                 f.FatPer100g,
-                f.Servings.Select(s => new FoodServingResponse(s.Id, s.Label, s.Grams)).ToList()
+                f.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList()
             ))
             .ToListAsync(cancellationToken);
     }

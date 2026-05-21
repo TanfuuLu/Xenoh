@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.CoachRatings.Commands.CreateCoachRating;
 using Xenoh.Application.Features.CoachRatings.Commands.DeleteCoachRating;
 using Xenoh.Application.Features.CoachRatings.Commands.UpdateCoachRating;
@@ -15,10 +16,11 @@ namespace Xenoh.API.Controllers;
 public sealed class CoachesController(IMediator mediator) : ControllerBase
 {
     /// <summary>
-    /// Lấy danh sách coach, có thể tìm kiếm theo tên.
+    /// Lấy danh sách coach, có thể tìm kiếm theo tên. Yêu cầu Pro subscription.
     /// </summary>
     /// <param name="name">Optional — tìm theo first name, last name, hoặc full name (không phân biệt hoa thường)</param>
     [HttpGet]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> GetCoaches([FromQuery] string? name, CancellationToken ct)
     {
         var result = await mediator.Send(new GetCoachesQuery(name), ct);
@@ -26,10 +28,10 @@ public sealed class CoachesController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
-    /// Get a coach's public profile (name, email, total clients).
-    /// Any authenticated user can view.
+    /// Get a coach's public profile (name, email, total clients). Yêu cầu Pro subscription.
     /// </summary>
     [HttpGet("{coachId:guid}")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
     public async Task<IActionResult> GetCoachProfile(Guid coachId, CancellationToken ct)
     {
         try

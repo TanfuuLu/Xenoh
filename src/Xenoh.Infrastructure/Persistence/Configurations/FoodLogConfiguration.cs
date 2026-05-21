@@ -11,7 +11,8 @@ public sealed class FoodLogConfiguration : IEntityTypeConfiguration<FoodLog>
         builder.HasKey(l => l.Id);
 
         builder.Property(l => l.Grams).HasColumnType("decimal(8,2)");
-        builder.Property(l => l.ServingLabel).HasMaxLength(100);
+        builder.Property(l => l.ServingLabelVi).HasMaxLength(100);
+        builder.Property(l => l.ServingLabelEn).HasMaxLength(100);
         builder.Property(l => l.ServingCount).HasColumnType("decimal(6,2)");
         builder.Property(l => l.ComputedProteinG).HasColumnType("decimal(7,2)");
         builder.Property(l => l.ComputedCarbsG).HasColumnType("decimal(7,2)");

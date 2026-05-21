@@ -49,7 +49,7 @@ public sealed class ResolveFoodHandler(
             await db.FoodServings.AddAsync(new FoodServing
             {
                 FoodItemId = food.Id,
-                Label = result.DefaultServingLabel,
+                LabelVi = result.DefaultServingLabel,
                 Grams = result.DefaultServingGrams.Value
             }, cancellationToken);
         }
@@ -75,6 +75,6 @@ public sealed class ResolveFoodHandler(
             f.ProteinPer100g,
             f.CarbsPer100g,
             f.FatPer100g,
-            f.Servings.Select(s => new FoodServingResponse(s.Id, s.Label, s.Grams)).ToList()
+            f.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList()
         );
 }

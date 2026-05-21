@@ -10,9 +10,10 @@ public sealed class FoodServingConfiguration : IEntityTypeConfiguration<FoodServ
     {
         builder.HasKey(s => s.Id);
 
-        builder.Property(s => s.Label).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.LabelVi).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.LabelEn).HasMaxLength(100);
         builder.Property(s => s.Grams).HasColumnType("decimal(7,2)");
 
-        builder.HasIndex(s => new { s.FoodItemId, s.Label }).IsUnique();
+        builder.HasIndex(s => new { s.FoodItemId, s.LabelVi }).IsUnique();
     }
 }

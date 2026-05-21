@@ -22,12 +22,17 @@ public class CoachClientRelationshipConfiguration : IEntityTypeConfiguration<Coa
 
         builder.HasIndex(r => r.ClientId)
             .IsUnique()
-            .HasFilter("\"Status\" <> 2");
+            .HasFilter("\"Status\" <> 2 AND \"Status\" <> 4");
 
         builder.HasIndex(r => new { r.Status, r.EndDate });
 
         builder.Property(r => r.SelectedPriceAmount).HasPrecision(18, 2);
         builder.Property(r => r.SelectedCurrency).HasMaxLength(8);
         builder.Property(r => r.SelectedQuantity);
+
+        builder.HasOne(r => r.CoachInviteCode)
+            .WithMany()
+            .HasForeignKey(r => r.CoachInviteCodeId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

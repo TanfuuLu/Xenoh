@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<Exercise> Exercises { get; }
     DbSet<ExerciseSet> ExerciseSets { get; }
     DbSet<CoachClientRelationship> CoachClientRelationships { get; }
+    DbSet<CoachInviteCode> CoachInviteCodes { get; }
     DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<PasswordResetCode> PasswordResetCodes { get; }
@@ -42,6 +43,7 @@ public interface IApplicationDbContext
     DbSet<UserAnalysis> UserAnalyses { get; }
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
     DbSet<RevokedToken> RevokedTokens { get; }
+    DbSet<Message> Messages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -6,6 +6,9 @@ using Xenoh.API.Auth;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
+using Xenoh.Application.Features.CoachClient.Commands.ConnectByInviteCode;
+using Xenoh.Application.Features.CoachClient.Commands.DeleteInviteCode;
+using Xenoh.Application.Features.CoachClient.Commands.GenerateInviteCode;
 using Xenoh.Application.Features.CoachClient.Commands.RejectRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RejectTermination;
 using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
@@ -17,6 +20,7 @@ using Xenoh.Application.Features.CoachClient.Queries.GetClientPowerlifting;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyCoach;
+using Xenoh.Application.Features.CoachClient.Queries.GetMyInviteCodes;
 using Xenoh.Application.Features.CoachClient.Queries.GetPendingRequests;
 using Xenoh.Domain.Enums;
 
@@ -234,6 +238,75 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // ─── Invite Codes ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// [Coach only] Generate a one-time invite code with a coaching period.
+    /// </summary>
+    [HttpPost("invite-codes")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> GenerateInviteCode(
+        [FromBody] GenerateInviteCodeCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// [Coach only] List all invite codes the coach has generated.
+    /// </summary>
+    [HttpGet("invite-codes")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> GetMyInviteCodes(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetMyInviteCodesQuery(), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// [Coach only] Delete an unused invite code.
+    /// </summary>
+    [HttpDelete("invite-codes/{id:guid}")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> DeleteInviteCode(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new DeleteInviteCodeCommand { InviteCodeId = id }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// [Any authenticated user] Connect with a coach using an invite code.
+    /// Available to all plan tiers — no Pro subscription required.
+    /// </summary>
+    [HttpPost("connect-by-code")]
+    public async Task<IActionResult> ConnectByCode(
+        [FromBody] ConnectByInviteCodeCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {

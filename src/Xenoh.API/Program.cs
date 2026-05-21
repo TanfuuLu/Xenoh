@@ -253,46 +253,6 @@ using (var scope = app.Services.CreateScope())
                 await db.SaveChangesAsync();
             }
         }
-
-        // Seed coach demo account
-        const string coachEmail = "coach@xenoh.app";
-        const string coachPassword = "Coach@Xenoh123!";
-        var coachUser = await userManager.FindByEmailAsync(coachEmail);
-        if (coachUser is null)
-        {
-            coachUser = new ApplicationUser
-            {
-                Email = coachEmail,
-                UserName = coachEmail,
-                FirstName = "Demo",
-                LastName = "Coach",
-            };
-            var coachResult = await userManager.CreateAsync(coachUser, coachPassword);
-            if (coachResult.Succeeded)
-                await userManager.AddToRolesAsync(coachUser, [UserRole.Coach, UserRole.Individual]);
-        }
-        if (coachUser is not null)
-        {
-            var coachSub = await db.UserSubscriptions.FirstOrDefaultAsync(s => s.UserId == coachUser.Id);
-            if (coachSub is null)
-            {
-                db.UserSubscriptions.Add(new Xenoh.Domain.Entities.UserSubscription
-                {
-                    UserId = coachUser.Id,
-                    Tier = PlanTier.ProCoach,
-                    ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc),
-                });
-                await db.SaveChangesAsync();
-            }
-            else if (coachSub.Tier != PlanTier.ProCoach)
-            {
-                coachSub.Tier = PlanTier.ProCoach;
-                coachSub.ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
-                await db.SaveChangesAsync();
-            }
-        }
-
-        await DemoDataSeeder.SeedAsync(db, userManager);
         }
 
         var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
@@ -357,17 +317,36 @@ using (var scope = app.Services.CreateScope())
                 continue;
             db.FoodItems.Add(food);
             await db.SaveChangesAsync();
-            foreach (var (label, grams) in servings)
+            foreach (var (labelVi, labelEn, grams) in servings)
             {
                 db.FoodServings.Add(new Xenoh.Domain.Entities.FoodServing
                 {
                     FoodItemId = food.Id,
-                    Label = label,
+                    LabelVi = labelVi,
+                    LabelEn = labelEn,
                     Grams = grams
                 });
             }
         }
         await db.SaveChangesAsync();
+
+        // Backfill LabelEn for existing seeded food servings that have NULL LabelEn
+        var servingsWithNullLabelEn = await db.FoodServings
+            .Where(s => s.LabelEn == null && s.FoodItem.Source == Xenoh.Domain.Enums.FoodItemSource.Seed)
+            .Include(s => s.FoodItem)
+            .ToListAsync();
+        if (servingsWithNullLabelEn.Count > 0)
+        {
+            var labelEnMap = seededFoods
+                .SelectMany(item => item.Servings.Select(sv => (FoodNameEn: item.Food.NameEn.ToLower(), sv.LabelVi, sv.LabelEn)))
+                .ToDictionary(x => (x.FoodNameEn, x.LabelVi), x => x.LabelEn);
+            foreach (var serving in servingsWithNullLabelEn)
+            {
+                if (labelEnMap.TryGetValue((serving.FoodItem.NameEn.ToLower(), serving.LabelVi), out var labelEn))
+                    serving.LabelEn = labelEn;
+            }
+            await db.SaveChangesAsync();
+        }
 
     }
     catch (Exception ex)

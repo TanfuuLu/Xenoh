@@ -359,6 +359,9 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<Guid>("CoachId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CoachInviteCodeId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -401,13 +404,60 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasIndex("ClientId")
                         .IsUnique()
-                        .HasFilter("\"Status\" <> 2");
+                        .HasFilter("\"Status\" <> 2 AND \"Status\" <> 4");
 
                     b.HasIndex("CoachId");
+
+                    b.HasIndex("CoachInviteCodeId");
 
                     b.HasIndex("Status", "EndDate");
 
                     b.ToTable("CoachClientRelationships");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachInviteCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CoachId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("CoachingEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("CoachingStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UsedByClientId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoachId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("CoachInviteCodes");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CoachMarketplaceProfile", b =>
@@ -868,7 +918,11 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<decimal?>("ServingCount")
                         .HasColumnType("decimal(6,2)");
 
-                    b.Property<string>("ServingLabel")
+                    b.Property<string>("ServingLabelEn")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ServingLabelVi")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -902,7 +956,11 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<decimal>("Grams")
                         .HasColumnType("decimal(7,2)");
 
-                    b.Property<string>("Label")
+                    b.Property<string>("LabelEn")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LabelVi")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -912,10 +970,47 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FoodItemId", "Label")
+                    b.HasIndex("FoodItemId", "LabelVi")
                         .IsUnique();
 
                     b.ToTable("FoodServings");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("RelationshipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("RelationshipId", "CreatedAt");
+
+                    b.HasIndex("RelationshipId", "SenderId", "IsRead");
+
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.Notification", b =>
@@ -1693,7 +1788,25 @@ namespace Xenoh.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Xenoh.Domain.Entities.CoachInviteCode", "CoachInviteCode")
+                        .WithMany()
+                        .HasForeignKey("CoachInviteCodeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Client");
+
+                    b.Navigation("Coach");
+
+                    b.Navigation("CoachInviteCode");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachInviteCode", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Coach")
+                        .WithMany()
+                        .HasForeignKey("CoachId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Coach");
                 });
@@ -1828,6 +1941,25 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("FoodItem");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.Message", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CoachClientRelationship", "Relationship")
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Relationship");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.Notification", b =>

@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
+        services.AddScoped<IChatRealtimeService, ChatRealtimeService>();
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddScoped<IEmailService, SmtpEmailService>();

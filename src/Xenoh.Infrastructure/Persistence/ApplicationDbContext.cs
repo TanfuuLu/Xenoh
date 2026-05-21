@@ -16,6 +16,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Exercise> Exercises => Set<Exercise>();
     public DbSet<ExerciseSet> ExerciseSets => Set<ExerciseSet>();
     public DbSet<CoachClientRelationship> CoachClientRelationships => Set<CoachClientRelationship>();
+    public DbSet<CoachInviteCode> CoachInviteCodes => Set<CoachInviteCode>();
     public DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles => Set<CoachMarketplaceProfile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
@@ -41,6 +42,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
+    public DbSet<Message> Messages => Set<Message>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
