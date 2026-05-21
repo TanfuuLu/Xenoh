@@ -209,8 +209,47 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         result!.MuscleGroupVolume.Should().BeEmpty();
         result.MuscleGroupHeatmap.Should().BeEmpty();
         result.MuscleGroupBalance.MaxVolume.Should().Be(0m);
+        result.CompletedSets.Should().Be(0);
+        result.AvgRpe.Should().BeNull();
+        result.HighRpeSets.Should().Be(0);
+        result.WarningDays.Should().Be(0);
+        result.TotalDurationSeconds.Should().Be(0);
         result.Insights.Should().NotBeEmpty();
         result.TrainingScore.Should().BeInRange(0, 100);
+    }
+
+    [Fact]
+    public async Task GetAnalyticsAsync_ReturnsCompletedWorkSummary()
+    {
+        var planId = await SeedPlanAsync(
+            new ExerciseSeed(
+                WeekNumber: 1,
+                PrimaryMuscleGroup: MuscleGroup.Chest,
+                SecondaryMuscleGroups: [],
+                ActualReps: 8,
+                ActualWeight: 80m,
+                Rpe: 8m,
+                DurationSeconds: 1800),
+            new ExerciseSeed(
+                WeekNumber: 1,
+                PrimaryMuscleGroup: MuscleGroup.Back,
+                SecondaryMuscleGroups: [],
+                ActualReps: 4,
+                ActualWeight: 100m,
+                Rpe: 9.5m,
+                DurationSeconds: 1500,
+                PlannedReps: 6,
+                PlannedWeight: 100m));
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetAnalyticsAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.CompletedSets.Should().Be(2);
+        result.AvgRpe.Should().Be(8.8m);
+        result.HighRpeSets.Should().Be(1);
+        result.WarningDays.Should().Be(1);
+        result.TotalDurationSeconds.Should().Be(3300);
     }
 
     [Fact]
@@ -256,6 +295,89 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         chest.Weeks.Single(w => w.WeekNumber == 2).Volume.Should().Be(400m);
         result.MuscleGroupHeatmap.Single(m => m.MuscleGroup == "Triceps")
             .Weeks.Single(w => w.WeekNumber == 2).Volume.Should().Be(200m);
+    }
+
+    [Fact]
+    public async Task GetDesignAnalysisAsync_WithBalancedPlan_ReturnsBroadCoverageAndLowRisk()
+    {
+        var planId = await SeedDesignPlanAsync(
+            new DesignExerciseSeed(0, "Back Squat", MuscleGroup.Quads, [MuscleGroup.Glutes], 4, 5, 100m),
+            new DesignExerciseSeed(2, "Bench Press", MuscleGroup.Chest, [MuscleGroup.Triceps], 4, 6, 80m),
+            new DesignExerciseSeed(2, "Pull Up", MuscleGroup.Back, [MuscleGroup.Biceps], 4, 8, null),
+            new DesignExerciseSeed(4, "Romanian Deadlift", MuscleGroup.Hamstrings, [MuscleGroup.Glutes], 3, 8, 90m),
+            new DesignExerciseSeed(4, "Overhead Press", MuscleGroup.Shoulders, [MuscleGroup.Triceps], 3, 6, 50m),
+            new DesignExerciseSeed(6, "Barbell Row", MuscleGroup.Back, [MuscleGroup.Biceps], 4, 8, 70m),
+            new DesignExerciseSeed(6, "Plank", MuscleGroup.Abs, [], 3, 45, null));
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetDesignAnalysisAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Structure.PlannedTrainingDays.Should().Be(4);
+        result.Structure.PlannedRestDays.Should().Be(3);
+        result.Workload.PlannedSets.Should().Be(25);
+        result.Workload.PlannedTonnage.Should().Be(9220m);
+        result.MovementPatterns.Where(p => p.Pattern != "Carry/Cardio/Isolation")
+            .Should().OnlyContain(p => p.IsCovered);
+        result.RecoveryRisks.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDesignAnalysisAsync_WithUpperBodyBias_FindsDominantAndMissingLowerCoverage()
+    {
+        var planId = await SeedDesignPlanAsync(
+            new DesignExerciseSeed(0, "Bench Press", MuscleGroup.Chest, [MuscleGroup.Triceps], 5, 5, 100m),
+            new DesignExerciseSeed(1, "Incline Bench Press", MuscleGroup.Chest, [MuscleGroup.Shoulders], 5, 8, 80m),
+            new DesignExerciseSeed(3, "Cable Fly", MuscleGroup.Chest, [], 4, 12, 30m),
+            new DesignExerciseSeed(5, "Triceps Pushdown", MuscleGroup.Triceps, [], 4, 12, 25m));
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetDesignAnalysisAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Balance.DominantMuscleGroups.Should().Contain("Chest");
+        result.Balance.UndertrainedMajorMuscleGroups.Should().Contain(["Quads", "Hamstrings", "Glutes"]);
+        result.MovementPatterns.Single(p => p.Pattern == "Squat/Lunge").IsCovered.Should().BeFalse();
+        result.MovementPatterns.Single(p => p.Pattern == "Hinge").IsCovered.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetDesignAnalysisAsync_WithDenseConsecutiveTrainingDays_ReturnsRecoveryWarnings()
+    {
+        var planId = await SeedDesignPlanAsync(
+            new DesignExerciseSeed(0, "Back Squat", MuscleGroup.Quads, [MuscleGroup.Glutes], 5, 5, 120m),
+            new DesignExerciseSeed(1, "Deadlift", MuscleGroup.Back, [MuscleGroup.Hamstrings], 5, 3, 150m),
+            new DesignExerciseSeed(2, "Front Squat", MuscleGroup.Quads, [MuscleGroup.Glutes], 5, 5, 100m),
+            new DesignExerciseSeed(3, "Leg Press", MuscleGroup.Quads, [MuscleGroup.Glutes], 12, 10, 150m));
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetDesignAnalysisAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Structure.LongestTrainingStreak.Should().Be(4);
+        result.RecoveryRisks.Should().Contain(r => r.Type == "LowerBodySpacing" && r.Severity == "High");
+        result.RecoveryRisks.Should().Contain(r => r.Type == "RepeatedMuscle");
+        result.RecoveryRisks.Should().Contain(r => r.Type == "RestDistribution" && r.Severity == "High");
+        result.RecoveryRisks.Should().Contain(r => r.Type == "DenseDay");
+    }
+
+    [Fact]
+    public async Task GetDesignAnalysisAsync_WithEmptyPlan_ReturnsZeroStats()
+    {
+        var planId = await SeedDesignPlanAsync();
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetDesignAnalysisAsync(planId, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Structure.TotalWeeks.Should().Be(1);
+        result.Structure.PlannedTrainingDays.Should().Be(0);
+        result.Structure.PlannedRestDays.Should().Be(7);
+        result.Workload.PlannedExercises.Should().Be(0);
+        result.Workload.PlannedSets.Should().Be(0);
+        result.MuscleGroups.Should().BeEmpty();
+        result.RecoveryRisks.Should().BeEmpty();
+        result.Variety.UniqueExercises.Should().Be(0);
     }
 
     private async Task<Guid> SeedPlanAsync(params ExerciseSeed[] exercises) =>
@@ -312,18 +434,21 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
                     PrimaryMuscleGroup = seed.PrimaryMuscleGroup,
                     SecondaryMuscleGroups = seed.SecondaryMuscleGroups,
                     PlannedSets = 1,
-                    PlannedReps = seed.ActualReps ?? 0,
-                    PlannedWeight = seed.ActualWeight,
-                    DailyWorkoutId = day.Id
+                    PlannedReps = seed.PlannedReps ?? seed.ActualReps ?? 0,
+                    PlannedWeight = seed.PlannedWeight ?? seed.ActualWeight,
+                    DailyWorkoutId = day.Id,
+                    IsCompleted = true,
+                    DurationSeconds = seed.DurationSeconds
                 };
                 var set = new ExerciseSet
                 {
                     ExerciseId = exercise.Id,
                     SetNumber = 1,
-                    PlannedReps = seed.ActualReps ?? 0,
-                    PlannedWeight = seed.ActualWeight,
+                    PlannedReps = seed.PlannedReps ?? seed.ActualReps ?? 0,
+                    PlannedWeight = seed.PlannedWeight ?? seed.ActualWeight,
                     ActualReps = seed.ActualReps,
                     ActualWeight = seed.ActualWeight,
+                    Rpe = seed.Rpe,
                     IsCompleted = true
                 };
 
@@ -337,10 +462,90 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         return plan.Id;
     }
 
+    private async Task<Guid> SeedDesignPlanAsync(params DesignExerciseSeed[] exercises)
+    {
+        await using var ctx = CreateContext();
+        var startDate = DateOnly.FromDateTime(DateTime.Today);
+        var plan = new Plan
+        {
+            Name = "Design Plan",
+            OwnerId = UserId,
+            PlanType = PlanType.Self,
+            StartDate = startDate,
+            EndDate = startDate.AddDays(6)
+        };
+        var week = new WeeklyWorkout
+        {
+            PlanId = plan.Id,
+            WeekNumber = 1,
+            Name = "Week 1",
+            StartDate = startDate,
+            EndDate = startDate.AddDays(6)
+        };
+
+        ctx.Plans.Add(plan);
+        ctx.WeeklyWorkouts.Add(week);
+
+        var exerciseGroups = exercises.GroupBy(e => e.DayOffset).ToDictionary(g => g.Key, g => g.ToList());
+        for (var dayOffset = 0; dayOffset < 7; dayOffset++)
+        {
+            var dayExercises = exerciseGroups.GetValueOrDefault(dayOffset) ?? [];
+            var date = startDate.AddDays(dayOffset);
+            var day = new DailyWorkout
+            {
+                WeeklyWorkoutId = week.Id,
+                Date = date,
+                DayOfWeek = date.DayOfWeek,
+                Status = dayExercises.Count == 0 ? DayStatus.Rest : DayStatus.Normal
+            };
+            ctx.DailyWorkouts.Add(day);
+
+            foreach (var seed in dayExercises)
+            {
+                var template = new ExerciseTemplate
+                {
+                    Name = seed.Name,
+                    PrimaryMuscleGroup = seed.PrimaryMuscleGroup,
+                    SecondaryMuscleGroups = seed.SecondaryMuscleGroups
+                };
+                var exercise = new Exercise
+                {
+                    ExerciseTemplateId = template.Id,
+                    Name = seed.Name,
+                    PrimaryMuscleGroup = seed.PrimaryMuscleGroup,
+                    SecondaryMuscleGroups = seed.SecondaryMuscleGroups,
+                    PlannedSets = seed.PlannedSets,
+                    PlannedReps = seed.PlannedReps,
+                    PlannedWeight = seed.PlannedWeight,
+                    DailyWorkoutId = day.Id
+                };
+
+                ctx.ExerciseTemplates.Add(template);
+                ctx.Exercises.Add(exercise);
+            }
+        }
+
+        await ctx.SaveChangesAsync();
+        return plan.Id;
+    }
+
     private sealed record ExerciseSeed(
         int WeekNumber,
         MuscleGroup PrimaryMuscleGroup,
         List<MuscleGroup> SecondaryMuscleGroups,
         int? ActualReps,
-        decimal? ActualWeight);
+        decimal? ActualWeight,
+        decimal? Rpe = null,
+        int? DurationSeconds = null,
+        int? PlannedReps = null,
+        decimal? PlannedWeight = null);
+
+    private sealed record DesignExerciseSeed(
+        int DayOffset,
+        string Name,
+        MuscleGroup PrimaryMuscleGroup,
+        List<MuscleGroup> SecondaryMuscleGroups,
+        int PlannedSets,
+        int PlannedReps,
+        decimal? PlannedWeight);
 }

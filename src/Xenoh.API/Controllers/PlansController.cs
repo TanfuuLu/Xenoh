@@ -14,6 +14,7 @@ using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetMyPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanById;
+using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
 using Xenoh.Application.Features.Plans.Queries.ReviewPlanBalance;
 using Xenoh.Domain.Enums;
 
@@ -163,6 +164,21 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(new GetPlanAnalyticsQuery(planId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{planId:guid}/design-analysis")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    public async Task<IActionResult> GetPlanDesignAnalysis(Guid planId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetPlanDesignAnalysisQuery(planId), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
