@@ -6,6 +6,7 @@ using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
+using Xenoh.Application.Features.Plans.Queries.ExportPlan;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -435,6 +436,80 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             completedSets.Count, avgRpe, highRpeSets, warningDays, totalDurationSeconds,
             insightResult.TrainingScore, insightResult.Insights,
             weeklyCompliance, weeklyVolume, muscleGroups, muscleGroupHeatmap, muscleGroupBalance);
+    }
+
+    public async Task<PlanExportData?> GetForExportAsync(Guid planId, Guid userId, CancellationToken ct)
+    {
+        // Single projection query — one round-trip, only the columns the CSV needs
+        var raw = await db.Plans
+            .AsNoTracking()
+            .Where(p => p.Id == planId &&
+                        (p.OwnerId == userId || p.CreatedByCoachId == userId))
+            .Select(p => new
+            {
+                p.Name,
+                p.StartDate,
+                Weeks = p.WeeklyWorkouts
+                    .OrderBy(w => w.WeekNumber)
+                    .Select(w => new
+                    {
+                        w.WeekNumber,
+                        w.Name,
+                        w.StartDate,
+                        w.EndDate,
+                        Days = w.DailyWorkouts
+                            .OrderBy(d => d.Date)
+                            .Select(d => new
+                            {
+                                d.Date,
+                                d.DayOfWeek,
+                                d.IsCompleted,
+                                Exercises = d.Exercises
+                                    .OrderBy(e => e.SortOrder)
+                                    .Select(e => new
+                                    {
+                                        e.Name,
+                                        e.PlannedSets,
+                                        e.PlannedReps,
+                                        e.PlannedWeight,
+                                        CompletedSetsCount = e.Sets.Count(s => s.IsCompleted),
+                                        e.IsCompleted,
+                                        e.Notes
+                                    })
+                                    .ToList()
+                            })
+                            .ToList()
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (raw is null) return null;
+
+        return new PlanExportData(
+            raw.Name,
+            raw.StartDate,
+            raw.Weeks.Select(w => new WeekExportData(
+                w.WeekNumber,
+                w.Name,
+                w.StartDate,
+                w.EndDate,
+                w.Days.Select(d => new DayExportData(
+                    d.Date,
+                    d.DayOfWeek,
+                    d.IsCompleted,
+                    d.Exercises.Select(e => new ExerciseExportData(
+                        e.Name,
+                        e.PlannedSets,
+                        e.PlannedReps,
+                        e.PlannedWeight,
+                        e.CompletedSetsCount,
+                        e.IsCompleted,
+                        e.Notes
+                    )).ToList()
+                )).ToList()
+            )).ToList()
+        );
     }
 
     public async Task AddAsync(Plan plan, CancellationToken ct) =>

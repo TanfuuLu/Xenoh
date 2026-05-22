@@ -170,7 +170,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(origins)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials()
+              .WithExposedHeaders("Content-Disposition");
     });
 
     // Public share endpoints — allow any origin (no credentials needed, images are public)

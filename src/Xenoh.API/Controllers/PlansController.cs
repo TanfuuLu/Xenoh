@@ -16,6 +16,7 @@ using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanById;
 using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
 using Xenoh.Application.Features.Plans.Queries.ReviewPlanBalance;
+using Xenoh.Application.Features.Plans.Queries.ExportPlan;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
@@ -39,6 +40,22 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         {
             var result = await mediator.Send(new GetPlanByIdQuery(planId), ct);
             return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{planId:guid}/export")]
+    public async Task<IActionResult> ExportPlanCsv(Guid planId, CancellationToken ct)
+    {
+        try
+        {
+            PlanCsvExportResult result = await mediator.Send(new ExportPlanCsvQuery(planId), ct);
+            return File(result.Data,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                result.FileName);
         }
         catch (InvalidOperationException ex)
         {
