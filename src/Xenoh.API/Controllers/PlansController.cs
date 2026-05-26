@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Plans.Commands.CreateAiStarterPlan;
 using Xenoh.Application.Features.Plans.Commands.ActivatePlan;
+using Xenoh.Application.Features.Plans.Commands.DuplicatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Commands.CreatePlanForUser;
 using Xenoh.Application.Features.Plans.Commands.DeactivatePlan;
@@ -220,6 +221,22 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{planId:guid}/duplicate")]
+    public async Task<IActionResult> DuplicatePlan(Guid planId, [FromBody] DuplicatePlanCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { SourcePlanId = planId }, ct);
+            return CreatedAtAction(nameof(GetById), new { planId = result.Id }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message.Contains("not found") || ex.Message.Contains("access denied")
+                ? NotFound(new { message = ex.Message })
+                : BadRequest(new { message = ex.Message });
         }
     }
 

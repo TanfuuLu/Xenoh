@@ -27,6 +27,7 @@ public sealed record PlanResponse(
     Guid? CreatedByCoachId,
     string? CoachName,
     int TotalWeeks,
+    int CompletedWeeks,
     int TotalDays,
     int CompletedDays,
     bool IsActive,

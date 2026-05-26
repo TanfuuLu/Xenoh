@@ -37,6 +37,9 @@ public interface IPlanRepository
     /// <summary>Read-only: flat plan hierarchy (weeks → days → exercises) for CSV export. Returns null if the user has no access.</summary>
     Task<PlanExportData?> GetForExportAsync(Guid planId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>Read-only: plan with full hierarchy (weeks → days → exercises → sets) for duplication. Returns null if user has no access.</summary>
+    Task<Plan?> GetForDuplicateAsync(Guid planId, Guid userId, CancellationToken ct = default);
+
     /// <summary>Read-only: for each owner, the total and completed day counts across all their plans.</summary>
     Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(IEnumerable<Guid> ownerIds, CancellationToken ct = default);
 

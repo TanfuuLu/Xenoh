@@ -11,6 +11,82 @@ namespace Xenoh.Application.Tests.Features.Plans;
 public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
 {
     [Fact]
+    public async Task GetAllByOwnerAsync_CountsCompletedWeeksFromWeekState()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        await using var seedCtx = CreateContext();
+
+        seedCtx.Users.Add(new ApplicationUser
+        {
+            Id = UserId,
+            FirstName = "Test",
+            LastName = "User",
+            Email = "test@example.com"
+        });
+
+        var plan = new Plan
+        {
+            Name = "Completed Week Plan",
+            OwnerId = UserId,
+            PlanType = PlanType.Self,
+            StartDate = today,
+            EndDate = today.AddDays(13)
+        };
+
+        var completedWeek = new WeeklyWorkout
+        {
+            PlanId = plan.Id,
+            WeekNumber = 1,
+            Name = "Week 1",
+            StartDate = today,
+            EndDate = today.AddDays(6),
+            IsCompleted = true
+        };
+
+        var completedDayOnlyWeek = new WeeklyWorkout
+        {
+            PlanId = plan.Id,
+            WeekNumber = 2,
+            Name = "Week 2",
+            StartDate = today.AddDays(7),
+            EndDate = today.AddDays(13),
+            IsCompleted = false
+        };
+
+        var completedDay = new DailyWorkout
+        {
+            WeeklyWorkoutId = completedDayOnlyWeek.Id,
+            Date = today.AddDays(7),
+            DayOfWeek = today.AddDays(7).DayOfWeek,
+            IsCompleted = true
+        };
+
+        var completedExercise = new Exercise
+        {
+            DailyWorkoutId = completedDay.Id,
+            Name = "Completed Exercise",
+            PrimaryMuscleGroup = MuscleGroup.Chest,
+            PlannedSets = 1,
+            PlannedReps = 5,
+            IsCompleted = true
+        };
+
+        seedCtx.Plans.Add(plan);
+        seedCtx.WeeklyWorkouts.AddRange(completedWeek, completedDayOnlyWeek);
+        seedCtx.DailyWorkouts.Add(completedDay);
+        seedCtx.Exercises.Add(completedExercise);
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetAllByOwnerAsync(UserId, CancellationToken.None);
+
+        result.Should().ContainSingle();
+        result[0].TotalWeeks.Should().Be(2);
+        result[0].CompletedWeeks.Should().Be(1);
+        result[0].CompletedDays.Should().Be(1);
+    }
+
+    [Fact]
     public async Task GetCoachOverviewAsync_ExcludesCoachPersonalPlans()
     {
         var coachId = UserId;

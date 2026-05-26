@@ -25,6 +25,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               p.CreatedByCoachId,
               p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
               p.WeeklyWorkouts.Count,
+              p.WeeklyWorkouts.Count(w => w.IsCompleted),
               p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
               p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
               p.IsActive, p.CreatedAt))
@@ -512,6 +513,16 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         );
     }
 
+    public Task<Plan?> GetForDuplicateAsync(Guid planId, Guid userId, CancellationToken ct) =>
+        db.Plans
+          .AsNoTracking()
+          .Include(p => p.WeeklyWorkouts)
+              .ThenInclude(w => w.DailyWorkouts)
+                  .ThenInclude(d => d.Exercises)
+                      .ThenInclude(e => e.Sets)
+          .FirstOrDefaultAsync(p => p.Id == planId &&
+              (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+
     public async Task AddAsync(Plan plan, CancellationToken ct) =>
         await db.Plans.AddAsync(plan, ct);
 
@@ -528,6 +539,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         p.CreatedByCoachId,
         p.CreatedByCoach is null ? null : $"{p.CreatedByCoach.FirstName} {p.CreatedByCoach.LastName}".Trim(),
         p.WeeklyWorkouts.Count,
+        p.WeeklyWorkouts.Count(w => w.IsCompleted),
         allDays.Count,
         allDays.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted)),
         p.IsActive, p.CreatedAt);
