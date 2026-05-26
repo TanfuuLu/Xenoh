@@ -1,4 +1,4 @@
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
+using Xenoh.Application.Features.CoachClient;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Domain.Entities;
 

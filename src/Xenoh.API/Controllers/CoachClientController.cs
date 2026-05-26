@@ -11,7 +11,6 @@ using Xenoh.Application.Features.CoachClient.Commands.DeleteInviteCode;
 using Xenoh.Application.Features.CoachClient.Commands.GenerateInviteCode;
 using Xenoh.Application.Features.CoachClient.Commands.RejectRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RejectTermination;
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Application.Features.CoachClient.Commands.RequestRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.RequestTermination;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
@@ -31,21 +30,6 @@ namespace Xenoh.API.Controllers;
 [Authorize]
 public sealed class CoachClientController(IMediator mediator) : ControllerBase
 {
-    [HttpPost("request")]
-    [Authorize(Roles = $"{UserRole.Individual},{UserRole.Coach}")]
-    public async Task<IActionResult> RequestCoach([FromBody] RequestCoachCommand command, CancellationToken ct)
-    {
-        try
-        {
-            var result = await mediator.Send(command, ct);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     [HttpPut("accept/{relationshipId:guid}")]
     [Authorize(Roles = UserRole.Coach)]
     public async Task<IActionResult> AcceptRequest(Guid relationshipId, CancellationToken ct)

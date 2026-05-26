@@ -51,6 +51,7 @@ public sealed class SendMessageHandler(
             message.SenderId,
             senderName,
             message.Content,
+            message.Kind.ToString(),
             message.IsRead,
             message.CreatedAt);
 

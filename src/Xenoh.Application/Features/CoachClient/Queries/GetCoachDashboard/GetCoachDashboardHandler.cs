@@ -14,6 +14,7 @@ public sealed class GetCoachDashboardHandler(
     IPlanRepository planRepo,
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
+    IApplicationDbContext db,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetCoachDashboardQuery, List<CoachClientDashboardResponse>>
@@ -37,6 +38,16 @@ public sealed class GetCoachDashboardHandler(
         var planProgress = await planRepo.GetProgressByOwnersAsync(clientIds, cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var planMonitoring = await planRepo.GetMonitoringByOwnersAsync(clientIds, today, cancellationToken);
+        var latestCompletedWorkoutDates = await db.DailyWorkouts
+            .AsNoTracking()
+            .Where(d =>
+                d.IsCompleted &&
+                d.Date <= today &&
+                d.WeeklyWorkout.Plan.IsActive &&
+                clientIds.Contains(d.WeeklyWorkout.Plan.OwnerId))
+            .GroupBy(d => d.WeeklyWorkout.Plan.OwnerId)
+            .Select(g => new { OwnerId = g.Key, Date = g.Max(d => d.Date) })
+            .ToDictionaryAsync(x => x.OwnerId, x => (DateOnly?)x.Date, cancellationToken);
         var latestBodyweights = await bodyweightRepo.GetLatestWeightsForUsersAsync(clientIds, cancellationToken);
         var competitionLifts = await userPrRepo.GetCompetitionLiftsForUsersAsync(clientIds, cancellationToken);
 
@@ -70,6 +81,7 @@ public sealed class GetCoachDashboardHandler(
             var clientPrs = prsByClient.GetValueOrDefault(r.ClientId, []);
             var monitoring = monitoringByClient.GetValueOrDefault(r.ClientId);
             var lastWorkoutDate = lastWorkoutDates.GetValueOrDefault(r.ClientId);
+            var latestCompletedWorkoutDate = latestCompletedWorkoutDates.GetValueOrDefault(r.ClientId);
             int? daysSinceLastWorkout = lastWorkoutDate is null
                 ? null
                 : today.DayNumber - lastWorkoutDate.Value.DayNumber;
@@ -94,6 +106,10 @@ public sealed class GetCoachDashboardHandler(
                 monitoring?.ActivePlanEndDate,
                 monitoring?.ActivePlanProgressPercent,
                 daysSinceLastWorkout,
+                latestCompletedWorkoutDate,
+                latestCompletedWorkoutDate == today,
+                monitoring?.CompletedWorkoutDays ?? 0,
+                monitoring?.TotalWorkoutDays ?? 0,
                 monitoring?.MissedWorkoutDays ?? 0,
                 monitoring?.CompletedWorkoutDays ?? 0,
                 monitoring?.TotalWorkoutDays ?? 0,

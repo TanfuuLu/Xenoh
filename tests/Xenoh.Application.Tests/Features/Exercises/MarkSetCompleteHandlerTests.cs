@@ -18,7 +18,10 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
     private async Task<(Guid SetId, Guid ExerciseTemplateId)> SeedAsync(
         bool alreadyCompleted = false,
         Guid? ownerOverride = null,
-        int? durationSeconds = null)
+        int? durationSeconds = null,
+        Guid? coachId = null,
+        bool createActiveRelationship = false,
+        int setCount = 1)
     {
         await using var ctx = CreateContext();
 
@@ -34,7 +37,9 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         {
             Name = "Test Plan",
             OwnerId = ownerId,
-            PlanType = PlanType.Self,
+            PlanType = coachId.HasValue ? PlanType.Coach : PlanType.Self,
+            CreatedByCoachId = coachId,
+            IsActive = true,
             StartDate = DateOnly.FromDateTime(DateTime.Today),
             EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30))
         };
@@ -67,24 +72,35 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             DurationSeconds = durationSeconds
         };
 
-        var set = new ExerciseSet
+        var sets = Enumerable.Range(1, setCount).Select(i => new ExerciseSet
         {
             ExerciseId = exercise.Id,
-            SetNumber = 1,
+            SetNumber = i,
             PlannedReps = 5,
             PlannedWeight = 100m,
             IsCompleted = alreadyCompleted
-        };
+        }).ToList();
 
         ctx.ExerciseTemplates.Add(template);
         ctx.Plans.Add(plan);
         ctx.WeeklyWorkouts.Add(week);
         ctx.DailyWorkouts.Add(day);
         ctx.Exercises.Add(exercise);
-        ctx.ExerciseSets.Add(set);
+        ctx.ExerciseSets.AddRange(sets);
+        if (coachId.HasValue && createActiveRelationship)
+        {
+            ctx.CoachClientRelationships.Add(new CoachClientRelationship
+            {
+                CoachId = coachId.Value,
+                ClientId = ownerId,
+                Status = RelationshipStatus.Active,
+                StartDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-7)),
+                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30))
+            });
+        }
         await ctx.SaveChangesAsync();
 
-        return (set.Id, template.Id);
+        return (sets[0].Id, template.Id);
     }
 
     private MarkSetCompleteHandler CreateHandler(ApplicationDbContext ctx, ApplicationUser? user = null) =>
@@ -92,8 +108,10 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             new ExerciseSetRepository(ctx),
             new WorkoutHistoryRepository(ctx),
             new UserPrRepository(ctx),
+            ctx,
             CurrentUser(),
             new FakeNotificationService(),
+            new FakeChatRealtimeService(),
             new TestUserManager(user ?? new ApplicationUser { Id = UserId }));
 
     // ─── RPE tests ───────────────────────────────────────────────────────────
@@ -171,6 +189,57 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         var response = await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
 
         response.Sets.Single().IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_FinalSetForCoachPlan_CreatesSystemChatNoteOnce()
+    {
+        var coachId = Guid.NewGuid();
+        var (setId, _) = await SeedAsync(coachId: coachId, createActiveRelationship: true);
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
+        await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        var message = verifyCtx.Messages.Should().ContainSingle().Subject;
+        message.Kind.Should().Be(MessageKind.System);
+        message.SenderId.Should().Be(UserId);
+        message.Content.Should().StartWith("Workout completed: Test Plan - ");
+    }
+
+    [Fact]
+    public async Task Handle_NonFinalSet_DoesNotCreateSystemChatNote()
+    {
+        var coachId = Guid.NewGuid();
+        var (setId, _) = await SeedAsync(coachId: coachId, createActiveRelationship: true, setCount: 2);
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand { SetId = setId }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.Messages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_SelfPlanOrNoActiveRelationship_DoesNotCreateSystemChatNote()
+    {
+        var (selfPlanSetId, _) = await SeedAsync();
+        var coachId = Guid.NewGuid();
+        var (coachPlanSetId, _) = await SeedAsync(coachId: coachId, createActiveRelationship: false);
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        await handler.Handle(new MarkSetCompleteCommand { SetId = selfPlanSetId }, CancellationToken.None);
+        await handler.Handle(new MarkSetCompleteCommand { SetId = coachPlanSetId }, CancellationToken.None);
+
+        await using var verifyCtx = CreateContext();
+        verifyCtx.Messages.Should().BeEmpty();
     }
 
     [Fact]

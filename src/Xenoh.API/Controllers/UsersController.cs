@@ -5,11 +5,13 @@ using Xenoh.Application.Features.Users.Commands.DeleteBodyweightEntry;
 using Xenoh.Application.Features.Users.Commands.LogBodyweight;
 using Xenoh.Application.Features.Users.Commands.UpdateMyAvatar;
 using Xenoh.Application.Features.Users.Commands.UpdateMyProfile;
+using Xenoh.Application.Features.Users.Commands.UpdateMyPreferences;
 using Xenoh.Application.Features.Reports.Commands.CreateUserReport;
 using Xenoh.Application.Features.Users.Queries.GetBodyweightHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
+using Xenoh.Application.Features.Users.Queries.GetMyPreferences;
 using Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
@@ -36,6 +38,34 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
 
     [HttpPut("me")]
     public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateMyProfileCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("me/preferences")]
+    public async Task<IActionResult> GetMyPreferences(CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetMyPreferencesQuery(), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("me/preferences")]
+    public async Task<IActionResult> UpdateMyPreferences([FromBody] UpdateMyPreferencesCommand command, CancellationToken ct)
     {
         try
         {

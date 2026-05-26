@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.CoachClient;
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Application.Features.CoachClient.Queries.GetMyClients;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -75,11 +74,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.StartDate,
               r.EndDate,
               r.RenewalRequestedBy,
-              r.ProposedEndDate,
-              r.SelectedCoachingType.HasValue ? r.SelectedCoachingType.Value.ToString() : null,
-              r.SelectedQuantity,
-              r.SelectedPriceAmount,
-              r.SelectedCurrency))
+              r.ProposedEndDate))
           .ToListAsync(ct);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>

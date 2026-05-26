@@ -21,11 +21,6 @@ public class CoachClientRelationship : BaseEntity
     public Guid? RenewalRequestedBy { get; set; }
     public DateOnly? ProposedEndDate { get; set; }
 
-    public CoachingType? SelectedCoachingType { get; set; }
-    public int? SelectedQuantity { get; set; }
-    public decimal? SelectedPriceAmount { get; set; }
-    public string? SelectedCurrency { get; set; }
-
     /// <summary>Set when the relationship was created via a Coach Invite Code.</summary>
     public Guid? CoachInviteCodeId { get; set; }
     public CoachInviteCode? CoachInviteCode { get; set; }

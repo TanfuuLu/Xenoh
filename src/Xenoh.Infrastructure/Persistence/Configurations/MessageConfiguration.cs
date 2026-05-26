@@ -14,6 +14,11 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             .IsRequired()
             .HasMaxLength(2000);
 
+        builder.Property(m => m.Kind)
+            .HasConversion<string>()
+            .HasMaxLength(24)
+            .HasDefaultValue(Xenoh.Domain.Enums.MessageKind.User);
+
         builder.HasOne(m => m.Relationship)
             .WithMany()
             .HasForeignKey(m => m.RelationshipId)

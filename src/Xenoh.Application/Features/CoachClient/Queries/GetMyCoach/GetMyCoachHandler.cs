@@ -1,7 +1,6 @@
 using Mediator;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 
 namespace Xenoh.Application.Features.CoachClient.Queries.GetMyCoach;
 

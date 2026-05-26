@@ -1,4 +1,5 @@
 using Xenoh.Domain.Common;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Domain.Entities;
 
@@ -11,5 +12,6 @@ public class Message : BaseEntity
     public ApplicationUser Sender { get; set; } = null!;
 
     public string Content { get; set; } = string.Empty;
+    public MessageKind Kind { get; set; } = MessageKind.User;
     public bool IsRead { get; set; } = false;
 }

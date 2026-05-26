@@ -6,5 +6,6 @@ public sealed record MessageResponse(
     Guid SenderId,
     string SenderName,
     string Content,
+    string Kind,
     bool IsRead,
     DateTime CreatedAt);

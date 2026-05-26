@@ -29,6 +29,15 @@ public class ApplicationUser : IdentityUser<Guid>
     [MaxLength(300)]
     public string? ZaloUrl { get; set; }
 
+    [MaxLength(2)]
+    public string PreferredLanguage { get; set; } = "vi";
+
+    [MaxLength(5)]
+    public string PreferredTheme { get; set; } = "light";
+
+    [MaxLength(2)]
+    public string PreferredWeightUnit { get; set; } = "kg";
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
     public ICollection<ExternalAuthTicket> ExternalAuthTickets { get; set; } = [];
@@ -45,9 +54,6 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<CoachClientRelationship> Clients { get; set; } = [];
 
     public ICollection<Notification> Notifications { get; set; } = [];
-    public ICollection<CoachRating> CoachRatingsReceived { get; set; } = [];
-    public ICollection<CoachRating> CoachRatingsGiven { get; set; } = [];
-    public CoachMarketplaceProfile? CoachMarketplaceProfile { get; set; }
     public ICollection<UserReport> ReportsMade { get; set; } = [];
     public ICollection<UserReport> ReportsReceived { get; set; } = [];
     public ICollection<UserReport> ReportsReviewed { get; set; } = [];

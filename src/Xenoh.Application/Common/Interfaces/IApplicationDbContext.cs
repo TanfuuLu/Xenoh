@@ -16,7 +16,6 @@ public interface IApplicationDbContext
     DbSet<ExerciseSet> ExerciseSets { get; }
     DbSet<CoachClientRelationship> CoachClientRelationships { get; }
     DbSet<CoachInviteCode> CoachInviteCodes { get; }
-    DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<PasswordResetCode> PasswordResetCodes { get; }
     DbSet<ExternalAuthTicket> ExternalAuthTickets { get; }
@@ -30,7 +29,6 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<UserSubscription> UserSubscriptions { get; }
     DbSet<PaymentOrder> PaymentOrders { get; }
-    DbSet<CoachRating> CoachRatings { get; }
     DbSet<UserReport> UserReports { get; }
     DbSet<UserBlock> UserBlocks { get; }
     DbSet<IdentityRole<Guid>> Roles { get; }

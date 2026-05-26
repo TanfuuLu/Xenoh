@@ -1,8 +1,10 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.XP;
+using Xenoh.Application.Features.Chat.Dtos;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -13,8 +15,10 @@ public sealed class MarkSetCompleteHandler(
     IExerciseSetRepository exerciseSetRepo,
     IWorkoutHistoryRepository workoutHistoryRepo,
     IUserPrRepository userPrRepo,
+    IApplicationDbContext db,
     ICurrentUserService currentUser,
     INotificationService notificationService,
+    IChatRealtimeService chatRealtimeService,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<MarkSetCompleteCommand, ExerciseResponse>
 {
@@ -46,8 +50,10 @@ public sealed class MarkSetCompleteHandler(
         exercise.UpdatedAt = DateTime.UtcNow;
 
         var dailyWorkout = exercise.DailyWorkout;
+        var dayWasCompleted = dailyWorkout.IsCompleted;
         bool allExercisesDone = dailyWorkout.Exercises.Any() && dailyWorkout.Exercises.All(e =>
             e.Id == exercise.Id ? allSetsDone : e.IsCompleted);
+        var dayJustCompleted = !dayWasCompleted && allExercisesDone;
 
         dailyWorkout.IsCompleted = allExercisesDone;
         dailyWorkout.UpdatedAt = DateTime.UtcNow;
@@ -125,7 +131,73 @@ public sealed class MarkSetCompleteHandler(
             }
         }
 
+        if (dayJustCompleted)
+            await CreateWorkoutCompletionChatNoteAsync(plan, dailyWorkout, userId, cancellationToken);
+
         return CreateExerciseHandler.ToResponse(exercise, prWeight);
+    }
+
+    private async Task CreateWorkoutCompletionChatNoteAsync(
+        Plan plan,
+        DailyWorkout dailyWorkout,
+        Guid clientId,
+        CancellationToken cancellationToken)
+    {
+        if (!plan.CreatedByCoachId.HasValue || plan.PlanType != PlanType.Coach)
+            return;
+
+        var coachId = plan.CreatedByCoachId.Value;
+        var relationship = await db.CoachClientRelationships
+            .AsNoTracking()
+            .Where(r =>
+                r.CoachId == coachId &&
+                r.ClientId == clientId &&
+                r.Status == RelationshipStatus.Active)
+            .Select(r => new { r.Id, r.CoachId, r.ClientId })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (relationship is null)
+            return;
+
+        var content = $"Workout completed: {plan.Name} - {dailyWorkout.Date:yyyy-MM-dd}";
+        var alreadyExists = await db.Messages
+            .AsNoTracking()
+            .AnyAsync(m =>
+                m.RelationshipId == relationship.Id &&
+                m.Kind == MessageKind.System &&
+                m.Content == content,
+                cancellationToken);
+
+        if (alreadyExists)
+            return;
+
+        var message = new Message
+        {
+            RelationshipId = relationship.Id,
+            SenderId = clientId,
+            Content = content,
+            Kind = MessageKind.System,
+            IsRead = false,
+        };
+
+        db.Messages.Add(message);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var response = new MessageResponse(
+            message.Id,
+            message.RelationshipId,
+            message.SenderId,
+            "System",
+            message.Content,
+            message.Kind.ToString(),
+            message.IsRead,
+            message.CreatedAt);
+
+        await chatRealtimeService.MessageSentAsync(
+            relationship.Id,
+            response,
+            [relationship.ClientId, relationship.CoachId],
+            cancellationToken);
     }
 
     private static bool IsWeekComplete(WeeklyWorkout week)

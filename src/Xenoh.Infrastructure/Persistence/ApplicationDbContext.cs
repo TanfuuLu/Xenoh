@@ -17,7 +17,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ExerciseSet> ExerciseSets => Set<ExerciseSet>();
     public DbSet<CoachClientRelationship> CoachClientRelationships => Set<CoachClientRelationship>();
     public DbSet<CoachInviteCode> CoachInviteCodes => Set<CoachInviteCode>();
-    public DbSet<CoachMarketplaceProfile> CoachMarketplaceProfiles => Set<CoachMarketplaceProfile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
     public DbSet<ExternalAuthTicket> ExternalAuthTickets => Set<ExternalAuthTicket>();
@@ -31,7 +30,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
-    public DbSet<CoachRating> CoachRatings => Set<CoachRating>();
     public DbSet<UserReport> UserReports => Set<UserReport>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();

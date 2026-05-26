@@ -32,6 +32,7 @@ public sealed class ChatRealtimeService(
                 message.SenderId,
                 message.SenderName,
                 message.Content,
+                message.Kind,
                 message.IsRead,
                 message.CreatedAt,
             },

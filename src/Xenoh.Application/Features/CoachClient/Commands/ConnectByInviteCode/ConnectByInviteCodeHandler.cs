@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.CoachClient;
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 

@@ -40,6 +40,7 @@ public sealed class GetMessagesHandler(
                 m.SenderId,
                 m.Sender.FirstName + " " + m.Sender.LastName,
                 m.Content,
+                m.Kind.ToString(),
                 m.IsRead,
                 m.CreatedAt))
             .ToListAsync(cancellationToken);

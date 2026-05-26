@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Xenoh.Application.Features.CoachClient.Commands.RequestCoach;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.CoachClient;
@@ -20,11 +19,7 @@ public static class CoachRelationshipMapper
             relationship.StartDate,
             relationship.EndDate,
             relationship.RenewalRequestedBy,
-            relationship.ProposedEndDate,
-            relationship.SelectedCoachingType.HasValue ? relationship.SelectedCoachingType.Value.ToString() : null,
-            relationship.SelectedQuantity,
-            relationship.SelectedPriceAmount,
-            relationship.SelectedCurrency);
+            relationship.ProposedEndDate);
 
     public static CoachRelationshipResponse ToResponse(CoachClientRelationship relationship) =>
         ToResponse(relationship, relationship.Client, relationship.Coach);
@@ -46,9 +41,5 @@ public static class CoachRelationshipMapper
             relationship.StartDate,
             relationship.EndDate,
             relationship.RenewalRequestedBy,
-            relationship.ProposedEndDate,
-            relationship.SelectedCoachingType?.ToString(),
-            relationship.SelectedQuantity,
-            relationship.SelectedPriceAmount,
-            relationship.SelectedCurrency);
+            relationship.ProposedEndDate);
 }

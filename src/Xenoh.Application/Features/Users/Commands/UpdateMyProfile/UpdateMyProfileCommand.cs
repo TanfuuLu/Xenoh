@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Mediator;
-using Xenoh.Application.Features.Coaches;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Enums;
 
@@ -24,8 +23,6 @@ public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
     public Gender? Gender { get; init; }
 
     public DateOnly? DateOfBirth { get; init; }
-
-    public CoachMarketplaceProfileDto? CoachMarketplaceProfile { get; init; }
 
     [StringLength(300, ErrorMessage = "Facebook URL cannot exceed 300 characters.")]
     [Url(ErrorMessage = "Facebook URL must be a valid URL.")]
