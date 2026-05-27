@@ -371,6 +371,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors("FrontendPolicy");
 app.UseResponseCaching();
 app.UseRateLimiter();
+//if (!app.Environment.IsDevelopment())
+//    app.UseHsts();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseTokenBlacklistMiddleware();
