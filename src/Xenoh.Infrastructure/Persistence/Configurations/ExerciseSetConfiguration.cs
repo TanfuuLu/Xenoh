@@ -14,6 +14,10 @@ public class ExerciseSetConfiguration : IEntityTypeConfiguration<ExerciseSet>
         builder.Property(s => s.ActualWeight).HasColumnType("decimal(10,2)");
         builder.Property(s => s.Rpe).HasColumnType("decimal(4,2)");
 
+        builder.HasIndex(s => new { s.ExerciseId, s.SetNumber });
+        builder.HasIndex(s => new { s.ExerciseId, s.IsCompleted });
+        builder.HasIndex(s => s.CompletedAt);
+
         builder.HasOne(s => s.Exercise)
             .WithMany(e => e.Sets)
             .HasForeignKey(s => s.ExerciseId)

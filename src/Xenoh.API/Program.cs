@@ -152,22 +152,17 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         var frontendUrl = builder.Configuration["Authentication:FrontendUrl"]?.TrimEnd('/');
-        var origins = new[]
+        var developmentOrigins = builder.Environment.IsDevelopment()
+            ? new[]
             {
-                frontendUrl,
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175",
-                "https://localhost:5173",
-                "https://localhost:5174",
-                "https://localhost:5175",
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:5174",
-                "http://127.0.0.1:5175",
-                "https://127.0.0.1:5173",
-                "https://127.0.0.1:5174",
-                "https://127.0.0.1:5175"
+                "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
+                "https://localhost:5173", "https://localhost:5174", "https://localhost:5175",
+                "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175",
+                "https://127.0.0.1:5173", "https://127.0.0.1:5174", "https://127.0.0.1:5175"
             }
+            : [];
+        var origins = new[] { frontendUrl }
+            .Concat(developmentOrigins)
             .Where(origin => !string.IsNullOrWhiteSpace(origin))
             .Select(origin => origin!)
             .Distinct(StringComparer.OrdinalIgnoreCase)

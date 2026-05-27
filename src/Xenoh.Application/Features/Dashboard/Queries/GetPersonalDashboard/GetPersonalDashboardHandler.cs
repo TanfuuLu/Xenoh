@@ -51,18 +51,45 @@ public sealed class GetPersonalDashboardHandler(
             bmiCategory,
             dots);
 
-        var activePlanEntity = await db.Plans
+        var activePlanSnapshot = await db.Plans
             .AsNoTracking()
-            .Include(p => p.WeeklyWorkouts)
-                .ThenInclude(w => w.DailyWorkouts)
-                    .ThenInclude(d => d.Exercises)
-                        .ThenInclude(e => e.Sets)
             .Where(p => p.OwnerId == userId && p.IsActive)
             .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new DashboardPlanSnapshot(
+                p.Id,
+                p.Name,
+                p.StartDate,
+                p.EndDate,
+                p.WeeklyWorkouts
+                    .Select(w => new DashboardWeekSnapshot(
+                        w.Id,
+                        w.Name,
+                        w.StartDate,
+                        w.EndDate,
+                        w.DailyWorkouts
+                            .Select(d => new DashboardDaySnapshot(
+                                d.Id,
+                                d.Date,
+                                d.DayOfWeek,
+                                d.Status,
+                                d.Exercises
+                                    .Select(e => new DashboardExerciseSnapshot(
+                                        e.PrimaryMuscleGroup.ToString(),
+                                        e.PlannedSets,
+                                        e.PlannedReps,
+                                        e.PlannedWeight,
+                                        e.IsCompleted,
+                                        e.SortOrder,
+                                        e.Sets
+                                            .Select(s => new DashboardSetSnapshot(s.IsCompleted))
+                                            .ToList()))
+                                    .ToList()))
+                            .ToList()))
+                    .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
 
-        var activePlan = activePlanEntity is null ? null : BuildPlan(activePlanEntity, today);
-        var todayWorkout = activePlanEntity is null ? null : BuildTodayWorkout(activePlanEntity, today);
+        var activePlan = activePlanSnapshot is null ? null : BuildPlan(activePlanSnapshot, today);
+        var todayWorkout = activePlanSnapshot is null ? null : BuildTodayWorkout(activePlanSnapshot, today);
 
         var nutrition = await BuildNutritionAsync(user, userId, latestBodyweight, today, cancellationToken);
         var canUseAdvanced = await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken);
@@ -72,7 +99,7 @@ public sealed class GetPersonalDashboardHandler(
         return new PersonalDashboardResponse(profile, activePlan, todayWorkout, nutrition, nextActions, proInsights);
     }
 
-    private static PersonalDashboardPlanResponse BuildPlan(Plan plan, DateOnly today)
+    private static PersonalDashboardPlanResponse BuildPlan(DashboardPlanSnapshot plan, DateOnly today)
     {
         var days = plan.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).ToList();
         var trainingDays = days.Where(d => d.Status != DayStatus.Rest).ToList();
@@ -93,7 +120,7 @@ public sealed class GetPersonalDashboardHandler(
             currentWeek is null ? null : BuildWeek(currentWeek));
     }
 
-    private static PersonalDashboardWeekResponse BuildWeek(WeeklyWorkout week)
+    private static PersonalDashboardWeekResponse BuildWeek(DashboardWeekSnapshot week)
     {
         var days = week.DailyWorkouts.Where(d => d.Status != DayStatus.Rest).ToList();
         var completedDays = days.Count(IsCompletedDay);
@@ -107,7 +134,7 @@ public sealed class GetPersonalDashboardHandler(
             Percent(completedDays, days.Count));
     }
 
-    private static PersonalDashboardTodayWorkoutResponse? BuildTodayWorkout(Plan plan, DateOnly today)
+    private static PersonalDashboardTodayWorkoutResponse? BuildTodayWorkout(DashboardPlanSnapshot plan, DateOnly today)
     {
         var day = plan.WeeklyWorkouts
             .SelectMany(w => w.DailyWorkouts.Select(d => new { Week = w, Day = d }))
@@ -264,7 +291,7 @@ public sealed class GetPersonalDashboardHandler(
         return new PersonalDashboardProInsightsResponse(true, null, null, items.Take(3).ToList());
     }
 
-    private static bool IsCompletedDay(DailyWorkout day) =>
+    private static bool IsCompletedDay(DashboardDaySnapshot day) =>
         day.Exercises.Any() && day.Exercises.All(e => e.IsCompleted);
 
     private static int Percent(int completed, int total) =>
@@ -277,4 +304,36 @@ public sealed class GetPersonalDashboardHandler(
         string route,
         int priority) =>
         new(type, label, description, route, priority);
+
+    private sealed record DashboardPlanSnapshot(
+        Guid Id,
+        string Name,
+        DateOnly StartDate,
+        DateOnly EndDate,
+        List<DashboardWeekSnapshot> WeeklyWorkouts);
+
+    private sealed record DashboardWeekSnapshot(
+        Guid Id,
+        string Name,
+        DateOnly StartDate,
+        DateOnly EndDate,
+        List<DashboardDaySnapshot> DailyWorkouts);
+
+    private sealed record DashboardDaySnapshot(
+        Guid Id,
+        DateOnly Date,
+        DayOfWeek DayOfWeek,
+        DayStatus Status,
+        List<DashboardExerciseSnapshot> Exercises);
+
+    private sealed record DashboardExerciseSnapshot(
+        string PrimaryMuscleGroup,
+        int PlannedSets,
+        int PlannedReps,
+        decimal? PlannedWeight,
+        bool IsCompleted,
+        int SortOrder,
+        List<DashboardSetSnapshot> Sets);
+
+    private sealed record DashboardSetSnapshot(bool IsCompleted);
 }

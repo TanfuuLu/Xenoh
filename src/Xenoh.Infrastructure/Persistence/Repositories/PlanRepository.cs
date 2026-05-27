@@ -33,20 +33,21 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 
     public async Task<PlanResponse?> GetByIdForUserAsync(Guid planId, Guid userId, CancellationToken ct)
     {
-        var plan = await db.Plans
+        return await db.Plans
             .AsNoTracking()
-            .Include(p => p.Owner)
-            .Include(p => p.CreatedByCoach)
-            .Include(p => p.WeeklyWorkouts)
-                .ThenInclude(w => w.DailyWorkouts)
-                    .ThenInclude(d => d.Exercises)
-            .FirstOrDefaultAsync(p => p.Id == planId &&
-                (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
-
-        if (plan is null) return null;
-
-        var allDays = plan.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).ToList();
-        return ToPlanResponse(plan, allDays);
+            .Where(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId))
+            .Select(p => new PlanResponse(
+                p.Id, p.Name, p.StartDate, p.EndDate,
+                p.PlanType.ToString(), p.OwnerId,
+                (p.Owner.FirstName + " " + p.Owner.LastName).Trim(),
+                p.CreatedByCoachId,
+                p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
+                p.WeeklyWorkouts.Count,
+                p.WeeklyWorkouts.Count(w => w.IsCompleted),
+                p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
+                p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
+                p.IsActive, p.CreatedAt))
+            .FirstOrDefaultAsync(ct);
     }
 
     public Task<Plan?> FindForMutationAsync(Guid planId, CancellationToken ct) =>
@@ -66,8 +67,6 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
     public Task<List<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, CancellationToken ct) =>
         db.Plans
           .AsNoTracking()
-          .Include(p => p.WeeklyWorkouts)
-          .Include(p => p.Owner)
           .Where(p =>
               p.PlanType == PlanType.Coach &&
               p.CreatedByCoachId == coachId &&

@@ -28,7 +28,6 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
             .AsNoTracking()
             .Where(s => s.Tier != PlanTier.Free && s.ExpiresAt.HasValue && s.ExpiresAt.Value > now);
 
-        var plans = await LoadPlansAsync(db.Plans.AsNoTracking(), ct);
         var activeCoaches = await CountUsersInRoleAsync(db, UserRole.Coach, ct);
 
         var subscriptionDistribution = await db.UserSubscriptions
@@ -46,12 +45,12 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
             CompletedPaymentRevenueThisMonth: await db.PaymentOrders.AsNoTracking()
                 .Where(p => p.Status == PaymentStatus.Completed && p.PaidAt.HasValue && p.PaidAt.Value >= monthStart)
                 .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m,
-            TotalPlansCreated: plans.Count,
-            CompletedWorkoutDays: plans.SelectMany(p => p.WeeklyWorkouts).SelectMany(w => w.DailyWorkouts).Count(IsCompletedDay),
+            TotalPlansCreated: await db.Plans.AsNoTracking().CountAsync(ct),
+            CompletedWorkoutDays: await CountCompletedWorkoutDaysAsync(db.DailyWorkouts.AsNoTracking(), ct),
             UserRegistrations: await BuildUserRegistrationTrendAsync(db, now, ct),
             Revenue: await BuildRevenueTrendAsync(db, now, ct),
             SubscriptionTierDistribution: subscriptionDistribution,
-            PlanCompletionTrend: BuildPlanCompletionTrend(plans, now));
+            PlanCompletionTrend: await BuildPlanCompletionTrendAsync(db, now, ct));
     }
 
     private static async Task<List<AdminMetricPointResponse>> BuildUserRegistrationTrendAsync(IApplicationDbContext db, DateTime now, CancellationToken ct)
@@ -86,9 +85,13 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
             .ToList();
     }
 
-    private static List<AdminMetricPointResponse> BuildPlanCompletionTrend(List<Plan> plans, DateTime now)
+    private static async Task<List<AdminMetricPointResponse>> BuildPlanCompletionTrendAsync(IApplicationDbContext db, DateTime now, CancellationToken ct)
     {
         var start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var plans = await ProjectAdminPlanRowsAsync(
+            db.Plans.AsNoTracking().Where(p => p.CreatedAt >= start),
+            ct);
+
         return Enumerable.Range(0, 6)
             .Select(i => start.AddMonths(i))
             .Select(month =>
@@ -96,7 +99,7 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
                 var monthPlans = plans.Where(p => p.CreatedAt.Year == month.Year && p.CreatedAt.Month == month.Month).ToList();
                 var average = monthPlans.Count == 0
                     ? 0m
-                    : Math.Round(monthPlans.Average(p => GetPlanStats(p).CompletionPercent), 2);
+                    : Math.Round(monthPlans.Average(p => p.CompletionPercent), 2);
                 return new AdminMetricPointResponse(month.ToString("MMM yyyy"), average);
             })
             .ToList();
@@ -280,7 +283,7 @@ public sealed class GetAdminPlansHandler(IApplicationDbContext db)
             query = query.Where(p => p.IsActive == request.IsActive.Value);
         }
 
-        var plans = await LoadPlansAsync(query.OrderByDescending(p => p.CreatedAt), ct);
+        var plans = await ProjectAdminPlanRowsAsync(query.OrderByDescending(p => p.CreatedAt), ct);
         return plans.Select(ToAdminPlanListItem).ToList();
     }
 }
@@ -290,24 +293,23 @@ public sealed class GetAdminPlanAnalyticsHandler(IApplicationDbContext db)
 {
     public async ValueTask<AdminPlanAnalyticsResponse> Handle(GetAdminPlanAnalyticsQuery request, CancellationToken ct)
     {
-        var plan = await LoadPlansAsync(db.Plans.AsNoTracking().Where(p => p.Id == request.PlanId), ct);
+        var plan = await ProjectAdminPlanRowsAsync(db.Plans.AsNoTracking().Where(p => p.Id == request.PlanId), ct);
         var target = plan.FirstOrDefault() ?? throw new InvalidOperationException("Plan not found.");
-        var stats = GetPlanStats(target);
 
         return new AdminPlanAnalyticsResponse(
             target.Id,
             target.Name,
             target.OwnerId,
-            FullName(target.Owner),
+            FullName(target.OwnerFirstName, target.OwnerLastName, target.OwnerEmail),
             target.CreatedByCoachId,
-            target.CreatedByCoach is null ? null : FullName(target.CreatedByCoach),
-            stats.TotalWeeks,
-            stats.TotalDays,
-            stats.CompletedDays,
-            stats.CompletionPercent,
-            stats.TotalExercises,
-            stats.TotalCompletedSets,
-            stats.TotalVolume);
+            target.CreatedByCoachId is null ? null : FullName(target.CoachFirstName ?? string.Empty, target.CoachLastName ?? string.Empty, target.CoachEmail),
+            target.TotalWeeks,
+            target.TotalDays,
+            target.CompletedDays,
+            target.CompletionPercent,
+            target.TotalExercises,
+            target.TotalCompletedSets,
+            target.TotalVolume);
     }
 }
 
@@ -492,68 +494,70 @@ internal static AdminUserListItemResponse ToUserListItem(
         reportsReceived.GetValueOrDefault(user.Id));
 }
 
-internal static async Task<List<Plan>> LoadPlansAsync(IQueryable<Plan> query, CancellationToken ct)
+internal static async Task<List<AdminPlanRow>> ProjectAdminPlanRowsAsync(IQueryable<Plan> query, CancellationToken ct)
 {
     return await query
-        .Include(p => p.Owner)
-        .Include(p => p.CreatedByCoach)
-        .Include(p => p.WeeklyWorkouts)
-            .ThenInclude(w => w.DailyWorkouts)
-            .ThenInclude(d => d.Exercises)
-            .ThenInclude(e => e.Sets)
-        .AsSplitQuery()
+        .Select(p => new AdminPlanRow(
+            p.Id,
+            p.Name,
+            p.PlanType,
+            p.OwnerId,
+            p.Owner.FirstName,
+            p.Owner.LastName,
+            p.Owner.Email ?? string.Empty,
+            p.CreatedByCoachId,
+            p.CreatedByCoach == null ? null : p.CreatedByCoach.FirstName,
+            p.CreatedByCoach == null ? null : p.CreatedByCoach.LastName,
+            p.CreatedByCoach == null ? null : p.CreatedByCoach.Email,
+            p.StartDate,
+            p.EndDate,
+            p.IsActive,
+            p.CreatedAt,
+            p.WeeklyWorkouts.Count,
+            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(),
+            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts)
+                .Count(d =>
+                    d.Exercises.Any() &&
+                    !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted))),
+            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).Count(),
+            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
+                .Count(s => s.IsCompleted),
+            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
+                .Where(s => s.IsCompleted)
+                .Sum(s => (decimal?)((s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))) ?? 0m))
         .ToListAsync(ct);
 }
 
-internal static AdminPlanListItemResponse ToAdminPlanListItem(Plan plan)
+internal static async Task<int> CountCompletedWorkoutDaysAsync(IQueryable<DailyWorkout> query, CancellationToken ct)
 {
-    var stats = GetPlanStats(plan);
+    return await query.CountAsync(d =>
+        d.Exercises.Any() &&
+        !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted)), ct);
+}
+
+internal static AdminPlanListItemResponse ToAdminPlanListItem(AdminPlanRow plan)
+{
     return new AdminPlanListItemResponse(
         plan.Id,
         plan.Name,
         plan.PlanType,
         plan.OwnerId,
-        FullName(plan.Owner),
-        plan.Owner.Email ?? string.Empty,
+        FullName(plan.OwnerFirstName, plan.OwnerLastName, plan.OwnerEmail),
+        plan.OwnerEmail,
         plan.CreatedByCoachId,
-        plan.CreatedByCoach is null ? null : FullName(plan.CreatedByCoach),
-        plan.CreatedByCoach?.Email,
+        plan.CreatedByCoachId is null ? null : FullName(plan.CoachFirstName ?? string.Empty, plan.CoachLastName ?? string.Empty, plan.CoachEmail),
+        plan.CoachEmail,
         plan.StartDate,
         plan.EndDate,
         plan.IsActive,
         plan.CreatedAt,
-        stats.TotalWeeks,
-        stats.TotalDays,
-        stats.CompletedDays,
-        stats.CompletionPercent,
-        stats.TotalExercises,
-        stats.TotalCompletedSets,
-        stats.TotalVolume);
-}
-
-internal static AdminPlanStats GetPlanStats(Plan plan)
-{
-    var weeks = plan.WeeklyWorkouts.ToList();
-    var days = weeks.SelectMany(w => w.DailyWorkouts).ToList();
-    var exercises = days.SelectMany(d => d.Exercises).ToList();
-    var sets = exercises.SelectMany(e => e.Sets).ToList();
-    var completedDays = days.Count(IsCompletedDay);
-    var totalDays = days.Count;
-
-    return new AdminPlanStats(
-        weeks.Count,
-        totalDays,
-        completedDays,
-        totalDays == 0 ? 0m : Math.Round(completedDays * 100m / totalDays, 2),
-        exercises.Count,
-        sets.Count(s => s.IsCompleted),
-        sets.Where(s => s.IsCompleted).Sum(s => (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m)));
-}
-
-internal static bool IsCompletedDay(DailyWorkout day)
-{
-    var exercises = day.Exercises.ToList();
-    return exercises.Count > 0 && exercises.All(e => e.Sets.Count > 0 && e.Sets.All(s => s.IsCompleted));
+        plan.TotalWeeks,
+        plan.TotalDays,
+        plan.CompletedDays,
+        plan.CompletionPercent,
+        plan.TotalExercises,
+        plan.TotalCompletedSets,
+        plan.TotalVolume);
 }
 
 internal static string FullName(ApplicationUser user)
@@ -562,17 +566,40 @@ internal static string FullName(ApplicationUser user)
     return string.IsNullOrWhiteSpace(name) ? user.Email ?? "Unknown user" : name;
 }
 
+internal static string FullName(string firstName, string lastName, string? email)
+{
+    var name = $"{firstName} {lastName}".Trim();
+    return string.IsNullOrWhiteSpace(name) ? email ?? "Unknown user" : name;
+}
+
 internal static bool IsSubscriptionActive(UserSubscription? subscription, DateTime now)
 {
     return subscription is null || subscription.Tier == PlanTier.Free || (subscription.ExpiresAt.HasValue && subscription.ExpiresAt.Value > now);
 }
 
-internal sealed record AdminPlanStats(
+internal sealed record AdminPlanRow(
+    Guid Id,
+    string Name,
+    PlanType PlanType,
+    Guid OwnerId,
+    string OwnerFirstName,
+    string OwnerLastName,
+    string OwnerEmail,
+    Guid? CreatedByCoachId,
+    string? CoachFirstName,
+    string? CoachLastName,
+    string? CoachEmail,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    bool IsActive,
+    DateTime CreatedAt,
     int TotalWeeks,
     int TotalDays,
     int CompletedDays,
-    decimal CompletionPercent,
     int TotalExercises,
     int TotalCompletedSets,
-    decimal TotalVolume);
+    decimal TotalVolume)
+{
+    public decimal CompletionPercent => TotalDays == 0 ? 0m : Math.Round(CompletedDays * 100m / TotalDays, 2);
+}
 }

@@ -31,5 +31,6 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasIndex(m => new { m.RelationshipId, m.CreatedAt });
         builder.HasIndex(m => new { m.RelationshipId, m.SenderId, m.IsRead });
+        builder.HasIndex(m => new { m.RelationshipId, m.IsRead, m.SenderId });
     }
 }

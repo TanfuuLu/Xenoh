@@ -12,7 +12,6 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
     {
         var day = await db.DailyWorkouts
             .AsNoTracking()
-            .Include(d => d.WeeklyWorkout).ThenInclude(w => w.Plan)
             .Where(d => d.Id == dailyWorkoutId &&
                 (d.WeeklyWorkout.Plan.OwnerId == userId ||
                  d.WeeklyWorkout.Plan.CreatedByCoachId == userId))

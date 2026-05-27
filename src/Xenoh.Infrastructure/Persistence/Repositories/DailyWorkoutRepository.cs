@@ -10,14 +10,12 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
     public Task<bool> WeekAccessibleByUserAsync(Guid weeklyWorkoutId, Guid userId, CancellationToken ct) =>
         db.WeeklyWorkouts
           .AsNoTracking()
-          .Include(w => w.Plan)
           .AnyAsync(w => w.Id == weeklyWorkoutId &&
               (w.Plan.OwnerId == userId || w.Plan.CreatedByCoachId == userId), ct);
 
     public Task<List<DailyWorkoutResponse>> GetByWeekAsync(Guid weeklyWorkoutId, CancellationToken ct) =>
         db.DailyWorkouts
           .AsNoTracking()
-          .Include(d => d.Exercises)
           .Where(d => d.WeeklyWorkoutId == weeklyWorkoutId)
           .OrderBy(d => d.Date)
           .Select(d => new DailyWorkoutResponse(

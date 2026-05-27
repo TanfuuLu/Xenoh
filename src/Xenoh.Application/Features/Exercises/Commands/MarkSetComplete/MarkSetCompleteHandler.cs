@@ -51,8 +51,14 @@ public sealed class MarkSetCompleteHandler(
 
         var dailyWorkout = exercise.DailyWorkout;
         var dayWasCompleted = dailyWorkout.IsCompleted;
-        bool allExercisesDone = dailyWorkout.Exercises.Any() && dailyWorkout.Exercises.All(e =>
-            e.Id == exercise.Id ? allSetsDone : e.IsCompleted);
+        var hasIncompleteOtherExercise = await db.Exercises
+            .AsNoTracking()
+            .AnyAsync(e =>
+                e.DailyWorkoutId == dailyWorkout.Id &&
+                e.Id != exercise.Id &&
+                !e.IsCompleted,
+                cancellationToken);
+        bool allExercisesDone = allSetsDone && !hasIncompleteOtherExercise;
         var dayJustCompleted = !dayWasCompleted && allExercisesDone;
 
         dailyWorkout.IsCompleted = allExercisesDone;
@@ -60,7 +66,7 @@ public sealed class MarkSetCompleteHandler(
 
         // Auto-complete the week when all effective days are done / rest / missed
         var week = dailyWorkout.WeeklyWorkout;
-        week.IsCompleted = IsWeekComplete(week);
+        week.IsCompleted = await IsWeekCompleteAsync(week, dailyWorkout.Id, allExercisesDone, cancellationToken);
         week.UpdatedAt = DateTime.UtcNow;
 
         // Log workout history once per day (for streak tracking)
@@ -200,14 +206,35 @@ public sealed class MarkSetCompleteHandler(
             cancellationToken);
     }
 
-    private static bool IsWeekComplete(WeeklyWorkout week)
+    private async Task<bool> IsWeekCompleteAsync(
+        WeeklyWorkout week,
+        Guid updatedDailyWorkoutId,
+        bool updatedDailyWorkoutIsCompleted,
+        CancellationToken cancellationToken)
     {
         var plan = week.Plan;
-        var effective = week.DailyWorkouts
-            .Where(d => d.Date >= plan.StartDate && d.Date <= plan.EndDate)
-            .ToList();
+        var effective = await db.DailyWorkouts
+            .AsNoTracking()
+            .Where(d =>
+                d.WeeklyWorkoutId == week.Id &&
+                d.Date >= plan.StartDate &&
+                d.Date <= plan.EndDate)
+            .Select(d => new
+            {
+                d.Id,
+                d.IsCompleted,
+                d.Status
+            })
+            .ToListAsync(cancellationToken);
+
         return effective.Count > 0 && effective.All(d =>
-            d.IsCompleted || d.Status == DayStatus.Rest || d.Status == DayStatus.Missed);
+            {
+                var isCompleted = d.Id == updatedDailyWorkoutId
+                    ? updatedDailyWorkoutIsCompleted
+                    : d.IsCompleted;
+
+                return isCompleted || d.Status == DayStatus.Rest || d.Status == DayStatus.Missed;
+            });
     }
 
     private async Task<decimal?> GetPersonalRecordWeight(Guid userId, Guid exerciseTemplateId, CancellationToken cancellationToken)

@@ -16,10 +16,6 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
     public Task<List<WeeklyWorkoutResponse>> GetByPlanAsync(Guid planId, CancellationToken ct) =>
         db.WeeklyWorkouts
           .AsNoTracking()
-          .Include(w => w.DailyWorkouts)
-              .ThenInclude(d => d.Exercises)
-                  .ThenInclude(e => e.Sets)
-          .Include(w => w.Plan)
           .Where(w => w.PlanId == planId)
           .OrderBy(w => w.WeekNumber)
           .Select(w => new WeeklyWorkoutResponse(

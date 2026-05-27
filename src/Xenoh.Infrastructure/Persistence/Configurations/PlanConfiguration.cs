@@ -30,5 +30,7 @@ public class PlanConfiguration : IEntityTypeConfiguration<Plan>
 
         // Index for active-plan lookups (Dashboard, PlanProgress)
         builder.HasIndex(p => new { p.OwnerId, p.IsActive });
+        builder.HasIndex(p => new { p.OwnerId, p.StartDate, p.EndDate });
+        builder.HasIndex(p => new { p.CreatedByCoachId, p.PlanType, p.CreatedAt });
     }
 }

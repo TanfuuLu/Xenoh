@@ -26,6 +26,7 @@ public sealed class GetMessagesHandler(
             throw new InvalidOperationException("Relationship not found or access denied.");
 
         var query = db.Messages
+            .AsNoTracking()
             .Where(m => m.RelationshipId == request.RelationshipId);
 
         if (request.Before.HasValue)

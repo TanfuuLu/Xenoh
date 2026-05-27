@@ -14,16 +14,12 @@ public sealed class GetUnreadCountsHandler(
     {
         var userId = currentUser.UserId;
 
-        var myRelationshipIds = await db.CoachClientRelationships
-            .AsNoTracking()
-            .Where(r => r.ClientId == userId || r.CoachId == userId)
-            .Select(r => r.Id)
-            .ToListAsync(cancellationToken);
-
         var counts = await db.Messages
-            .Where(m => myRelationshipIds.Contains(m.RelationshipId)
-                        && m.SenderId != userId
-                        && !m.IsRead)
+            .AsNoTracking()
+            .Where(m =>
+                (m.Relationship.ClientId == userId || m.Relationship.CoachId == userId) &&
+                m.SenderId != userId &&
+                !m.IsRead)
             .GroupBy(m => m.RelationshipId)
             .Select(g => new { RelationshipId = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);

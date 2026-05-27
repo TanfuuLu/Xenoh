@@ -5,9 +5,8 @@ namespace Xenoh.Application.Common.Interfaces.Repositories;
 public interface IExerciseSetRepository
 {
     /// <summary>
-    /// Tracked: set with all nested navigation needed by MarkSetComplete
-    /// (Exercise → Sets, Exercise → DailyWorkout → Exercises → Sets,
-    ///  Exercise → DailyWorkout → WeeklyWorkout → Plan).
+    /// Tracked: set with the exercise, exercise sets, template, day, week, and plan
+    /// needed by MarkSetComplete. Day/week summaries are computed with aggregate queries.
     /// </summary>
     Task<ExerciseSet?> FindForCompleteAsync(Guid setId, CancellationToken ct = default);
 
