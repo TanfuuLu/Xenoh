@@ -29,8 +29,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
-            SetRefreshTokenCookie(result.RefreshToken);
-            return Ok(ToAuthResponseBody(result));
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {

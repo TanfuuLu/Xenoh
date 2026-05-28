@@ -10,11 +10,12 @@ namespace Xenoh.Application.Tests.Features.Auth;
 public sealed class RegisterHandlerTests : IdentityHandlerTestBase
 {
     private RegisterHandler CreateHandler() =>
-        new(CreateUserManager(), new FakeTokenService(), CreateContext());
+        new(CreateUserManager(), CreateContext());
 
     [Fact]
-    public async Task Handle_WhenValidIndividualRegistration_ReturnsTokens()
+    public async Task Handle_WhenValidIndividualRegistration_CreatesUser()
     {
+        var dateOfBirth = new DateOnly(2000, 1, 2);
         await SeedRolesAsync();
         var result = await CreateHandler().Handle(new RegisterCommand
         {
@@ -22,17 +23,19 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
             Password = "password123",
             FirstName = "John",
             LastName = "Doe",
-            Role = UserRole.Individual
+            Role = UserRole.Individual,
+            Gender = Gender.Male,
+            DateOfBirth = dateOfBirth
         }, CancellationToken.None);
 
-        result.AccessToken.Should().Be("test-access-token");
-        result.RefreshToken.Should().Be("test-refresh-token");
         result.Email.Should().Be("newuser@test.com");
-        result.FullName.Should().Be("John Doe");
 
         await using var verify = CreateContext();
-        var userExists = await verify.Users.AnyAsync(u => u.Email == "newuser@test.com");
-        userExists.Should().BeTrue();
+        var user = await verify.Users.SingleAsync(u => u.Email == "newuser@test.com");
+        user.FirstName.Should().Be("John");
+        user.LastName.Should().Be("Doe");
+        user.Gender.Should().Be(Gender.Male);
+        user.DateOfBirth.Should().Be(dateOfBirth);
     }
 
     [Fact]
@@ -46,7 +49,9 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
             Password = "password456",
             FirstName = "Jane",
             LastName = "Doe",
-            Role = UserRole.Individual
+            Role = UserRole.Individual,
+            Gender = Gender.Female,
+            DateOfBirth = new DateOnly(2001, 2, 3)
         }, CancellationToken.None).AsTask();
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -62,7 +67,9 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
             Password = "password123",
             FirstName = "Coach",
             LastName = "User",
-            Role = UserRole.Coach
+            Role = UserRole.Coach,
+            Gender = Gender.Male,
+            DateOfBirth = new DateOnly(2000, 1, 2)
         }, CancellationToken.None).AsTask();
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -80,27 +87,32 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
             FirstName = "Male",
             LastName = "User",
             Role = UserRole.Individual,
-            Gender = Gender.Male
+            Gender = Gender.Male,
+            DateOfBirth = new DateOnly(2000, 1, 2)
         }, CancellationToken.None);
 
-        result.AvatarUrl.Should().Be("/assets/avatars/default-male.svg");
+        await using var verify = CreateContext();
+        var user = await verify.Users.SingleAsync(u => u.Id == result.UserId);
+        user.AvatarUrl.Should().Be("/assets/avatars/default-male.svg");
     }
 
     [Fact]
-    public async Task Handle_WhenGenderNull_SetsNeutralAvatar()
+    public async Task Handle_WhenGenderNull_Throws()
     {
         await SeedRolesAsync();
-        var result = await CreateHandler().Handle(new RegisterCommand
+        var act = () => CreateHandler().Handle(new RegisterCommand
         {
             Email = "neutral@test.com",
             Password = "password123",
             FirstName = "Neutral",
             LastName = "User",
             Role = UserRole.Individual,
-            Gender = null
-        }, CancellationToken.None);
+            Gender = null,
+            DateOfBirth = new DateOnly(2000, 1, 2)
+        }, CancellationToken.None).AsTask();
 
-        result.AvatarUrl.Should().Be("/assets/avatars/default-neutral.svg");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Gender is required.");
     }
 
     private async Task SeedUserAsync(string email, string password)

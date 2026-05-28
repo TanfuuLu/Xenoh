@@ -1,19 +1,18 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
-using TokenEntity = Xenoh.Domain.Entities.RefreshToken;
 
 namespace Xenoh.Application.Features.Auth.Commands.Register;
 
 public sealed class RegisterHandler(
     UserManager<ApplicationUser> userManager,
-    ITokenService tokenService,
     IApplicationDbContext context
-) : IRequestHandler<RegisterCommand, AuthResponse>
+) : IRequestHandler<RegisterCommand, RegisterResponse>
 {
-    public async ValueTask<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async ValueTask<RegisterResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         var allowedRoles = new[] { UserRole.Individual };
         if (!allowedRoles.Contains(request.Role))
@@ -23,14 +22,22 @@ public sealed class RegisterHandler(
         if (existingUser is not null)
             throw new InvalidOperationException("Email is already registered.");
 
+        if (request.Gender is null)
+            throw new InvalidOperationException("Gender is required.");
+
+        if (request.DateOfBirth is null)
+            throw new InvalidOperationException("Date of birth is required.");
+
         var user = new ApplicationUser
         {
             Email = request.Email,
             UserName = request.Email,
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Gender = request.Gender,
-            AvatarUrl = GetDefaultAvatarUrl(request.Gender)
+            Gender = request.Gender.Value,
+            DateOfBirth = request.DateOfBirth.Value,
+            Height = request.Height,
+            AvatarUrl = GetDefaultAvatarUrl(request.Gender.Value)
         };
 
         var createResult = await userManager.CreateAsync(user, request.Password);
@@ -42,32 +49,21 @@ public sealed class RegisterHandler(
 
         await userManager.AddToRoleAsync(user, request.Role);
 
-        var roles = await userManager.GetRolesAsync(user);
-        var accessToken = tokenService.GenerateAccessToken(user, roles);
-        var refreshTokenValue = tokenService.GenerateRefreshToken();
-
-        var refreshToken = new TokenEntity
+        if (request.Bodyweight is > 0)
         {
-            Token = tokenService.HashRefreshToken(refreshTokenValue),
-            UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
+            context.BodyweightLogs.Add(new BodyweightLog
+            {
+                UserId = user.Id,
+                Weight = request.Bodyweight.Value,
+                Date = DateOnly.FromDateTime(DateTime.UtcNow)
+            });
+            await context.SaveChangesAsync(cancellationToken);
+        }
 
-        context.RefreshTokens.Add(refreshToken);
-        await context.SaveChangesAsync(cancellationToken);
-
-        return new AuthResponse(
-            user.Id,
-            accessToken,
-            refreshTokenValue,
-            user.Email!,
-            $"{user.FirstName} {user.LastName}",
-            user.AvatarUrl,
-            roles
-        );
+        return new RegisterResponse(user.Id, user.Email!);
     }
 
-    private static string GetDefaultAvatarUrl(Gender? gender)
+    private static string GetDefaultAvatarUrl(Gender gender)
     {
         return gender switch
         {

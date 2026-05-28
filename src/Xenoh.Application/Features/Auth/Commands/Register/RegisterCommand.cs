@@ -4,14 +4,14 @@ using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Auth.Commands.Register;
 
-public sealed record RegisterCommand : IRequest<AuthResponse>
+public sealed record RegisterCommand : IRequest<RegisterResponse>
 {
     [Required]
     [EmailAddress]
     public required string Email { get; init; }
 
     [Required]
-    [MinLength(10)]
+    [MinLength(8)]
     public required string Password { get; init; }
 
     [Required]
@@ -23,8 +23,18 @@ public sealed record RegisterCommand : IRequest<AuthResponse>
     [Required]
     public required string Role { get; init; }
 
-    public Gender? Gender { get; init; }
+    [Required]
+    public required Gender? Gender { get; init; }
+
+    [Required]
+    public required DateOnly? DateOfBirth { get; init; }
+
+    public decimal? Height { get; init; }
+
+    public decimal? Bodyweight { get; init; }
 }
+
+public sealed record RegisterResponse(Guid UserId, string Email);
 
 public sealed record AuthResponse(
     Guid UserId,

@@ -9,6 +9,6 @@ public sealed record ChangePasswordCommand : IRequest
     public required string OldPassword { get; init; }
 
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
     public required string NewPassword { get; init; }
 }

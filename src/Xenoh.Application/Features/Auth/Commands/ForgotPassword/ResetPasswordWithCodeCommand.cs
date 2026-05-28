@@ -14,6 +14,6 @@ public sealed record ResetPasswordWithCodeCommand : IRequest
     public required string Code { get; init; }
 
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
     public required string NewPassword { get; init; }
 }

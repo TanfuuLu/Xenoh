@@ -47,7 +47,7 @@ public static class DependencyInjection
             options.Password.RequireLowercase = true;
             options.Password.RequireUppercase = true;
             options.Password.RequireNonAlphanumeric = true;
-            options.Password.RequiredLength = 10;
+            options.Password.RequiredLength = 8;
             options.User.RequireUniqueEmail = true;
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
