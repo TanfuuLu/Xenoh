@@ -10,7 +10,7 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
     {
         builder.Property(u => u.PreferredLanguage)
             .HasMaxLength(2)
-            .HasDefaultValue("vi");
+            .HasDefaultValue("en");
 
         builder.Property(u => u.PreferredTheme)
             .HasMaxLength(5)

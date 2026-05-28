@@ -30,7 +30,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public string? ZaloUrl { get; set; }
 
     [MaxLength(2)]
-    public string PreferredLanguage { get; set; } = "vi";
+    public string PreferredLanguage { get; set; } = "en";
 
     [MaxLength(5)]
     public string PreferredTheme { get; set; } = "light";

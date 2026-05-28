@@ -2,7 +2,7 @@ namespace Xenoh.Application.Features.Users.Preferences;
 
 public static class UserPreferenceValidator
 {
-    public const string DefaultLanguage = "vi";
+    public const string DefaultLanguage = "en";
     public const string DefaultTheme = "light";
     public const string DefaultWeightUnit = "kg";
 

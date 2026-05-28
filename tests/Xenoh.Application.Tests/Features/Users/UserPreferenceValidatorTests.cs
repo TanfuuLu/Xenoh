@@ -9,7 +9,7 @@ public sealed class UserPreferenceValidatorTests
     [Fact]
     public void NormalizeLanguage_UsesDefault_WhenValueIsEmpty()
     {
-        UserPreferenceValidator.NormalizeLanguage("").Should().Be("vi");
+        UserPreferenceValidator.NormalizeLanguage("").Should().Be("en");
     }
 
     [Fact]
