@@ -4,6 +4,7 @@ using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
 using Xenoh.Application.Features.Plans.Queries.ExportPlan;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -12,7 +13,7 @@ namespace Xenoh.Application.Common.Interfaces.Repositories;
 public interface IPlanRepository
 {
     /// <summary>Read-only: plans owned by user (with owner + coach + weeks + days).</summary>
-    Task<List<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, CancellationToken ct = default);
+    Task<PagedResponse<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, int pageNumber, int pageSize, CancellationToken ct = default);
 
     /// <summary>Read-only: single plan visible to owner or coach, with full details.</summary>
     Task<PlanResponse?> GetByIdForUserAsync(Guid planId, Guid userId, CancellationToken ct = default);
@@ -24,7 +25,7 @@ public interface IPlanRepository
     Task<Plan?> FindByIdAndCallerAsync(Guid planId, Guid userId, CancellationToken ct = default);
 
     /// <summary>Read-only: client-owned plans created by the coach.</summary>
-    Task<List<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, CancellationToken ct = default);
+    Task<PagedResponse<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, int pageNumber, int pageSize, CancellationToken ct = default);
 
     Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct = default);
 

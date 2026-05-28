@@ -1,10 +1,11 @@
 using Mediator;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 
-public sealed record GetExerciseTemplatesQuery(MuscleGroup? MuscleGroup = null)
-    : IRequest<List<ExerciseTemplateResponse>>;
+public sealed record GetExerciseTemplatesQuery(MuscleGroup? MuscleGroup = null, int PageNumber = 1, int PageSize = 20)
+    : IRequest<PagedResponse<ExerciseTemplateResponse>>;
 
 public sealed record ExerciseTemplateResponse(
     Guid Id,

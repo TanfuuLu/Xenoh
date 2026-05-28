@@ -22,8 +22,8 @@ public sealed class GetWeeksByPlanHandlerTests : HandlerTestBase
         await using var ctx = CreateContext();
         var result = await CreateHandler(ctx).Handle(new GetWeeksByPlanQuery(planId), CancellationToken.None);
 
-        result.Should().HaveCount(3);
-        result.Select(w => w.WeekNumber).Should().BeInAscendingOrder();
+        result.Items.Should().HaveCount(3);
+        result.Items.Select(w => w.WeekNumber).Should().BeInAscendingOrder();
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class GetWeeksByPlanHandlerTests : HandlerTestBase
         await using var ctx = CreateContext();
         var result = await CreateHandler(ctx).Handle(new GetWeeksByPlanQuery(planId), CancellationToken.None);
 
-        result.Should().HaveCount(1);
+        result.Items.Should().HaveCount(1);
     }
 
     [Fact]

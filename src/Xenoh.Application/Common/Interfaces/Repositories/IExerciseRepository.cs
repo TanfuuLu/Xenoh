@@ -1,11 +1,12 @@
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Common.Interfaces.Repositories;
 
 public interface IExerciseRepository
 {
-    Task<List<ExerciseResponse>> GetByDayWithPrsAsync(Guid dailyWorkoutId, Guid userId, CancellationToken ct = default);
+    Task<PagedResponse<ExerciseResponse>> GetByDayWithPrsAsync(Guid dailyWorkoutId, Guid userId, int pageNumber, int pageSize, CancellationToken ct = default);
 
     /// <summary>Tracked: exercise with sets + plan for permission + mutation.</summary>
     Task<Exercise?> FindWithSetsAndPlanAsync(Guid exerciseId, CancellationToken ct = default);

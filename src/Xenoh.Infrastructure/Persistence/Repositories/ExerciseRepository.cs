@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.Exercises.Commands.CreateExercise;
 using Xenoh.Domain.Entities;
 
@@ -7,8 +8,8 @@ namespace Xenoh.Infrastructure.Persistence.Repositories;
 
 public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepository
 {
-    public async Task<List<ExerciseResponse>> GetByDayWithPrsAsync(
-        Guid dailyWorkoutId, Guid userId, CancellationToken ct)
+    public async Task<PagedResponse<ExerciseResponse>> GetByDayWithPrsAsync(
+        Guid dailyWorkoutId, Guid userId, int pageNumber, int pageSize, CancellationToken ct)
     {
         var day = await db.DailyWorkouts
             .AsNoTracking()
@@ -25,13 +26,18 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
         if (day is null)
             throw new InvalidOperationException("Daily workout not found.");
 
-        var exercises = await db.Exercises
+        var query = db.Exercises
             .AsNoTracking()
             .Include(e => e.Sets)
             .Include(e => e.ExerciseTemplate)
             .Where(e => e.DailyWorkoutId == dailyWorkoutId)
             .OrderBy(e => e.SortOrder)
-            .ThenBy(e => e.CreatedAt)
+            .ThenBy(e => e.CreatedAt);
+
+        var totalCount = await query.CountAsync(ct);
+        var exercises = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         var templateIds = exercises.Select(e => e.ExerciseTemplateId).Distinct().ToList();
@@ -48,12 +54,19 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
             .Select(b => (decimal?)b.Weight)
             .FirstOrDefaultAsync(ct);
 
-        return exercises
+        var items = exercises
             .Select(e => CreateExerciseHandler.ToResponse(
                 e,
                 prs.GetValueOrDefault(e.ExerciseTemplateId),
                 bodyweight))
             .ToList();
+
+        return new PagedResponse<ExerciseResponse>(
+            items,
+            pageNumber,
+            pageSize,
+            totalCount,
+            pageNumber * pageSize < totalCount);
     }
 
     public Task<Exercise?> FindWithSetsAndPlanAsync(Guid exerciseId, CancellationToken ct) =>

@@ -12,11 +12,15 @@ namespace Xenoh.API.Controllers;
 public sealed class WeeklyWorkoutsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetWeeks(Guid planId, CancellationToken ct)
+    public async Task<IActionResult> GetWeeks(
+        Guid planId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
         try
         {
-            var result = await mediator.Send(new GetWeeksByPlanQuery(planId), ct);
+            var result = await mediator.Send(new GetWeeksByPlanQuery(planId, pageNumber, pageSize), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

@@ -78,12 +78,12 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         await seedCtx.SaveChangesAsync();
 
         await using var ctx = CreateContext();
-        var result = await new PlanRepository(ctx).GetAllByOwnerAsync(UserId, CancellationToken.None);
+        var result = await new PlanRepository(ctx).GetAllByOwnerAsync(UserId, 1, 20, CancellationToken.None);
 
-        result.Should().ContainSingle();
-        result[0].TotalWeeks.Should().Be(2);
-        result[0].CompletedWeeks.Should().Be(1);
-        result[0].CompletedDays.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items[0].TotalWeeks.Should().Be(2);
+        result.Items[0].CompletedWeeks.Should().Be(1);
+        result.Items[0].CompletedDays.Should().Be(1);
     }
 
     [Fact]
@@ -131,11 +131,11 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         await seedCtx.SaveChangesAsync();
 
         await using var ctx = CreateContext();
-        var result = await new PlanRepository(ctx).GetCoachOverviewAsync(coachId, CancellationToken.None);
+        var result = await new PlanRepository(ctx).GetCoachOverviewAsync(coachId, 1, 20, CancellationToken.None);
 
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("Client Assigned");
-        result[0].OwnerId.Should().Be(clientId);
+        result.Items.Should().ContainSingle();
+        result.Items[0].Name.Should().Be("Client Assigned");
+        result.Items[0].OwnerId.Should().Be(clientId);
     }
 
     [Fact]

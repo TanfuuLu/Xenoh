@@ -19,11 +19,15 @@ namespace Xenoh.API.Controllers;
 public sealed class ExercisesController(IMediator mediator) : ControllerBase
 {
     [HttpGet("by-day/{dailyWorkoutId:guid}")]
-    public async Task<IActionResult> GetByDay(Guid dailyWorkoutId, CancellationToken ct)
+    public async Task<IActionResult> GetByDay(
+        Guid dailyWorkoutId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
         try
         {
-            var result = await mediator.Send(new GetExercisesByDayQuery(dailyWorkoutId), ct);
+            var result = await mediator.Send(new GetExercisesByDayQuery(dailyWorkoutId, pageNumber, pageSize), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

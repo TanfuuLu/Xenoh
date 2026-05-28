@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.WeeklyWorkouts.Queries.GetWeeksByPlan;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -13,11 +14,17 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
           .AsNoTracking()
           .AnyAsync(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
 
-    public Task<List<WeeklyWorkoutResponse>> GetByPlanAsync(Guid planId, CancellationToken ct) =>
-        db.WeeklyWorkouts
+    public async Task<PagedResponse<WeeklyWorkoutResponse>> GetByPlanAsync(Guid planId, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        var query = db.WeeklyWorkouts
           .AsNoTracking()
           .Where(w => w.PlanId == planId)
-          .OrderBy(w => w.WeekNumber)
+          .OrderBy(w => w.WeekNumber);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
           .Select(w => new WeeklyWorkoutResponse(
               w.Id, w.WeekNumber, w.Name,
               w.StartDate, w.EndDate, w.PlanId,
@@ -34,6 +41,14 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
               w.IsCompleted,
               w.DailyWorkouts.Count(d => d.Date >= w.Plan.StartDate && d.Date <= w.Plan.EndDate)))
           .ToListAsync(ct);
+
+        return new PagedResponse<WeeklyWorkoutResponse>(
+            items,
+            pageNumber,
+            pageSize,
+            totalCount,
+            pageNumber * pageSize < totalCount);
+    }
 
     public Task<WeeklyWorkout?> FindForMutationAsync(Guid weekId, CancellationToken ct) =>
         db.WeeklyWorkouts

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
@@ -14,10 +15,18 @@ namespace Xenoh.Infrastructure.Persistence.Repositories;
 
 public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 {
-    public Task<List<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, CancellationToken ct) =>
-        db.Plans
+    public async Task<PagedResponse<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        var query = db.Plans
           .AsNoTracking()
           .Where(p => p.OwnerId == ownerId)
+          .OrderByDescending(p => p.IsActive)
+          .ThenByDescending(p => p.CreatedAt);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
           .Select(p => new PlanResponse(
               p.Id, p.Name, p.StartDate, p.EndDate,
               p.PlanType.ToString(), p.OwnerId,
@@ -30,6 +39,14 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
               p.IsActive, p.CreatedAt))
           .ToListAsync(ct);
+
+        return new PagedResponse<PlanResponse>(
+            items,
+            pageNumber,
+            pageSize,
+            totalCount,
+            pageNumber * pageSize < totalCount);
+    }
 
     public async Task<PlanResponse?> GetByIdForUserAsync(Guid planId, Guid userId, CancellationToken ct)
     {
@@ -64,14 +81,20 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               (p.OwnerId == userId ||
                (p.PlanType == PlanType.Coach && p.CreatedByCoachId == userId)), ct);
 
-    public Task<List<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, CancellationToken ct) =>
-        db.Plans
+    public async Task<PagedResponse<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        var query = db.Plans
           .AsNoTracking()
           .Where(p =>
               p.PlanType == PlanType.Coach &&
               p.CreatedByCoachId == coachId &&
               p.OwnerId != coachId)
-          .OrderByDescending(p => p.CreatedAt)
+          .OrderByDescending(p => p.CreatedAt);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
           .Select(p => new CoachPlanResponse(
               p.Id, p.Name, p.StartDate, p.EndDate,
               p.PlanType.ToString(), p.OwnerId,
@@ -80,6 +103,14 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               p.WeeklyWorkouts.Count,
               p.CreatedAt))
           .ToListAsync(ct);
+
+        return new PagedResponse<CoachPlanResponse>(
+            items,
+            pageNumber,
+            pageSize,
+            totalCount,
+            pageNumber * pageSize < totalCount);
+    }
 
     public Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct) =>
         db.Plans.CountAsync(p => p.OwnerId == ownerId, ct);

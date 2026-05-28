@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.DailyWorkouts.Queries.GetDaysByWeek;
 using Xenoh.Domain.Entities;
 
@@ -13,11 +14,17 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
           .AnyAsync(w => w.Id == weeklyWorkoutId &&
               (w.Plan.OwnerId == userId || w.Plan.CreatedByCoachId == userId), ct);
 
-    public Task<List<DailyWorkoutResponse>> GetByWeekAsync(Guid weeklyWorkoutId, CancellationToken ct) =>
-        db.DailyWorkouts
+    public async Task<PagedResponse<DailyWorkoutResponse>> GetByWeekAsync(Guid weeklyWorkoutId, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        var query = db.DailyWorkouts
           .AsNoTracking()
           .Where(d => d.WeeklyWorkoutId == weeklyWorkoutId)
-          .OrderBy(d => d.Date)
+          .OrderBy(d => d.Date);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+          .Skip((pageNumber - 1) * pageSize)
+          .Take(pageSize)
           .Select(d => new DailyWorkoutResponse(
               d.Id, d.Date, d.DayOfWeek.ToString(),
               d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted), d.WeeklyWorkoutId,
@@ -29,6 +36,14 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
                    (s.ActualWeight != null && s.PlannedWeight != null && s.ActualWeight < s.PlannedWeight)))),
               d.Status.ToString()))
           .ToListAsync(ct);
+
+        return new PagedResponse<DailyWorkoutResponse>(
+            items,
+            pageNumber,
+            pageSize,
+            totalCount,
+            pageNumber * pageSize < totalCount);
+    }
 
     public Task<DailyWorkout?> FindWithPlanAsync(Guid dailyWorkoutId, CancellationToken ct) =>
         db.DailyWorkouts

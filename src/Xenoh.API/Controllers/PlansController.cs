@@ -28,9 +28,12 @@ namespace Xenoh.API.Controllers;
 public sealed class PlansController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetMyPlans(CancellationToken ct)
+    public async Task<IActionResult> GetMyPlans(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetMyPlansQuery(), ct);
+        var result = await mediator.Send(new GetMyPlansQuery(pageNumber, pageSize), ct);
         return Ok(result);
     }
 
@@ -101,9 +104,12 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("coach-overview")]
     [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
-    public async Task<IActionResult> GetCoachPlans(CancellationToken ct)
+    public async Task<IActionResult> GetCoachPlans(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetCoachPlansQuery(), ct);
+        var result = await mediator.Send(new GetCoachPlansQuery(pageNumber, pageSize), ct);
         return Ok(result);
     }
 

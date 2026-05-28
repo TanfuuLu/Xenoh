@@ -1,8 +1,10 @@
 using Mediator;
+using Xenoh.Application.Common.Pagination;
 
 namespace Xenoh.Application.Features.Plans.Queries.GetCoachPlans;
 
-public sealed record GetCoachPlansQuery : IRequest<List<CoachPlanResponse>>;
+public sealed record GetCoachPlansQuery(int PageNumber = 1, int PageSize = 20)
+    : IRequest<PagedResponse<CoachPlanResponse>>;
 
 public sealed record CoachPlanResponse(
     Guid Id,

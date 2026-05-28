@@ -1,6 +1,7 @@
 using Mediator;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 
 namespace Xenoh.Application.Features.ExerciseTemplates.Queries.GetClientExerciseTemplates;
@@ -9,9 +10,9 @@ public sealed class GetClientExerciseTemplatesHandler(
     IExerciseTemplateRepository exerciseTemplateRepo,
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser)
-    : IRequestHandler<GetClientExerciseTemplatesQuery, List<ExerciseTemplateResponse>>
+    : IRequestHandler<GetClientExerciseTemplatesQuery, PagedResponse<ExerciseTemplateResponse>>
 {
-    public async ValueTask<List<ExerciseTemplateResponse>> Handle(
+    public async ValueTask<PagedResponse<ExerciseTemplateResponse>> Handle(
         GetClientExerciseTemplatesQuery request,
         CancellationToken cancellationToken)
     {
@@ -30,6 +31,8 @@ public sealed class GetClientExerciseTemplatesHandler(
         return await exerciseTemplateRepo.GetAvailableForUserAsync(
             request.ClientId,
             request.MuscleGroup,
+            PaginationDefaults.NormalizePageNumber(request.PageNumber),
+            PaginationDefaults.NormalizePageSize(request.PageSize),
             cancellationToken);
     }
 }
