@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces.Repositories;
@@ -15,6 +16,20 @@ namespace Xenoh.Infrastructure.Persistence.Repositories;
 
 public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 {
+    // Single source of truth for the Plan -> PlanResponse SQL projection,
+    // shared by every list/detail query so the shape can never drift.
+    private static readonly Expression<Func<Plan, PlanResponse>> ToResponse = p => new PlanResponse(
+        p.Id, p.Name, p.StartDate, p.EndDate,
+        p.PlanType.ToString(), p.OwnerId,
+        (p.Owner.FirstName + " " + p.Owner.LastName).Trim(),
+        p.CreatedByCoachId,
+        p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
+        p.WeeklyWorkouts.Count,
+        p.WeeklyWorkouts.Count(w => w.IsCompleted),
+        p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
+        p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
+        p.IsActive, p.CreatedAt);
+
     public async Task<PagedResponse<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, int pageNumber, int pageSize, CancellationToken ct)
     {
         var query = db.Plans
@@ -27,17 +42,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         var items = await query
           .Skip((pageNumber - 1) * pageSize)
           .Take(pageSize)
-          .Select(p => new PlanResponse(
-              p.Id, p.Name, p.StartDate, p.EndDate,
-              p.PlanType.ToString(), p.OwnerId,
-              (p.Owner.FirstName + " " + p.Owner.LastName).Trim(),
-              p.CreatedByCoachId,
-              p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
-              p.WeeklyWorkouts.Count,
-              p.WeeklyWorkouts.Count(w => w.IsCompleted),
-              p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
-              p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
-              p.IsActive, p.CreatedAt))
+          .Select(ToResponse)
           .ToListAsync(ct);
 
         return new PagedResponse<PlanResponse>(
@@ -53,17 +58,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         return await db.Plans
             .AsNoTracking()
             .Where(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId))
-            .Select(p => new PlanResponse(
-                p.Id, p.Name, p.StartDate, p.EndDate,
-                p.PlanType.ToString(), p.OwnerId,
-                (p.Owner.FirstName + " " + p.Owner.LastName).Trim(),
-                p.CreatedByCoachId,
-                p.CreatedByCoach == null ? null : (p.CreatedByCoach.FirstName + " " + p.CreatedByCoach.LastName).Trim(),
-                p.WeeklyWorkouts.Count,
-                p.WeeklyWorkouts.Count(w => w.IsCompleted),
-                p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
-                p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
-                p.IsActive, p.CreatedAt))
+            .Select(ToResponse)
             .FirstOrDefaultAsync(ct);
     }
 

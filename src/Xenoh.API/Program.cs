@@ -9,19 +9,15 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Xenoh.API.Auth;
 using static Xenoh.API.Auth.ExternalAuthHelpers;
 using Xenoh.Infrastructure.Hubs;
-using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure;
 using Xenoh.Infrastructure.BackgroundServices;
 using Xenoh.Infrastructure.Middleware;
-using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Seeders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -195,166 +191,10 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
-// Seed roles and apply schema
+// Apply migrations and seed baseline data (roles, dev admin, templates, foods).
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var db = services.GetRequiredService<ApplicationDbContext>();
-        db.Database.Migrate();
-
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-        string[] roles = [UserRole.Individual, UserRole.Coach, UserRole.Admin];
-        foreach (var role in roles)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-        }
-
-        if (app.Environment.IsDevelopment())
-        {
-        // Seed admin superuser account
-        const string adminEmail = "admin@xenoh.app";
-        const string adminPassword = "Admin@Xenoh123!";
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-        if (adminUser is null)
-        {
-            adminUser = new ApplicationUser
-            {
-                Email = adminEmail,
-                UserName = adminEmail,
-                FirstName = "Admin",
-                LastName = "Xenoh",
-            };
-            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-            if (createResult.Succeeded)
-            {
-                await userManager.AddToRolesAsync(adminUser, [UserRole.Admin, UserRole.Individual, UserRole.Coach]);
-            }
-        }
-        if (adminUser is not null)
-        {
-            var existingSub = await db.UserSubscriptions.FirstOrDefaultAsync(s => s.UserId == adminUser.Id);
-            if (existingSub is null)
-            {
-                db.UserSubscriptions.Add(new Xenoh.Domain.Entities.UserSubscription
-                {
-                    UserId = adminUser.Id,
-                    Tier = PlanTier.ProCoach,
-                    ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc),
-                });
-                await db.SaveChangesAsync();
-            }
-            else if (existingSub.Tier != PlanTier.ProCoach)
-            {
-                existingSub.Tier = PlanTier.ProCoach;
-                existingSub.ExpiresAt = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
-                await db.SaveChangesAsync();
-            }
-        }
-        }
-
-        var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
-        var existingTemplateNames = await db.ExerciseTemplates
-            .Select(t => t.Name.ToLower())
-            .ToListAsync();
-        var existingTemplateNameSet = existingTemplateNames.ToHashSet();
-        var missingTemplates = seededTemplates
-            .Where(t => !existingTemplateNameSet.Contains(t.Name.ToLower()))
-            .ToList();
-
-        if (missingTemplates.Count > 0)
-        {
-            db.ExerciseTemplates.AddRange(missingTemplates);
-            await db.SaveChangesAsync();
-        }
-
-        var seededByName = seededTemplates.ToDictionary(t => t.Name.ToLower());
-        var templatesToSync = await db.ExerciseTemplates.ToListAsync();
-        var syncedAny = false;
-        var toDelete = new List<Xenoh.Domain.Entities.ExerciseTemplate>();
-        foreach (var template in templatesToSync)
-        {
-            if (!seededByName.TryGetValue(template.Name.ToLower(), out var seededTemplate))
-            {
-                // Remove system templates that are no longer in the seed list
-                if (template.OwnerId == null)
-                    toDelete.Add(template);
-                continue;
-            }
-
-            if (template.ExerciseKind == seededTemplate.ExerciseKind &&
-                template.EstimatedMet == seededTemplate.EstimatedMet &&
-                template.ImageUrl == seededTemplate.ImageUrl)
-                continue;
-
-            template.ExerciseKind = seededTemplate.ExerciseKind;
-            template.EstimatedMet = seededTemplate.EstimatedMet;
-            template.ImageUrl = seededTemplate.ImageUrl;
-            syncedAny = true;
-        }
-
-        if (toDelete.Count > 0)
-        {
-            db.ExerciseTemplates.RemoveRange(toDelete);
-            syncedAny = true;
-        }
-
-        if (syncedAny)
-            await db.SaveChangesAsync();
-
-        // Seed FoodItems
-        var seededFoods = FoodItemSeeder.GetItems();
-        var existingFoodNames = await db.FoodItems
-            .Where(f => f.Source == Xenoh.Domain.Enums.FoodItemSource.Seed)
-            .Select(f => f.NameEn.ToLower())
-            .ToListAsync();
-        var existingFoodNameSet = existingFoodNames.ToHashSet();
-        foreach (var (food, servings) in seededFoods)
-        {
-            if (existingFoodNameSet.Contains(food.NameEn.ToLower()))
-                continue;
-            db.FoodItems.Add(food);
-            await db.SaveChangesAsync();
-            foreach (var (labelVi, labelEn, grams) in servings)
-            {
-                db.FoodServings.Add(new Xenoh.Domain.Entities.FoodServing
-                {
-                    FoodItemId = food.Id,
-                    LabelVi = labelVi,
-                    LabelEn = labelEn,
-                    Grams = grams
-                });
-            }
-        }
-        await db.SaveChangesAsync();
-
-        // Backfill LabelEn for existing seeded food servings that have NULL LabelEn
-        var servingsWithNullLabelEn = await db.FoodServings
-            .Where(s => s.LabelEn == null && s.FoodItem.Source == Xenoh.Domain.Enums.FoodItemSource.Seed)
-            .Include(s => s.FoodItem)
-            .ToListAsync();
-        if (servingsWithNullLabelEn.Count > 0)
-        {
-            var labelEnMap = seededFoods
-                .SelectMany(item => item.Servings.Select(sv => (FoodNameEn: item.Food.NameEn.ToLower(), sv.LabelVi, sv.LabelEn)))
-                .ToDictionary(x => (x.FoodNameEn, x.LabelVi), x => x.LabelEn);
-            foreach (var serving in servingsWithNullLabelEn)
-            {
-                if (labelEnMap.TryGetValue((serving.FoodItem.NameEn.ToLower(), serving.LabelVi), out var labelEn))
-                    serving.LabelEn = labelEn;
-            }
-            await db.SaveChangesAsync();
-        }
-
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during startup initialization.");
-    }
+    await DatabaseInitializer.InitializeAsync(scope.ServiceProvider, app.Environment.IsDevelopment());
 }
 
 if (app.Environment.IsDevelopment())
