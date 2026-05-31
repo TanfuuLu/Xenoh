@@ -15,6 +15,7 @@ public sealed class MarkSetCompleteHandler(
     IExerciseSetRepository exerciseSetRepo,
     IWorkoutHistoryRepository workoutHistoryRepo,
     IUserPrRepository userPrRepo,
+    IBodyweightRepository bodyweightRepo,
     IApplicationDbContext db,
     ICurrentUserService currentUser,
     INotificationService notificationService,
@@ -30,16 +31,26 @@ public sealed class MarkSetCompleteHandler(
             ?? throw new InvalidOperationException("Set not found.");
 
         var exercise = set.Exercise;
+        var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
 
-        if (exercise.DailyWorkout.WeeklyWorkout.Plan.OwnerId != userId)
+        if (plan.OwnerId != userId)
             throw new InvalidOperationException("Access denied.");
 
         if (set.IsCompleted)
-            return CreateExerciseHandler.ToResponse(exercise, await GetPersonalRecordWeight(userId, exercise.ExerciseTemplateId, cancellationToken));
+        {
+            var personalRecordWeight = await GetPersonalRecordWeight(userId, exercise.ExerciseTemplateId, cancellationToken);
+            var existingBodyweight = await bodyweightRepo.GetLatestWeightOnOrBeforeAsync(
+                plan.OwnerId,
+                exercise.DailyWorkout.Date,
+                cancellationToken);
 
+            return CreateExerciseHandler.ToResponse(exercise, personalRecordWeight, existingBodyweight);
+        }
+
+        var now = DateTime.UtcNow;
         set.IsCompleted = true;
-        set.CompletedAt = DateTime.UtcNow;
-        set.UpdatedAt = DateTime.UtcNow;
+        set.CompletedAt = now;
+        set.UpdatedAt = now;
 
         if (request.ActualReps is not null) set.ActualReps = request.ActualReps;
         if (request.ActualWeight is not null) set.ActualWeight = request.ActualWeight;
@@ -47,7 +58,15 @@ public sealed class MarkSetCompleteHandler(
 
         bool allSetsDone = exercise.Sets.All(s => s.IsCompleted || s.Id == set.Id);
         exercise.IsCompleted = allSetsDone;
-        exercise.UpdatedAt = DateTime.UtcNow;
+        if (allSetsDone && exercise.StartedAtUtc is not null && exercise.EndedAtUtc is null)
+        {
+            exercise.EndedAtUtc = now;
+            exercise.DurationSeconds = Math.Max(
+                0,
+                (int)Math.Round((now - exercise.StartedAtUtc.Value).TotalSeconds));
+        }
+
+        exercise.UpdatedAt = now;
 
         var dailyWorkout = exercise.DailyWorkout;
         var dayWasCompleted = dailyWorkout.IsCompleted;
@@ -62,12 +81,12 @@ public sealed class MarkSetCompleteHandler(
         var dayJustCompleted = !dayWasCompleted && allExercisesDone;
 
         dailyWorkout.IsCompleted = allExercisesDone;
-        dailyWorkout.UpdatedAt = DateTime.UtcNow;
+        dailyWorkout.UpdatedAt = now;
 
         // Auto-complete the week when all effective days are done / rest / missed
         var week = dailyWorkout.WeeklyWorkout;
         week.IsCompleted = await IsWeekCompleteAsync(week, dailyWorkout.Id, allExercisesDone, cancellationToken);
-        week.UpdatedAt = DateTime.UtcNow;
+        week.UpdatedAt = now;
 
         // Log workout history once per day (for streak tracking)
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -118,7 +137,6 @@ public sealed class MarkSetCompleteHandler(
         }
 
         // Notify coach of exercise warning (RPE >= 9 or < 70% of planned reps)
-        var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
         if (plan.CreatedByCoachId.HasValue)
         {
             bool hasWarning =
@@ -140,7 +158,12 @@ public sealed class MarkSetCompleteHandler(
         if (dayJustCompleted)
             await CreateWorkoutCompletionChatNoteAsync(plan, dailyWorkout, userId, cancellationToken);
 
-        return CreateExerciseHandler.ToResponse(exercise, prWeight);
+        var bodyweight = await bodyweightRepo.GetLatestWeightOnOrBeforeAsync(
+            plan.OwnerId,
+            dailyWorkout.Date,
+            cancellationToken);
+
+        return CreateExerciseHandler.ToResponse(exercise, prWeight, bodyweight);
     }
 
     private async Task CreateWorkoutCompletionChatNoteAsync(

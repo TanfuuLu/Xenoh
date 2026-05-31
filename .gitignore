@@ -22,6 +22,9 @@ appsettings.*.local.json
 logs/
 .codex-logs/
 
+## Uploaded files
+src/Xenoh.API/wwwroot/uploads/users-avatar/
+
 ## OS
 .DS_Store
 Thumbs.db

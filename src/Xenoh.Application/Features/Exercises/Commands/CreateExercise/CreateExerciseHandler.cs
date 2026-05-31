@@ -89,7 +89,15 @@ public sealed class CreateExerciseHandler(
         decimal? personalRecordWeight = null,
         decimal? bodyweightKg = null)
     {
-        var calorieEstimate = ExerciseCalories.Estimate(e.EstimatedMet, e.DurationSeconds, bodyweightKg);
+        var calorieEstimate = ExerciseCalories.Estimate(
+            e.ExerciseKind,
+            e.Name,
+            e.EstimatedMet,
+            e.DurationSeconds,
+            bodyweightKg,
+            e.Sets,
+            e.ExerciseTemplate?.IsCompetitionLift ?? false,
+            e.SecondaryMuscleGroups);
 
         return new ExerciseResponse(
             e.Id,

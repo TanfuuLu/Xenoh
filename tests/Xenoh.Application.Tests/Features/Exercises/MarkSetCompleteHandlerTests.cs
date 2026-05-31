@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using Xenoh.Application.Features.Exercises;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
@@ -21,7 +22,9 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         int? durationSeconds = null,
         Guid? coachId = null,
         bool createActiveRelationship = false,
-        int setCount = 1)
+        int setCount = 1,
+        int? startedSecondsAgo = null,
+        decimal? bodyweightKg = null)
     {
         await using var ctx = CreateContext();
 
@@ -69,7 +72,8 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             PlannedReps = 5,
             PlannedWeight = 100m,
             DailyWorkoutId = day.Id,
-            DurationSeconds = durationSeconds
+            DurationSeconds = durationSeconds,
+            StartedAtUtc = startedSecondsAgo is null ? null : DateTime.UtcNow.AddSeconds(-startedSecondsAgo.Value)
         };
 
         var sets = Enumerable.Range(1, setCount).Select(i => new ExerciseSet
@@ -87,6 +91,16 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         ctx.DailyWorkouts.Add(day);
         ctx.Exercises.Add(exercise);
         ctx.ExerciseSets.AddRange(sets);
+        if (bodyweightKg is not null)
+        {
+            ctx.BodyweightLogs.Add(new BodyweightLog
+            {
+                UserId = ownerId,
+                Weight = bodyweightKg.Value,
+                Date = day.Date
+            });
+        }
+
         if (coachId.HasValue && createActiveRelationship)
         {
             ctx.CoachClientRelationships.Add(new CoachClientRelationship
@@ -108,6 +122,7 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
             new ExerciseSetRepository(ctx),
             new WorkoutHistoryRepository(ctx),
             new UserPrRepository(ctx),
+            new BodyweightRepository(ctx),
             ctx,
             CurrentUser(),
             new FakeNotificationService(),
@@ -285,6 +300,75 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
 
         await using var verifyCtx = CreateContext();
         verifyCtx.Exercises.Single().XpAwarded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_FinalSet_WithStartedTimer_AutoFinishesTimer()
+    {
+        var (setId, _) = await SeedAsync(startedSecondsAgo: 120);
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        var response = await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        response.EndedAtUtc.Should().NotBeNull();
+        response.DurationSeconds.Should().BeInRange(110, 130);
+
+        await using var verifyCtx = CreateContext();
+        var exercise = verifyCtx.Exercises.Single();
+        exercise.EndedAtUtc.Should().NotBeNull();
+        exercise.DurationSeconds.Should().BeInRange(110, 130);
+    }
+
+    [Fact]
+    public async Task Handle_FinalSet_WithoutStartedTimer_DoesNotSetDuration()
+    {
+        var (setId, _) = await SeedAsync();
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        var response = await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        response.StartedAtUtc.Should().BeNull();
+        response.EndedAtUtc.Should().BeNull();
+        response.DurationSeconds.Should().BeNull();
+
+        await using var verifyCtx = CreateContext();
+        var exercise = verifyCtx.Exercises.Single();
+        exercise.StartedAtUtc.Should().BeNull();
+        exercise.EndedAtUtc.Should().BeNull();
+        exercise.DurationSeconds.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_FinalSet_WithBodyweight_ReturnsEstimatedCalories()
+    {
+        var (setId, _) = await SeedAsync(startedSecondsAgo: 600, bodyweightKg: 80m);
+
+        await using var ctx = CreateContext();
+        var handler = CreateHandler(ctx);
+
+        var response = await handler.Handle(new MarkSetCompleteCommand
+        {
+            SetId = setId,
+            ActualReps = 5,
+            ActualWeight = 100m
+        }, CancellationToken.None);
+
+        response.CalorieEstimateStatus.Should().Be(ExerciseCalories.Ready);
+        response.EstimatedCalories.Should().BeGreaterThan(0m);
     }
 
     [Fact]

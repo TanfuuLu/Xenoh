@@ -12,6 +12,7 @@ using Xenoh.Application.Features.Users.Queries.GetExercisePrHistory;
 using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetMyPreferences;
+using Xenoh.Application.Features.Users.Queries.GetMyTrainingActivity;
 using Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
@@ -136,6 +137,20 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetExercisePrHistoryQuery(exerciseTemplateId), ct);
         return Ok(result);
+    }
+
+    [HttpGet("me/training-activity")]
+    public async Task<IActionResult> GetMyTrainingActivity([FromQuery] int year, [FromQuery] int month, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetMyTrainingActivityQuery(year, month), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{userId:guid}/bodyweight")]
