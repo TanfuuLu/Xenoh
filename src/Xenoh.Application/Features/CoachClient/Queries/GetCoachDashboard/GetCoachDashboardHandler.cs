@@ -53,6 +53,7 @@ public sealed class GetCoachDashboardHandler(
 
         var clientIdStrings = clientIds.Select(id => id.ToString()).ToList();
         var avatarUrls = await userManager.Users
+            .AsNoTracking()
             .Where(u => clientIdStrings.Contains(u.Id.ToString()))
             .Select(u => new { u.Id, u.AvatarUrl })
             .ToDictionaryAsync(u => Guid.Parse(u.Id.ToString()), u => u.AvatarUrl, cancellationToken);

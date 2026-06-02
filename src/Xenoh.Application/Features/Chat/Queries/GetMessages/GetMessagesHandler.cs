@@ -52,6 +52,7 @@ public sealed class GetMessagesHandler(
         items.Reverse();
 
         var totalUnread = await db.Messages
+            .AsNoTracking()
             .CountAsync(
                 m => m.RelationshipId == request.RelationshipId
                      && m.SenderId != userId

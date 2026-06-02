@@ -16,6 +16,7 @@ public sealed class GetMyNotificationsHandler(
         var userId = currentUser.UserId;
 
         return await db.Notifications
+            .AsNoTracking()
             .Where(n => n.RecipientId == userId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)

@@ -176,6 +176,7 @@ public sealed class GetUserAnalysisHandler(
 
         // Active plan + current/recent weeks
         var activePlan = await db.Plans
+            .AsNoTracking()
             .Where(p => p.OwnerId == userId && p.IsActive)
             .Select(p => new
             {
@@ -193,6 +194,7 @@ public sealed class GetUserAnalysisHandler(
         if (activePlan is not null)
         {
             var weeks = await db.WeeklyWorkouts
+                .AsNoTracking()
                 .Where(w => w.PlanId == activePlan.Id)
                 .OrderBy(w => w.WeekNumber)
                 .Select(w => new
@@ -256,6 +258,7 @@ public sealed class GetUserAnalysisHandler(
 
         // Bodyweight: last up to 8 entries
         var bw = await db.BodyweightLogs
+            .AsNoTracking()
             .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.Date)
             .Take(8)
@@ -265,6 +268,7 @@ public sealed class GetUserAnalysisHandler(
         // Recent volume and effort pattern (last 28 days completed sets)
         var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-28));
         var recentSets = await db.ExerciseSets
+            .AsNoTracking()
             .Where(s => s.IsCompleted &&
                         s.Exercise.DailyWorkout.WeeklyWorkout.Plan.OwnerId == userId &&
                         s.Exercise.DailyWorkout.Date >= since)
@@ -346,15 +350,16 @@ public sealed class GetUserAnalysisHandler(
 
         // Top 5 PRs (most recently achieved)
         var prs = await (
-            from p in db.UserExercisePRs
+            from p in db.UserExercisePRs.AsNoTracking()
             where p.UserId == userId
-            join t in db.ExerciseTemplates on p.ExerciseTemplateId equals t.Id
+            join t in db.ExerciseTemplates.AsNoTracking() on p.ExerciseTemplateId equals t.Id
             orderby p.AchievedAt descending
             select new PrEntry(t.Name, p.Weight, p.Reps, p.AchievedAt)
         ).Take(5).ToListAsync(ct);
 
         // Streak
         var workoutDates = await db.WorkoutHistories
+            .AsNoTracking()
             .Where(h => h.UserId == userId)
             .OrderByDescending(h => h.Date)
             .Select(h => h.Date)

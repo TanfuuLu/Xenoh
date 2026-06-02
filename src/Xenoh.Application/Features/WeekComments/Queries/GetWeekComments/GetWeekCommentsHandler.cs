@@ -12,6 +12,7 @@ public sealed class GetWeekCommentsHandler(IApplicationDbContext db)
         GetWeekCommentsQuery request, CancellationToken cancellationToken)
     {
         return await db.WeeklyWorkoutComments
+            .AsNoTracking()
             .Where(c => c.WeeklyWorkoutId == request.WeeklyWorkoutId)
             .OrderBy(c => c.CreatedAt)
             .Select(c => new CommentResponse(

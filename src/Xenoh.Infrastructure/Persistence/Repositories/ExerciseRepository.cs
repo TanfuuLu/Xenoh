@@ -90,6 +90,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
     public async Task<int> GetNextSortOrderAsync(Guid dailyWorkoutId, CancellationToken ct = default)
     {
         var maxSortOrder = await db.Exercises
+            .AsNoTracking()
             .Where(e => e.DailyWorkoutId == dailyWorkoutId)
             .Select(e => (int?)e.SortOrder)
             .MaxAsync(ct);

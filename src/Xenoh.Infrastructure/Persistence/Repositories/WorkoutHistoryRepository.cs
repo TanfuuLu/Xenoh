@@ -16,6 +16,7 @@ public sealed class WorkoutHistoryRepository(ApplicationDbContext db) : IWorkout
 
     public Task<bool> ExistsForDateAsync(Guid userId, DateOnly date, CancellationToken ct) =>
         db.WorkoutHistories
+          .AsNoTracking()
           .AnyAsync(h => h.UserId == userId && h.Date == date, ct);
 
     public async Task<Dictionary<Guid, DateOnly?>> GetLastDatesForUsersAsync(

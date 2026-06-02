@@ -25,6 +25,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
 
     public Task<CoachClientRelationship?> FindActiveByCoachAndClientAsync(Guid coachId, Guid clientId, CancellationToken ct) =>
         db.CoachClientRelationships
+          .AsNoTracking()
           .FirstOrDefaultAsync(r =>
               r.CoachId == coachId &&
               r.ClientId == clientId &&
@@ -66,6 +67,7 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.Status.ToString(),
               r.CreatedAt,
               db.WorkoutHistories
+                .AsNoTracking()
                 .Where(w => w.UserId == r.ClientId)
                 .OrderByDescending(w => w.Date)
                 .Select(w => (DateOnly?)w.Date)

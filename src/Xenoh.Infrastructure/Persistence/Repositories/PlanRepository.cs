@@ -108,7 +108,9 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
     }
 
     public Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct) =>
-        db.Plans.CountAsync(p => p.OwnerId == ownerId, ct);
+        db.Plans
+          .AsNoTracking()
+          .CountAsync(p => p.OwnerId == ownerId, ct);
 
     public async Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(
         IEnumerable<Guid> ownerIds, CancellationToken ct)

@@ -12,6 +12,7 @@ public sealed class GetPlanCommentsHandler(IApplicationDbContext db)
         GetPlanCommentsQuery request, CancellationToken cancellationToken)
     {
         return await db.PlanComments
+            .AsNoTracking()
             .Where(c => c.PlanId == request.PlanId)
             .OrderBy(c => c.CreatedAt)
             .Select(c => new CommentResponse(

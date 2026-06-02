@@ -62,10 +62,13 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
     }
 
     public Task<ExerciseTemplate?> FindByIdAsync(Guid id, CancellationToken ct) =>
-        db.ExerciseTemplates.FirstOrDefaultAsync(t => t.Id == id, ct);
+        db.ExerciseTemplates
+          .AsNoTracking()
+          .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public Task<ExerciseTemplate?> FindAvailableByIdAsync(Guid id, Guid userId, CancellationToken ct) =>
-        db.ExerciseTemplates.FirstOrDefaultAsync(
+        db.ExerciseTemplates
+          .FirstOrDefaultAsync(
             t => t.Id == id && !t.IsArchived && (t.OwnerId == null || t.OwnerId == userId),
             ct);
 }
