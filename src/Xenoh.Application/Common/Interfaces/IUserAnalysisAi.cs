@@ -46,6 +46,15 @@ public sealed record CoachClientBriefAiResult(
     string Json
 );
 
+public sealed record TrainingCoachTipAiRequest(
+    string Language,
+    string SnapshotJson
+);
+
+public sealed record TrainingCoachTipAiResult(
+    string Json
+);
+
 public interface IUserAnalysisAi
 {
     Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken);
@@ -64,5 +73,9 @@ public interface IUserAnalysisAi
 
     Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(
         CoachClientBriefAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(
+        TrainingCoachTipAiRequest request,
         CancellationToken cancellationToken);
 }

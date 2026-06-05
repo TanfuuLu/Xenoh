@@ -30,10 +30,23 @@ public sealed class ReviewPlanBalanceHandler(
                         (p.OwnerId == userId || p.CreatedByCoachId == userId))
             .Select(p => new
             {
+                p.OwnerId,
                 p.Name,
                 p.StartDate,
                 p.EndDate,
                 p.PlanType,
+                OwnerProfile = new
+                {
+                    Gender = p.Owner.Gender.HasValue ? p.Owner.Gender.Value.ToString() : null,
+                    p.Owner.DateOfBirth,
+                    HeightCm = p.Owner.Height,
+                    DevelopmentDirection = p.Owner.DevelopmentDirection.HasValue
+                        ? p.Owner.DevelopmentDirection.Value.ToString()
+                        : null,
+                    TrainingDiscipline = p.Owner.TrainingDiscipline.HasValue
+                        ? p.Owner.TrainingDiscipline.Value.ToString()
+                        : null
+                },
                 Weeks = p.WeeklyWorkouts
                     .OrderBy(w => w.WeekNumber)
                     .Select(w => new
@@ -84,6 +97,7 @@ public sealed class ReviewPlanBalanceHandler(
             plan.StartDate,
             plan.EndDate,
             PlanType = plan.PlanType.ToString(),
+            ProfileContext = plan.OwnerProfile,
             TotalExercises = exercises.Count,
             MuscleTotals = muscleTotals,
             Weeks = plan.Weeks

@@ -192,9 +192,27 @@ public sealed class GetDailyWorkoutGuidanceHandler(
             .Select(b => new { b.Date, b.Weight })
             .ToListAsync(ct);
 
+        var profileContext = await db.ApplicationUsers
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                Gender = u.Gender.HasValue ? u.Gender.Value.ToString() : null,
+                u.DateOfBirth,
+                HeightCm = u.Height,
+                DevelopmentDirection = u.DevelopmentDirection.HasValue
+                    ? u.DevelopmentDirection.Value.ToString()
+                    : null,
+                TrainingDiscipline = u.TrainingDiscipline.HasValue
+                    ? u.TrainingDiscipline.Value.ToString()
+                    : null
+            })
+            .FirstOrDefaultAsync(ct);
+
         return new
         {
             AsOf = DateOnly.FromDateTime(DateTime.UtcNow),
+            ProfileContext = profileContext,
             Workout = day,
             Recent28Days = new
             {

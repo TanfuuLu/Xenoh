@@ -14,6 +14,8 @@ public class ApplicationUser : IdentityUser<Guid>
     public decimal? Height { get; set; }        // cm
     public Gender? Gender { get; set; }
     public DateOnly? DateOfBirth { get; set; }
+    public DevelopmentDirection? DevelopmentDirection { get; set; }
+    public TrainingDiscipline? TrainingDiscipline { get; set; }
     [MaxLength(500)]
     public string? Bio { get; set; }
 

@@ -16,6 +16,8 @@ public sealed record UserProfileResponse(
     decimal? Height,
     string? Gender,
     DateOnly? DateOfBirth,
+    string? DevelopmentDirection,
+    string? TrainingDiscipline,
     int CurrentStreak,
     decimal? LatestBodyweight,
     decimal? Bmi,

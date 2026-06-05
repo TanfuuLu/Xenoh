@@ -93,6 +93,11 @@ public sealed class GetCoachClientAiBriefHandler(
                 r.ClientId,
                 ClientName = (r.Client.FirstName + " " + r.Client.LastName).Trim(),
                 r.Client.Email,
+                r.Client.Gender,
+                r.Client.DateOfBirth,
+                r.Client.Height,
+                r.Client.DevelopmentDirection,
+                r.Client.TrainingDiscipline,
                 r.Status,
                 r.StartDate,
                 r.EndDate,
@@ -215,6 +220,18 @@ public sealed class GetCoachClientAiBriefHandler(
         {
             AsOf = today,
             Relationship = relationship,
+            ClientProfile = new
+            {
+                Gender = relationship.Gender.HasValue ? relationship.Gender.Value.ToString() : null,
+                relationship.DateOfBirth,
+                HeightCm = relationship.Height,
+                DevelopmentDirection = relationship.DevelopmentDirection.HasValue
+                    ? relationship.DevelopmentDirection.Value.ToString()
+                    : null,
+                TrainingDiscipline = relationship.TrainingDiscipline.HasValue
+                    ? relationship.TrainingDiscipline.Value.ToString()
+                    : null
+            },
             Attention = new { attention.Level, attention.Reasons },
             LastWorkoutDate = lastWorkoutDate,
             DaysSinceLastWorkout = daysSinceLastWorkout,

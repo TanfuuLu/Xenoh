@@ -70,9 +70,27 @@ public sealed class CreateAiStarterPlanHandler(
         if (templates.Count == 0)
             throw new InvalidOperationException("No exercise templates are available.");
 
+        var profileContext = await db.ApplicationUsers
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                Gender = u.Gender.HasValue ? u.Gender.Value.ToString() : null,
+                u.DateOfBirth,
+                HeightCm = u.Height,
+                DevelopmentDirection = u.DevelopmentDirection.HasValue
+                    ? u.DevelopmentDirection.Value.ToString()
+                    : null,
+                TrainingDiscipline = u.TrainingDiscipline.HasValue
+                    ? u.TrainingDiscipline.Value.ToString()
+                    : null
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
         var language = string.Equals(request.Language, "vi", StringComparison.OrdinalIgnoreCase) ? "vi" : "en";
         var questionnaire = new
         {
+            ProfileContext = profileContext,
             request.Goal,
             request.Experience,
             request.DaysPerWeek,

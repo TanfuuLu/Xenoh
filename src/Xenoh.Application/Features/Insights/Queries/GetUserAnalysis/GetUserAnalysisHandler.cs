@@ -17,6 +17,8 @@ public sealed class GetUserAnalysisHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
+    private const int AnalysisPromptVersion = 2;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -368,9 +370,13 @@ public sealed class GetUserAnalysisHandler(
 
         return new Snapshot(
             today,
-            user.Gender?.ToString(),
-            user.DateOfBirth,
-            user.Height,
+            new ProfileContext(
+                user.Gender?.ToString(),
+                user.DateOfBirth,
+                user.Height,
+                user.DevelopmentDirection?.ToString(),
+                user.TrainingDiscipline?.ToString()
+            ),
             bw,
             workoutDates.Count,
             planSnap,
@@ -391,8 +397,10 @@ public sealed class GetUserAnalysisHandler(
     {
         var canonical = JsonSerializer.Serialize(new
         {
+            PromptVersion = AnalysisPromptVersion,
             language,
             snapshot.AsOf,
+            snapshot.ProfileContext,
             snapshot.Plan,
             snapshot.CurrentWeek,
             snapshot.PreviousWeek,
@@ -413,9 +421,7 @@ public sealed class GetUserAnalysisHandler(
 
     private sealed record Snapshot(
         DateOnly AsOf,
-        string? Gender,
-        DateOnly? DateOfBirth,
-        decimal? HeightCm,
+        ProfileContext ProfileContext,
         IReadOnlyList<BodyweightPoint> RecentBodyweight,
         int Last30DaysWorkoutDates,
         PlanSnapshot? Plan,
@@ -429,6 +435,14 @@ public sealed class GetUserAnalysisHandler(
         IReadOnlyList<EffortGapEntry> HighRpeMisses,
         IReadOnlyList<EffortGapEntry> LowRpeWins,
         IReadOnlyList<PrEntry> RecentPrs
+    );
+
+    private sealed record ProfileContext(
+        string? Gender,
+        DateOnly? DateOfBirth,
+        decimal? HeightCm,
+        string? DevelopmentDirection,
+        string? TrainingDiscipline
     );
 
     private sealed record PlanSnapshot(

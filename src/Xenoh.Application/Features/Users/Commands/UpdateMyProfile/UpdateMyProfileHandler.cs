@@ -49,6 +49,8 @@ public sealed class UpdateMyProfileHandler(
         if (request.Height is not null) user.Height = request.Height;
         if (request.Gender is not null) user.Gender = request.Gender;
         if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
+        if (request.DevelopmentDirection is not null) user.DevelopmentDirection = request.DevelopmentDirection;
+        if (request.TrainingDiscipline is not null) user.TrainingDiscipline = request.TrainingDiscipline;
         if (request.FacebookUrl is not null) user.FacebookUrl = string.IsNullOrWhiteSpace(request.FacebookUrl) ? null : request.FacebookUrl.Trim();
         if (request.InstagramUrl is not null) user.InstagramUrl = string.IsNullOrWhiteSpace(request.InstagramUrl) ? null : request.InstagramUrl.Trim();
         if (request.ZaloUrl is not null) user.ZaloUrl = string.IsNullOrWhiteSpace(request.ZaloUrl) ? null : request.ZaloUrl.Trim();
@@ -83,6 +85,8 @@ public sealed class UpdateMyProfileHandler(
             user.Height,
             gender.HasValue ? gender.Value.ToString() : null,
             user.DateOfBirth,
+            user.DevelopmentDirection?.ToString(),
+            user.TrainingDiscipline?.ToString(),
             currentStreak,
             latestWeight,
             bmi,

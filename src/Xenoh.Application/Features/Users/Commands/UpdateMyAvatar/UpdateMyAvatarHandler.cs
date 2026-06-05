@@ -81,6 +81,8 @@ public sealed class UpdateMyAvatarHandler(
             user.Height,
             gender.HasValue ? gender.Value.ToString() : null,
             user.DateOfBirth,
+            user.DevelopmentDirection?.ToString(),
+            user.TrainingDiscipline?.ToString(),
             currentStreak,
             latestWeight,
             bmi,

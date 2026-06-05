@@ -206,6 +206,9 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
 
         public Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(CoachClientBriefAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
+
+        public Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(TrainingCoachTipAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
     }
 
     private sealed class StubUserStore(ApplicationUser user) : IUserStore<ApplicationUser>

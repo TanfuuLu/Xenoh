@@ -24,6 +24,12 @@ public sealed record UpdateMyProfileCommand : IRequest<UserProfileResponse>
 
     public DateOnly? DateOfBirth { get; init; }
 
+    [EnumDataType(typeof(DevelopmentDirection), ErrorMessage = "Invalid development direction value.")]
+    public DevelopmentDirection? DevelopmentDirection { get; init; }
+
+    [EnumDataType(typeof(TrainingDiscipline), ErrorMessage = "Invalid training discipline value.")]
+    public TrainingDiscipline? TrainingDiscipline { get; init; }
+
     [StringLength(300, ErrorMessage = "Facebook URL cannot exceed 300 characters.")]
     [Url(ErrorMessage = "Facebook URL must be a valid URL.")]
     public string? FacebookUrl { get; init; }

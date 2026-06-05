@@ -58,6 +58,8 @@ public sealed class GetUserProfileHandler(
             user.Height,
             gender.HasValue ? gender.Value.ToString() : null,
             user.DateOfBirth,
+            user.DevelopmentDirection?.ToString(),
+            user.TrainingDiscipline?.ToString(),
             currentStreak,
             latestLog,
             bmi,
