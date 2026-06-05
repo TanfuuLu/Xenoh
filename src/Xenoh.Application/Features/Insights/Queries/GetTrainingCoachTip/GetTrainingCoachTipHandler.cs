@@ -159,12 +159,39 @@ public sealed class GetTrainingCoachTipHandler(
             .Take(80)
             .ToList();
 
+        var nutritionProfile = await db.NutritionProfiles
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Select(p => new
+            {
+                ActivityLevel = p.ActivityLevel.ToString(),
+                Goal = p.Goal.ToString(),
+                p.TargetWeightKg,
+                p.CustomCalorieTarget,
+                p.ProteinPerKg,
+                p.FatPerKg
+            })
+            .FirstOrDefaultAsync(ct);
+
+        var nutritionLogs = await db.NutritionDailyLogs
+            .AsNoTracking()
+            .Where(l => l.UserId == userId && l.Date >= since)
+            .OrderBy(l => l.Date)
+            .Select(l => new NutritionLogSnapshot(
+                l.Date,
+                l.Calories,
+                l.ProteinG,
+                l.CarbsG,
+                l.FatG))
+            .ToListAsync(ct);
+
         var recentVolume = recentSets.Sum(SetVolume);
         var currentWeek = activePlan?.Weeks.FirstOrDefault(w => w.StartDate <= today && today <= w.EndDate)
             ?? activePlan?.Weeks.LastOrDefault(w => w.StartDate <= today);
         var previousWeek = currentWeek is null
             ? null
             : activePlan?.Weeks.LastOrDefault(w => w.WeekNumber == currentWeek.WeekNumber - 1);
+        var planMetrics = activePlan is null ? null : BuildPlanMetrics(activePlan);
 
         var planSummary = activePlan is null
             ? null
@@ -173,9 +200,12 @@ public sealed class GetTrainingCoachTipHandler(
                 activePlan.Name,
                 activePlan.StartDate,
                 activePlan.EndDate,
-                TotalDays = activePlan.Weeks.Sum(w => w.Days.Count),
-                CompletedDays = activePlan.Weeks.Sum(w => w.Days.Count(d => d.IsCompleted)),
-                MissedDays = activePlan.Weeks.Sum(w => w.Days.Count(d => d.Status == DayStatus.Missed)),
+                CalendarDays = activePlan.Weeks.Sum(w => w.Days.Count),
+                TotalDays = planMetrics!.TotalScheduledDays,
+                ScheduledDays = planMetrics.TotalScheduledDays,
+                CompletedDays = planMetrics.CompletedScheduledDays,
+                MissedDays = planMetrics.MissedScheduledDays,
+                CompletionPercent = planMetrics.CompletionPercent,
                 CurrentWeek = ToWeekSnapshot(currentWeek, recentSets),
                 PreviousWeek = ToWeekSnapshot(previousWeek, recentSets)
             };
@@ -205,6 +235,7 @@ public sealed class GetTrainingCoachTipHandler(
             IsSparse = activePlan is null && recentSets.Count == 0,
             ProfileContext = profile,
             ActivePlan = planSummary,
+            CoachingDecision = BuildCoachingDecision(activePlan, recentSets, nutritionLogs, profile.TrainingDiscipline),
             Recent28Days = new
             {
                 CompletedSets = recentSets.Count,
@@ -215,6 +246,19 @@ public sealed class GetTrainingCoachTipHandler(
                 LowRpeWins = recentSets.Count(s => s.Rpe <= 7m && IsAtOrAboveTarget(s)),
                 MuscleVolume = muscleVolumes,
                 Sets = recentSetFacts
+            },
+            Nutrition = new
+            {
+                Profile = nutritionProfile,
+                Recent28Days = new
+                {
+                    LoggedDays = nutritionLogs.Count,
+                    AverageCalories = nutritionLogs.Count == 0 ? 0 : Math.Round(nutritionLogs.Average(l => l.Calories), 0),
+                    AverageProteinG = nutritionLogs.Count == 0 ? 0m : Math.Round(nutritionLogs.Average(l => l.ProteinG), 1),
+                    AverageCarbsG = nutritionLogs.Count == 0 ? 0m : Math.Round(nutritionLogs.Average(l => l.CarbsG), 1),
+                    AverageFatG = nutritionLogs.Count == 0 ? 0m : Math.Round(nutritionLogs.Average(l => l.FatG), 1),
+                    Logs = nutritionLogs.TakeLast(14).ToList()
+                }
             },
             RuleInsights = ruleInsights.Concat(powerliftingInsights).Take(8).ToList(),
             RecentPrs = prs
@@ -235,10 +279,12 @@ public sealed class GetTrainingCoachTipHandler(
             week.Name,
             week.StartDate,
             week.EndDate,
-            TotalDays = week.Days.Count,
-            CompletedDays = week.Days.Count(d => d.IsCompleted),
-            MissedDays = week.Days.Count(d => d.Status == DayStatus.Missed),
-            WarningDays = week.Days.Count(d => d.HasMissedTargets),
+            CalendarDays = week.Days.Count,
+            TotalDays = week.Days.Count(IsScheduledTrainingDay),
+            ScheduledDays = week.Days.Count(IsScheduledTrainingDay),
+            CompletedDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.IsCompleted),
+            MissedDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.Status == DayStatus.Missed),
+            WarningDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.HasMissedTargets),
             TotalExercises = week.Days.Sum(d => d.ExerciseCount),
             CompletedExercises = week.Days.Sum(d => d.CompletedExercises),
             Volume = Math.Round(weekSets.Sum(SetVolume), 1)
@@ -274,10 +320,11 @@ public sealed class GetTrainingCoachTipHandler(
         PlanSnapshotData? activePlan,
         IReadOnlyList<RecentSetSnapshot> recentSets)
     {
-        var totalDays = activePlan is null ? 0 : activePlan.Weeks.Sum(w => w.Days.Count);
-        var completedDays = activePlan is null ? 0 : activePlan.Weeks.Sum(w => w.Days.Count(d => d.IsCompleted));
-        var missedDays = activePlan is null ? 0 : activePlan.Weeks.Sum(w => w.Days.Count(d => d.Status == DayStatus.Missed));
-        var warningDays = activePlan is null ? 0 : activePlan.Weeks.Sum(w => w.Days.Count(d => d.HasMissedTargets));
+        var planMetrics = activePlan is null ? null : BuildPlanMetrics(activePlan);
+        var totalDays = planMetrics?.TotalScheduledDays ?? 0;
+        var completedDays = planMetrics?.CompletedScheduledDays ?? 0;
+        var missedDays = planMetrics?.MissedScheduledDays ?? 0;
+        var warningDays = planMetrics?.WarningScheduledDays ?? 0;
 
         var weekVolumes = new List<WeekVolumePoint>();
         if (activePlan is not null)
@@ -324,6 +371,97 @@ public sealed class GetTrainingCoachTipHandler(
             })
             .Cast<object>()
             .ToList();
+    }
+
+    private static PlanMetrics BuildPlanMetrics(PlanSnapshotData activePlan)
+    {
+        var scheduledDays = activePlan.Weeks.SelectMany(w => w.Days).Where(IsScheduledTrainingDay).ToList();
+        var completedDays = scheduledDays.Count(d => d.IsCompleted);
+        var totalDays = scheduledDays.Count;
+
+        return new PlanMetrics(
+            TotalScheduledDays: totalDays,
+            CompletedScheduledDays: completedDays,
+            MissedScheduledDays: scheduledDays.Count(d => d.Status == DayStatus.Missed),
+            WarningScheduledDays: scheduledDays.Count(d => d.HasMissedTargets),
+            CompletionPercent: totalDays <= 0 ? 0m : Math.Round(completedDays * 100m / totalDays, 1));
+    }
+
+    private static bool IsScheduledTrainingDay(DaySnapshotData day) => day.ExerciseCount > 0;
+
+    private static object BuildCoachingDecision(
+        PlanSnapshotData? activePlan,
+        IReadOnlyList<RecentSetSnapshot> recentSets,
+        IReadOnlyList<NutritionLogSnapshot> nutritionLogs,
+        string? trainingDiscipline)
+    {
+        if (activePlan is null || recentSets.Count == 0)
+        {
+            return new
+            {
+                Directive = "Build the data base first.",
+                Decision = "Do not change loading yet.",
+                NextAction = "Complete the next planned workout and log every set with reps, weight, and RPE.",
+                Reason = "There is not enough completed training data to judge progression."
+            };
+        }
+
+        var metrics = BuildPlanMetrics(activePlan);
+        var averageRpe = recentSets
+            .Where(s => s.Rpe.HasValue)
+            .Select(s => s.Rpe!.Value)
+            .DefaultIfEmpty()
+            .Average();
+        var missedTargets = recentSets.Count(IsMissedTarget);
+        var highRpeSets = recentSets.Count(s => s.Rpe >= 8.5m);
+        var lowRpeWins = recentSets.Count(s => s.Rpe <= 7m && IsAtOrAboveTarget(s));
+        var nutritionLoggedDays = nutritionLogs.Count;
+        var averageProtein = nutritionLoggedDays == 0 ? 0m : nutritionLogs.Average(l => l.ProteinG);
+
+        if (averageRpe >= 8.6m || missedTargets >= 6)
+        {
+            return new
+            {
+                Directive = "Hold load and clean up execution.",
+                Decision = "Repeat the heaviest main-lift loads this week instead of adding weight.",
+                NextAction = "Keep squat, bench, and deadlift at the current planned loads until missed targets fall and average RPE drops below 8.5.",
+                Reason = $"{highRpeSets} high-RPE sets and {missedTargets} missed target sets in the recent window point to fatigue, not a progression opportunity."
+            };
+        }
+
+        if (metrics.CompletionPercent >= 75m && lowRpeWins >= 4 && missedTargets <= 3)
+        {
+            var decision = string.Equals(trainingDiscipline, TrainingDiscipline.Powerlifting.ToString(), StringComparison.OrdinalIgnoreCase)
+                ? "Progress squat and bench conservatively, and only progress deadlift if the top set stays below RPE 9."
+                : "Progress priority lifts conservatively next week.";
+
+            return new
+            {
+                Directive = "Progress from the completed base.",
+                Decision = decision,
+                NextAction = "Add 2.5 kg to priority barbell lifts next week where all sets hit target at RPE 8 or lower.",
+                Reason = $"Plan completion is {metrics.CompletionPercent}% across scheduled sessions, with {lowRpeWins} recent low-RPE target hits and only {missedTargets} missed targets."
+            };
+        }
+
+        if (nutritionLoggedDays >= 7 && averageProtein < 140m)
+        {
+            return new
+            {
+                Directive = "Support the block with protein first.",
+                Decision = "Keep training load stable while bringing protein intake up.",
+                NextAction = "Average at least 150 g protein for the next 7 logged nutrition days before pushing heavier top sets.",
+                Reason = $"Recent nutrition logs average {Math.Round(averageProtein, 1)} g protein, which is a weak support signal for a high-frequency powerlifting block."
+            };
+        }
+
+        return new
+        {
+            Directive = "Keep the block steady.",
+            Decision = "Stay with the current planned progression and watch RPE trend.",
+            NextAction = "Complete every scheduled session this week and flag any main lift that reaches RPE 9 or misses reps.",
+            Reason = $"Scheduled completion is {metrics.CompletionPercent}% with average RPE {Math.Round(averageRpe, 1)}."
+        };
     }
 
     private static List<object> BuildPowerliftingInsights(IReadOnlyList<RecentSetSnapshot> recentSets)
@@ -542,6 +680,22 @@ public sealed class GetTrainingCoachTipHandler(
         int ExerciseCount,
         int CompletedExercises,
         bool HasMissedTargets
+    );
+
+    private sealed record PlanMetrics(
+        int TotalScheduledDays,
+        int CompletedScheduledDays,
+        int MissedScheduledDays,
+        int WarningScheduledDays,
+        decimal CompletionPercent
+    );
+
+    private sealed record NutritionLogSnapshot(
+        DateOnly Date,
+        int Calories,
+        decimal ProteinG,
+        decimal CarbsG,
+        decimal FatG
     );
 
     private sealed record TrainingCoachTipContent(

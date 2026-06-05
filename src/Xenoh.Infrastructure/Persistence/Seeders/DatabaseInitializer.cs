@@ -34,6 +34,9 @@ public static class DatabaseInitializer
 
             await SeedExerciseTemplatesAsync(db, ct);
             await SeedFoodItemsAsync(db, ct);
+
+            if (isDevelopment)
+                await DemoUserSeeder.SeedAsync(services);
         }
         catch (Exception ex)
         {
