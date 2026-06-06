@@ -35,15 +35,15 @@ public sealed class GetCoachDashboardHandler(
         var clientIds = activeClients.Select(r => r.ClientId).ToList();
 
         var lastWorkoutDates = await workoutHistoryRepo.GetLastDatesForUsersAsync(clientIds, cancellationToken);
-        var planProgress = await planRepo.GetProgressByOwnersAsync(clientIds, cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var planMonitoring = await planRepo.GetMonitoringByOwnersAsync(clientIds, today, cancellationToken);
+        // All coach-facing client metrics are scoped to the plan this coach authored.
+        var planMonitoring = await planRepo.GetMonitoringByOwnersAsync(clientIds, coachId, today, cancellationToken);
         var latestCompletedWorkoutDates = await db.DailyWorkouts
             .AsNoTracking()
             .Where(d =>
                 d.IsCompleted &&
                 d.Date <= today &&
-                d.WeeklyWorkout.Plan.IsActive &&
+                d.WeeklyWorkout.Plan.CreatedByCoachId == coachId &&
                 clientIds.Contains(d.WeeklyWorkout.Plan.OwnerId))
             .GroupBy(d => d.WeeklyWorkout.Plan.OwnerId)
             .Select(g => new { OwnerId = g.Key, Date = g.Max(d => d.Date) })
@@ -57,17 +57,6 @@ public sealed class GetCoachDashboardHandler(
             .Where(u => clientIdStrings.Contains(u.Id.ToString()))
             .Select(u => new { u.Id, u.AvatarUrl })
             .ToDictionaryAsync(u => Guid.Parse(u.Id.ToString()), u => u.AvatarUrl, cancellationToken);
-
-        var progressByClient = planProgress
-            .GroupBy(p => p.OwnerId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    int total = g.Sum(p => p.TotalDays);
-                    int completed = g.Sum(p => p.CompletedDays);
-                    return total > 0 ? (int?)Math.Round(completed * 100.0 / total) : null;
-                });
 
         var prsByClient = competitionLifts
             .GroupBy(x => x.UserId)
@@ -94,7 +83,7 @@ public sealed class GetCoachDashboardHandler(
                 r.Email,
                 avatarUrls.GetValueOrDefault(r.ClientId),
                 lastWorkoutDate,
-                progressByClient.GetValueOrDefault(r.ClientId),
+                monitoring?.ActivePlanProgressPercent,
                 latestBodyweights.GetValueOrDefault(r.ClientId),
                 new BigThreePRs(
                     clientPrs.GetValueOrDefault(CompetitionLiftType.Squat),

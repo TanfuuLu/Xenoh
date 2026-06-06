@@ -143,7 +143,7 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
     {
         await using var ctx = CreateContext();
 
-        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([], DateOnly.FromDateTime(DateTime.UtcNow), CancellationToken.None);
+        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([], Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), CancellationToken.None);
 
         result.Should().BeEmpty();
     }
@@ -152,12 +152,14 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
     public async Task GetMonitoringByOwnersAsync_ReturnsActivePlanAdherence()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var coachId = Guid.NewGuid();
         await using var seedCtx = CreateContext();
         var plan = new Plan
         {
             Name = "Client Block",
             OwnerId = UserId,
             PlanType = PlanType.Coach,
+            CreatedByCoachId = coachId,
             StartDate = today.AddDays(-2),
             EndDate = today.AddDays(1)
         };
@@ -198,7 +200,7 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         await seedCtx.SaveChangesAsync();
 
         await using var ctx = CreateContext();
-        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([UserId], today, CancellationToken.None);
+        var result = await new PlanRepository(ctx).GetMonitoringByOwnersAsync([UserId], coachId, today, CancellationToken.None);
 
         result.Should().ContainSingle();
         var snapshot = result[0];

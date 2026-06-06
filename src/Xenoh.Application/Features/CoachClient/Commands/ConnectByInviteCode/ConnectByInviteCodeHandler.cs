@@ -26,15 +26,19 @@ public sealed class ConnectByInviteCodeHandler(
             .FirstOrDefaultAsync(c => c.Code == request.Code.ToUpperInvariant(), cancellationToken)
             ?? throw new InvalidOperationException("Coach code not found.");
 
-        // 2. Check it hasn't been used
+        // 2. Prevent self-coaching (a coach redeeming their own code)
+        if (inviteCode.CoachId == clientId)
+            throw new InvalidOperationException("You cannot use your own coach code.");
+
+        // 3. Check it hasn't been used
         if (inviteCode.IsUsed)
             throw new InvalidOperationException("This coach code has already been used.");
 
-        // 3. Check it hasn't expired
+        // 4. Check it hasn't expired
         if (inviteCode.CoachingEndDate < today)
             throw new InvalidOperationException("This coach code has expired.");
 
-        // 4. Check the client doesn't already have an active/pending relationship
+        // 5. Check the client doesn't already have an active/pending relationship
         var existingRelationship = await db.CoachClientRelationships
             .FirstOrDefaultAsync(
                 r => r.ClientId == clientId &&
@@ -45,11 +49,11 @@ public sealed class ConnectByInviteCodeHandler(
         if (existingRelationship is not null)
             throw new InvalidOperationException("You already have an active coach or a pending request.");
 
-        // 5. Load client info
+        // 6. Load client info
         var client = await userManager.FindByIdAsync(clientId.ToString())
             ?? throw new InvalidOperationException("Client not found.");
 
-        // 6. Create relationship (Active immediately — no pending step for code path)
+        // 7. Create relationship (Active immediately — no pending step for code path)
         var relationship = new CoachClientRelationship
         {
             ClientId = clientId,
@@ -62,7 +66,7 @@ public sealed class ConnectByInviteCodeHandler(
 
         db.CoachClientRelationships.Add(relationship);
 
-        // 7. Mark the code as used
+        // 8. Mark the code as used
         inviteCode.IsUsed = true;
         inviteCode.UsedByClientId = clientId;
         inviteCode.UsedAt = DateTime.UtcNow;

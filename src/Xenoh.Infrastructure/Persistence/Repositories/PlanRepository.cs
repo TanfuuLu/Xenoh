@@ -96,26 +96,9 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
           .AsNoTracking()
           .CountAsync(p => p.OwnerId == ownerId, ct);
 
-    public async Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(
-        IEnumerable<Guid> ownerIds, CancellationToken ct)
-    {
-        var ids = ownerIds.ToList();
-        var rows = await db.Plans
-            .AsNoTracking()
-            .Where(p => ids.Contains(p.OwnerId))
-            .Select(p => new
-            {
-                p.OwnerId,
-                TotalDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.Status != DayStatus.Rest),
-                CompletedDays = p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))
-            })
-            .ToListAsync(ct);
-
-        return rows.Select(r => (r.OwnerId, r.TotalDays, r.CompletedDays)).ToList();
-    }
-
     public async Task<List<CoachPlanMonitoringSnapshot>> GetMonitoringByOwnersAsync(
         IEnumerable<Guid> ownerIds,
+        Guid coachId,
         DateOnly today,
         CancellationToken ct)
     {
@@ -123,9 +106,12 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         if (ids.Count == 0)
             return [];
 
+        // Coach view is always scoped to the plan THIS coach authored for the client,
+        // not the client's own active/self plan.
         var plans = await db.Plans
             .AsNoTracking()
             .Where(p => ids.Contains(p.OwnerId) &&
+                p.CreatedByCoachId == coachId &&
                 p.StartDate <= today &&
                 p.EndDate >= today)
             .Select(p => new

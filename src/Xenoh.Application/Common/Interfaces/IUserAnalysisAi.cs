@@ -55,6 +55,21 @@ public sealed record TrainingCoachTipAiResult(
     string Json
 );
 
+public sealed record CoachChatAiMessage(
+    string Role,
+    string Content
+);
+
+public sealed record CoachChatAiRequest(
+    string Language,
+    string SnapshotJson,
+    IReadOnlyList<CoachChatAiMessage> Messages
+);
+
+public sealed record CoachChatAiResult(
+    string Reply
+);
+
 public interface IUserAnalysisAi
 {
     Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken);
@@ -77,5 +92,9 @@ public interface IUserAnalysisAi
 
     Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(
         TrainingCoachTipAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<CoachChatAiResult> ChatAsync(
+        CoachChatAiRequest request,
         CancellationToken cancellationToken);
 }

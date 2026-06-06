@@ -311,6 +311,87 @@ Training snapshot:
         return new TrainingCoachTipAiResult(json);
     }
 
+    public async Task<CoachChatAiResult> ChatAsync(
+        CoachChatAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var languageInstruction = request.Language == "vi"
+            ? "Respond entirely in Vietnamese."
+            : "Respond entirely in English.";
+
+        var systemPrompt = $$"""
+You are Xenoh Coach, an evidence-based personal training and nutrition coach inside the Xenoh app.
+You are having a back-and-forth conversation with the user about their own training.
+
+Rules:
+- Use the JSON "trainingContext" below as ground truth about the user. Reference real numbers (sets, kg, RPE, %, days) when relevant.
+- Be a friendly, direct coach. Keep answers concise and practical; prefer short paragraphs and bullet points.
+- Only answer fitness, training, nutrition, recovery, and motivation questions. If asked something unrelated, briefly steer back to training.
+- No medical diagnosis, injury diagnosis, or guaranteed outcomes. Suggest seeing a professional for pain/medical issues.
+- If the context is sparse, say what the user should log so you can help better. Never invent data that is not in the context.
+- Do not claim to be a real named coach or a doctor.
+- Plain conversational text (light markdown like bullets/bold is fine). Do NOT return JSON.
+- {{languageInstruction}}
+
+trainingContext:
+```json
+{{request.SnapshotJson}}
+```
+""";
+
+        var messages = new JsonArray
+        {
+            new JsonObject { ["role"] = "system", ["content"] = systemPrompt }
+        };
+        foreach (var m in request.Messages)
+        {
+            var role = m.Role == "assistant" ? "assistant" : "user";
+            messages.Add(new JsonObject { ["role"] = role, ["content"] = m.Content });
+        }
+
+        return new CoachChatAiResult(await SendChatAsync(messages, 0.5, cancellationToken));
+    }
+
+    private async Task<string> SendChatAsync(
+        JsonArray messages,
+        double temperature,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+            throw new InvalidOperationException("OpenAI API key is not configured.");
+
+        var payload = new JsonObject
+        {
+            ["model"] = _options.Model,
+            ["temperature"] = temperature,
+            ["messages"] = messages,
+        };
+
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/chat/completions")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+
+        using var response = await httpClient.SendAsync(requestMessage, cancellationToken);
+        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI request failed ({(int)response.StatusCode}): {raw}");
+
+        using var doc = JsonDocument.Parse(raw);
+        var content = doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString();
+
+        if (string.IsNullOrWhiteSpace(content))
+            throw new InvalidOperationException("OpenAI returned empty content.");
+
+        return content;
+    }
+
     private async Task<string> SendJsonPromptAsync(
         string systemPrompt,
         string userPrompt,

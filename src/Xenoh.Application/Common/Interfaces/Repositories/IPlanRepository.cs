@@ -41,11 +41,8 @@ public interface IPlanRepository
     /// <summary>Read-only: plan with full hierarchy (weeks → days → exercises → sets) for duplication. Returns null if user has no access.</summary>
     Task<Plan?> GetForDuplicateAsync(Guid planId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Read-only: for each owner, the total and completed day counts across all their plans.</summary>
-    Task<List<(Guid OwnerId, int TotalDays, int CompletedDays)>> GetProgressByOwnersAsync(IEnumerable<Guid> ownerIds, CancellationToken ct = default);
-
-    /// <summary>Read-only: active plan and adherence status for coach client monitoring.</summary>
-    Task<List<CoachPlanMonitoringSnapshot>> GetMonitoringByOwnersAsync(IEnumerable<Guid> ownerIds, DateOnly today, CancellationToken ct = default);
+    /// <summary>Read-only: the coach-authored plan and adherence status for each client, for coach monitoring.</summary>
+    Task<List<CoachPlanMonitoringSnapshot>> GetMonitoringByOwnersAsync(IEnumerable<Guid> ownerIds, Guid coachId, DateOnly today, CancellationToken ct = default);
 
     /// <summary>Bulk deactivate other active plans of the owner (ExecuteUpdate).</summary>
     Task DeactivateOthersAsync(Guid ownerId, Guid excludePlanId, CancellationToken ct = default);
