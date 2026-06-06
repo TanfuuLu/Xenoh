@@ -10,6 +10,7 @@ using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
 using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
+using Xenoh.Application.Features.Exercises.Queries.GetExercisesByWeek;
 
 namespace Xenoh.API.Controllers;
 
@@ -28,6 +29,24 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(new GetExercisesByDayQuery(dailyWorkoutId, pageNumber, pageSize), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// All exercises for every day in a week, in one response. Lets the week-analyze
+    /// view load with a single request instead of one-per-day (N+1).
+    /// </summary>
+    [HttpGet("by-week/{weeklyWorkoutId:guid}")]
+    public async Task<IActionResult> GetByWeek(Guid weeklyWorkoutId, CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetExercisesByWeekQuery(weeklyWorkoutId), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

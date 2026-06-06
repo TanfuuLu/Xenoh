@@ -1,0 +1,22 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# IDE / tooling
+.vs/
+.vscode/
+.idea/
+**/.claude/
+
+# Local secrets — mounted at runtime, never baked into the image
+**/appsettings.Development.json
+**/appsettings.*.local.json
+
+# Git / docs
+.git/
+.gitignore
+**/*.md
+
+# The observability stack (built separately)
+../observability/

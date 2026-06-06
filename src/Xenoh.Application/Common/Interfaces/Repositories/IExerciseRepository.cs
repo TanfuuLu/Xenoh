@@ -8,6 +8,9 @@ public interface IExerciseRepository
 {
     Task<PagedResponse<ExerciseResponse>> GetByDayWithPrsAsync(Guid dailyWorkoutId, Guid userId, int pageNumber, int pageSize, CancellationToken ct = default);
 
+    /// <summary>All exercises for every day in a week, loaded in a few bounded queries (avoids per-day N+1).</summary>
+    Task<List<ExerciseResponse>> GetByWeekWithPrsAsync(Guid weeklyWorkoutId, Guid userId, CancellationToken ct = default);
+
     /// <summary>Tracked: exercise with sets + plan for permission + mutation.</summary>
     Task<Exercise?> FindWithSetsAndPlanAsync(Guid exerciseId, CancellationToken ct = default);
 

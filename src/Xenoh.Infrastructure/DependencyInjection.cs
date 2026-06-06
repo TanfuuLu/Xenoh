@@ -16,8 +16,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Allow selecting which connection string to use (e.g. the IPv4 Supabase
+        // pooler when running inside Docker). Defaults to DefaultConnection.
+        var connectionName = configuration["ConnectionStringName"] ?? "DefaultConnection";
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(configuration.GetConnectionString(connectionName)));
 
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());

@@ -30,27 +30,19 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
         p.IsActive, p.CreatedAt);
 
+    // Eager load: returns every plan for the owner in one response (no pagination).
+    // pageNumber/pageSize are accepted for API compatibility but ignored.
     public async Task<PagedResponse<PlanResponse>> GetAllByOwnerAsync(Guid ownerId, int pageNumber, int pageSize, CancellationToken ct)
     {
-        var query = db.Plans
+        var items = await db.Plans
           .AsNoTracking()
           .Where(p => p.OwnerId == ownerId)
           .OrderByDescending(p => p.IsActive)
-          .ThenByDescending(p => p.CreatedAt);
-
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-          .Skip((pageNumber - 1) * pageSize)
-          .Take(pageSize)
+          .ThenByDescending(p => p.CreatedAt)
           .Select(ToResponse)
           .ToListAsync(ct);
 
-        return new PagedResponse<PlanResponse>(
-            items,
-            pageNumber,
-            pageSize,
-            totalCount,
-            pageNumber * pageSize < totalCount);
+        return new PagedResponse<PlanResponse>(items, 1, items.Count, items.Count, false);
     }
 
     public async Task<PlanResponse?> GetByIdForUserAsync(Guid planId, Guid userId, CancellationToken ct)
@@ -76,20 +68,17 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               (p.OwnerId == userId ||
                (p.PlanType == PlanType.Coach && p.CreatedByCoachId == userId)), ct);
 
+    // Eager load: returns every coach-created plan in one response (no pagination).
+    // pageNumber/pageSize are accepted for API compatibility but ignored.
     public async Task<PagedResponse<CoachPlanResponse>> GetCoachOverviewAsync(Guid coachId, int pageNumber, int pageSize, CancellationToken ct)
     {
-        var query = db.Plans
+        var items = await db.Plans
           .AsNoTracking()
           .Where(p =>
               p.PlanType == PlanType.Coach &&
               p.CreatedByCoachId == coachId &&
               p.OwnerId != coachId)
-          .OrderByDescending(p => p.CreatedAt);
-
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-          .Skip((pageNumber - 1) * pageSize)
-          .Take(pageSize)
+          .OrderByDescending(p => p.CreatedAt)
           .Select(p => new CoachPlanResponse(
               p.Id, p.Name, p.StartDate, p.EndDate,
               p.PlanType.ToString(), p.OwnerId,
@@ -99,12 +88,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               p.CreatedAt))
           .ToListAsync(ct);
 
-        return new PagedResponse<CoachPlanResponse>(
-            items,
-            pageNumber,
-            pageSize,
-            totalCount,
-            pageNumber * pageSize < totalCount);
+        return new PagedResponse<CoachPlanResponse>(items, 1, items.Count, items.Count, false);
     }
 
     public Task<int> CountByOwnerAsync(Guid ownerId, CancellationToken ct) =>

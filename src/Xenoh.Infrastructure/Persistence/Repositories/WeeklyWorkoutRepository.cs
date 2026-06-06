@@ -14,17 +14,14 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
           .AsNoTracking()
           .AnyAsync(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
 
+    // Eager load: returns every week in the plan in one response (no pagination).
+    // pageNumber/pageSize are accepted for API compatibility but ignored.
     public async Task<PagedResponse<WeeklyWorkoutResponse>> GetByPlanAsync(Guid planId, int pageNumber, int pageSize, CancellationToken ct)
     {
-        var query = db.WeeklyWorkouts
+        var items = await db.WeeklyWorkouts
           .AsNoTracking()
           .Where(w => w.PlanId == planId)
-          .OrderBy(w => w.WeekNumber);
-
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-          .Skip((pageNumber - 1) * pageSize)
-          .Take(pageSize)
+          .OrderBy(w => w.WeekNumber)
           .Select(w => new WeeklyWorkoutResponse(
               w.Id, w.WeekNumber, w.Name,
               w.StartDate, w.EndDate, w.PlanId,
@@ -42,12 +39,7 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
               w.DailyWorkouts.Count(d => d.Date >= w.Plan.StartDate && d.Date <= w.Plan.EndDate)))
           .ToListAsync(ct);
 
-        return new PagedResponse<WeeklyWorkoutResponse>(
-            items,
-            pageNumber,
-            pageSize,
-            totalCount,
-            pageNumber * pageSize < totalCount);
+        return new PagedResponse<WeeklyWorkoutResponse>(items, 1, items.Count, items.Count, false);
     }
 
     public Task<WeeklyWorkout?> FindForMutationAsync(Guid weekId, CancellationToken ct) =>

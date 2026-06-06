@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Facebook;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.IdentityModel.Tokens;
+using Prometheus;
 using Scalar.AspNetCore;
 using Xenoh.API.Auth;
 using static Xenoh.API.Auth.ExternalAuthHelpers;
@@ -125,7 +126,12 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
-    // AI endpoints: 5 requests per minute per authenticated user (falls back to IP)
+    // AI endpoints: 30 requests per minute per authenticated user (falls back to IP).
+    // The limiter runs before the handler, so it also counts cache hits (the AI
+    // analysis is cached server-side per user/language). A single dashboard +
+    // insights browse already fires several requests, so the budget must be
+    // generous enough that normal navigation plus refresh clicks never trips 429,
+    // while still capping abuse of the underlying OpenAI calls.
     options.AddPolicy("ai", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(
             ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -133,7 +139,7 @@ builder.Services.AddRateLimiter(options =>
                 ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
@@ -217,6 +223,12 @@ app.UseStaticFiles();
 app.UseTokenBlacklistMiddleware();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Prometheus: collect HTTP request metrics and expose the scrape endpoint at /metrics.
+// .NET runtime metrics (GC, threadpool, exceptions) are collected automatically.
+app.UseHttpMetrics();
+app.MapMetrics();
+
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
