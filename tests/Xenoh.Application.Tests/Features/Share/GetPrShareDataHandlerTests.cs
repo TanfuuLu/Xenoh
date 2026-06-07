@@ -49,8 +49,11 @@ public sealed class GetPrShareDataHandlerTests : HandlerTestBase
         await using var seed = CreateContext();
         seed.ApplicationUsers.Add(new ApplicationUser
         {
-            Id = userId, Email = "u@test.com", UserName = "u@test.com",
-            FirstName = "User", LastName = "A"
+            Id = userId,
+            Email = "u@test.com",
+            UserName = "u@test.com",
+            FirstName = "User",
+            LastName = "A"
         });
         seed.UserExercisePRs.Add(new UserExercisePR
         {
@@ -73,7 +76,7 @@ public sealed class GetPrShareDataHandlerTests : HandlerTestBase
     public async Task Handle_WhenUserNotFound_ReturnsNull()
     {
         var ghostUserId = Guid.NewGuid();
-        var templateId  = await SeedTemplateOnlyAsync();
+        var templateId = await SeedTemplateOnlyAsync();
 
         await using var seed = CreateContext();
         seed.UserExercisePRs.Add(new UserExercisePR
@@ -100,8 +103,11 @@ public sealed class GetPrShareDataHandlerTests : HandlerTestBase
         await using var ctx = CreateContext();
         ctx.ApplicationUsers.Add(new ApplicationUser
         {
-            Id = userId, Email = "athlete@test.com", UserName = "athlete@test.com",
-            FirstName = "John", LastName = "Doe"
+            Id = userId,
+            Email = "athlete@test.com",
+            UserName = "athlete@test.com",
+            FirstName = "John",
+            LastName = "Doe"
         });
         var template = new ExerciseTemplate
         {

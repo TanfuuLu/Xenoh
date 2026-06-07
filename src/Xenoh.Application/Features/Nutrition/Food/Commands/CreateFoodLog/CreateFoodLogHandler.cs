@@ -96,8 +96,8 @@ public sealed class CreateFoodLogHandler(
             {
                 Calories = g.Sum(l => l.ComputedCalories),
                 ProteinG = g.Sum(l => l.ComputedProteinG),
-                CarbsG   = g.Sum(l => l.ComputedCarbsG),
-                FatG     = g.Sum(l => l.ComputedFatG)
+                CarbsG = g.Sum(l => l.ComputedCarbsG),
+                FatG = g.Sum(l => l.ComputedFatG)
             })
             .FirstOrDefaultAsync(ct);
 
@@ -107,10 +107,10 @@ public sealed class CreateFoodLogHandler(
         {
             if (dailyLog is not null)
             {
-                dailyLog.Calories  = 0;
-                dailyLog.ProteinG  = 0;
-                dailyLog.CarbsG    = 0;
-                dailyLog.FatG      = 0;
+                dailyLog.Calories = 0;
+                dailyLog.ProteinG = 0;
+                dailyLog.CarbsG = 0;
+                dailyLog.FatG = 0;
                 dailyLog.UpdatedAt = DateTime.UtcNow;
             }
         }
@@ -122,10 +122,10 @@ public sealed class CreateFoodLogHandler(
                 await nutritionRepo.AddDailyLogAsync(dailyLog, ct);
             }
 
-            dailyLog.Calories  = totals.Calories;
-            dailyLog.ProteinG  = totals.ProteinG;
-            dailyLog.CarbsG    = totals.CarbsG;
-            dailyLog.FatG      = totals.FatG;
+            dailyLog.Calories = totals.Calories;
+            dailyLog.ProteinG = totals.ProteinG;
+            dailyLog.CarbsG = totals.CarbsG;
+            dailyLog.FatG = totals.FatG;
             dailyLog.UpdatedAt = DateTime.UtcNow;
         }
 

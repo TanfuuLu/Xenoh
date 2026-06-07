@@ -95,8 +95,8 @@ public sealed class LeaderboardRepository(ApplicationDbContext db) : ILeaderboar
         // Load all competition lift PRs joined with user info
         var rows = await (
             from pr in db.UserExercisePRs.AsNoTracking()
-            join t  in db.ExerciseTemplates.AsNoTracking() on pr.ExerciseTemplateId equals t.Id
-            join u  in db.ApplicationUsers.AsNoTracking()  on pr.UserId             equals u.Id
+            join t in db.ExerciseTemplates.AsNoTracking() on pr.ExerciseTemplateId equals t.Id
+            join u in db.ApplicationUsers.AsNoTracking() on pr.UserId equals u.Id
             where t.IsCompetitionLift && t.CompetitionLiftType != null
             select new
             {
@@ -109,7 +109,7 @@ public sealed class LeaderboardRepository(ApplicationDbContext db) : ILeaderboar
         ).ToListAsync(ct);
 
         // Latest bodyweight per user (for DOTS)
-        var userIds     = rows.Select(r => r.UserId).Distinct().ToList();
+        var userIds = rows.Select(r => r.UserId).Distinct().ToList();
         var bodyweights = await db.BodyweightLogs
             .AsNoTracking()
             .Where(b => userIds.Contains(b.UserId))
@@ -122,27 +122,27 @@ public sealed class LeaderboardRepository(ApplicationDbContext db) : ILeaderboar
             .GroupBy(r => r.UserId)
             .Select(g =>
             {
-                var first    = g.First();
+                var first = g.First();
                 var prsByLift = g.ToDictionary(x => x.LiftType, x => (decimal?)x.Weight);
 
-                prsByLift.TryGetValue(CompetitionLiftType.Squat,    out var squat);
-                prsByLift.TryGetValue(CompetitionLiftType.Bench,    out var bench);
+                prsByLift.TryGetValue(CompetitionLiftType.Squat, out var squat);
+                prsByLift.TryGetValue(CompetitionLiftType.Bench, out var bench);
                 prsByLift.TryGetValue(CompetitionLiftType.Deadlift, out var deadlift);
 
                 var total = (squat ?? 0) + (bench ?? 0) + (deadlift ?? 0);
-                var bw    = bodyweights.GetValueOrDefault(g.Key);
-                var dots  = GetMyProfileHandler.CalculateDots(first.Gender, bw, prsByLift);
+                var bw = bodyweights.GetValueOrDefault(g.Key);
+                var dots = GetMyProfileHandler.CalculateDots(first.Gender, bw, prsByLift);
 
                 return new
                 {
                     first.UserId,
                     first.FullName,
                     first.Gender,
-                    SquatPr    = squat,
-                    BenchPr    = bench,
+                    SquatPr = squat,
+                    BenchPr = bench,
                     DeadliftPr = deadlift,
-                    Total      = total,
-                    DotsScore  = dots,
+                    Total = total,
+                    DotsScore = dots,
                     Bodyweight = bw,
                 };
             })

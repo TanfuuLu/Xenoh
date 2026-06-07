@@ -6,7 +6,6 @@ using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
 using Xenoh.Application.Features.Plans.Queries.ExportPlan;
 using Xenoh.Application.Common.Pagination;
 using Xenoh.Domain.Entities;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Common.Interfaces.Repositories;
 

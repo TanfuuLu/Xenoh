@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Mediator;
-using Xenoh.Application.Features.CoachClient;
 
 namespace Xenoh.Application.Features.CoachClient.Commands.ConnectByInviteCode;
 

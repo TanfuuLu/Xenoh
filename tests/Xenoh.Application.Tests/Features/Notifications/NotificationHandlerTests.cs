@@ -1,7 +1,5 @@
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
-using Xenoh.Application.Features.Notifications.Commands.MarkAllNotificationsRead;
 using Xenoh.Application.Features.Notifications.Commands.MarkNotificationRead;
 using Xenoh.Application.Features.Notifications.Queries.GetMyNotifications;
 using Xenoh.Application.Tests.Common;
@@ -88,14 +86,14 @@ public sealed class NotificationHandlerTests : HandlerTestBase
     public async Task GetMyNotifications_IncludesReadAndUnread()
     {
         var unreadId = await SeedNotificationAsync(UserId, isRead: false);
-        var readId   = await SeedNotificationAsync(UserId, isRead: true);
+        var readId = await SeedNotificationAsync(UserId, isRead: true);
 
         await using var ctx = CreateContext();
         var result = await CreateGetHandler(ctx).Handle(new GetMyNotificationsQuery(), CancellationToken.None);
 
         result.Should().HaveCount(2);
         result.Should().Contain(n => n.Id == unreadId && !n.IsRead);
-        result.Should().Contain(n => n.Id == readId   &&  n.IsRead);
+        result.Should().Contain(n => n.Id == readId && n.IsRead);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

@@ -409,18 +409,18 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         var muscleGroupBalance = BuildMuscleGroupBalance(weightedEntries);
 
         var totalCompleted = weeks.SelectMany(w => w.Days).Count(d => d.IsCompleted);
-        var nonRestDays    = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
-        var missedDays     = weeks.SelectMany(w => w.Days).Count(d => d.IsMissed);
-        var warningDays    = weeks.SelectMany(w => w.Days).Count(d => d.HasWarning);
-        var completedSets  = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
-        var rpeValues      = completedSets.Where(s => s.Rpe is not null).Select(s => s.Rpe!.Value).ToList();
-        var avgRpe         = rpeValues.Count == 0 ? (decimal?)null : Math.Round(rpeValues.Average(), 1);
-        var highRpeSets    = rpeValues.Count(r => r >= 9m);
+        var nonRestDays = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
+        var missedDays = weeks.SelectMany(w => w.Days).Count(d => d.IsMissed);
+        var warningDays = weeks.SelectMany(w => w.Days).Count(d => d.HasWarning);
+        var completedSets = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
+        var rpeValues = completedSets.Where(s => s.Rpe is not null).Select(s => s.Rpe!.Value).ToList();
+        var avgRpe = rpeValues.Count == 0 ? (decimal?)null : Math.Round(rpeValues.Average(), 1);
+        var highRpeSets = rpeValues.Count(r => r >= 9m);
         var totalDurationSeconds = weeks.SelectMany(w => w.Days).SelectMany(d => d.CompletedExerciseDurations).Sum();
-        var totalVolume    = weeklyVolume.Sum(w => w.TotalVolume);
-        var consistency    = nonRestDays == 0 ? 0m : Math.Round((decimal)totalCompleted / nonRestDays * 100, 1);
-        var avgPerWeek     = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
-        var insightResult  = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
+        var totalVolume = weeklyVolume.Sum(w => w.TotalVolume);
+        var consistency = nonRestDays == 0 ? 0m : Math.Round((decimal)totalCompleted / nonRestDays * 100, 1);
+        var avgPerWeek = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
+        var insightResult = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
             consistency,
             nonRestDays,
             missedDays,

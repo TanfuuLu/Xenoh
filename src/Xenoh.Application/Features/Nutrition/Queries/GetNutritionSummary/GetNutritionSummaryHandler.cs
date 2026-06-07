@@ -4,7 +4,6 @@ using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Nutrition;
 using Xenoh.Domain.Entities;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Nutrition.Queries.GetNutritionSummary;
 

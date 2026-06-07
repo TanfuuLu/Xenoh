@@ -53,10 +53,10 @@ public sealed class LeaderboardHandlerTests : HandlerTestBase
     [Fact]
     public async Task Handle_WithGenderFilter_ReturnsOnlyMatchingGender()
     {
-        var maleUser   = Guid.NewGuid();
+        var maleUser = Guid.NewGuid();
         var femaleUser = Guid.NewGuid();
         var templateId = await SeedSquatTemplateAsync();
-        await SeedUserWithPrAsync(maleUser,   templateId, weight: 200m, gender: Gender.Male);
+        await SeedUserWithPrAsync(maleUser, templateId, weight: 200m, gender: Gender.Male);
         await SeedUserWithPrAsync(femaleUser, templateId, weight: 160m, gender: Gender.Female);
 
         await using var ctx = CreateContext();
@@ -70,7 +70,7 @@ public sealed class LeaderboardHandlerTests : HandlerTestBase
     [Fact]
     public async Task Handle_WithBenchType_ReturnsBenchPRs()
     {
-        var userId     = Guid.NewGuid();
+        var userId = Guid.NewGuid();
         var templateId = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Bench);
         await SeedUserWithPrAsync(userId, templateId, weight: 120m);
 
@@ -91,19 +91,19 @@ public sealed class LeaderboardHandlerTests : HandlerTestBase
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        var squatId    = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Squat);
-        var benchId    = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Bench);
+        var squatId = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Squat);
+        var benchId = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Bench);
         var deadliftId = await SeedCompetitionLiftTemplateAsync(CompetitionLiftType.Deadlift);
 
         // user1: heavy total
-        await SeedUserWithPrAsync(user1, squatId,    weight: 250m, gender: Gender.Male);
-        await SeedUserWithPrAsync(user1, benchId,    weight: 180m);
+        await SeedUserWithPrAsync(user1, squatId, weight: 250m, gender: Gender.Male);
+        await SeedUserWithPrAsync(user1, benchId, weight: 180m);
         await SeedUserWithPrAsync(user1, deadliftId, weight: 300m);
         await SeedBodyweightAsync(user1, 90m);
 
         // user2: lighter total
-        await SeedUserWithPrAsync(user2, squatId,    weight: 150m, gender: Gender.Male);
-        await SeedUserWithPrAsync(user2, benchId,    weight: 100m);
+        await SeedUserWithPrAsync(user2, squatId, weight: 150m, gender: Gender.Male);
+        await SeedUserWithPrAsync(user2, benchId, weight: 100m);
         await SeedUserWithPrAsync(user2, deadliftId, weight: 180m);
         await SeedBodyweightAsync(user2, 80m);
 

@@ -23,9 +23,9 @@ public sealed class ShareController(IMediator mediator, IPrShareImageService ima
         if (data is null) return NotFound();
 
         var imageUrl = $"{Request.Scheme}://{Request.Host}/api/share/pr/{userId}/{exerciseTemplateId}/image.png";
-        var pageUrl  = $"{Request.Scheme}://{Request.Host}/api/share/pr/{userId}/{exerciseTemplateId}";
+        var pageUrl = $"{Request.Scheme}://{Request.Host}/api/share/pr/{userId}/{exerciseTemplateId}";
 
-        var title       = HtmlEncode($"{data.UserName} hit a new PR! 🏆");
+        var title = HtmlEncode($"{data.UserName} hit a new PR! 🏆");
         var description = HtmlEncode($"{data.ExerciseName}: {data.WeightKg:0.##} kg × {data.Reps} rep{(data.Reps != 1 ? "s" : "")}");
 
         var html = $"""

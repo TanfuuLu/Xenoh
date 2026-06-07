@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Xenoh.Application.Features.DailyWorkouts.Commands.MarkDayStatus;
 using Xenoh.Application.Tests.Common;

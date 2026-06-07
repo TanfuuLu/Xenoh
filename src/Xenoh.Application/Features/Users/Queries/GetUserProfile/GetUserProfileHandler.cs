@@ -44,8 +44,8 @@ public sealed class GetUserProfileHandler(
             : null;
         var dotsScore = GetMyProfileHandler.CalculateDots(gender, latestLog, big3Prs);
 
-        big3Prs.TryGetValue(CompetitionLiftType.Squat,    out var squatPr);
-        big3Prs.TryGetValue(CompetitionLiftType.Bench,    out var benchPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Squat, out var squatPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Bench, out var benchPr);
         big3Prs.TryGetValue(CompetitionLiftType.Deadlift, out var deadliftPr);
 
         return new UserProfileResponse(

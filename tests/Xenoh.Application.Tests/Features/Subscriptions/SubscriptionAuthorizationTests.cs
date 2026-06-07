@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Xenoh.API.Auth;
 using Xenoh.API.Controllers;
 using Xenoh.Application.Common.Interfaces;

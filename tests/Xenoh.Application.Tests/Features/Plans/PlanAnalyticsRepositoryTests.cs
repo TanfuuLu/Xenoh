@@ -2,7 +2,6 @@ using FluentAssertions;
 using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
-using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Repositories;
 using Xunit;
 

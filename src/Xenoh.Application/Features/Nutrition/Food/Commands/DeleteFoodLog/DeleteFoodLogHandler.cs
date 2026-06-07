@@ -2,7 +2,6 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
-using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Nutrition.Food.Commands.DeleteFoodLog;
 
@@ -42,8 +41,8 @@ public sealed class DeleteFoodLogHandler(
             {
                 Calories = g.Sum(l => l.ComputedCalories),
                 ProteinG = g.Sum(l => l.ComputedProteinG),
-                CarbsG   = g.Sum(l => l.ComputedCarbsG),
-                FatG     = g.Sum(l => l.ComputedFatG)
+                CarbsG = g.Sum(l => l.ComputedCarbsG),
+                FatG = g.Sum(l => l.ComputedFatG)
             })
             .FirstOrDefaultAsync(ct);
 
@@ -53,17 +52,17 @@ public sealed class DeleteFoodLogHandler(
 
         if (totals is null)
         {
-            dailyLog.Calories  = 0;
-            dailyLog.ProteinG  = 0;
-            dailyLog.CarbsG    = 0;
-            dailyLog.FatG      = 0;
+            dailyLog.Calories = 0;
+            dailyLog.ProteinG = 0;
+            dailyLog.CarbsG = 0;
+            dailyLog.FatG = 0;
         }
         else
         {
-            dailyLog.Calories  = totals.Calories;
-            dailyLog.ProteinG  = totals.ProteinG;
-            dailyLog.CarbsG    = totals.CarbsG;
-            dailyLog.FatG      = totals.FatG;
+            dailyLog.Calories = totals.Calories;
+            dailyLog.ProteinG = totals.ProteinG;
+            dailyLog.CarbsG = totals.CarbsG;
+            dailyLog.FatG = totals.FatG;
         }
 
         dailyLog.UpdatedAt = DateTime.UtcNow;

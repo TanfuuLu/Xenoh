@@ -1,5 +1,4 @@
 using Xenoh.Application.Common.Nutrition;
-using Xenoh.Application.Features.Nutrition;
 
 namespace Xenoh.Application.Features.Nutrition.Queries.GetNutritionSummary;
 

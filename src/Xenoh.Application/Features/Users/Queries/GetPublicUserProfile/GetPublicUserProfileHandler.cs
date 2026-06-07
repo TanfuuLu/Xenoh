@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Entities;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 

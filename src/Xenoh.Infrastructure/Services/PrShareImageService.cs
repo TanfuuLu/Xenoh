@@ -15,14 +15,14 @@ public sealed class PrShareImageService : IPrShareImageService
     private const int H = 630;
 
     // Palette
-    private static readonly Color BgLeft     = Color.ParseHex("07070F");
-    private static readonly Color BgRight    = Color.ParseHex("0D0D1C");
-    private static readonly Color Gold        = Color.ParseHex("C4772A");
-    private static readonly Color GoldLight   = Color.ParseHex("E8973C");
-    private static readonly Color White       = Color.ParseHex("F2F2F6");
-    private static readonly Color Muted       = Color.ParseHex("7878A0");
-    private static readonly Color Dim         = Color.ParseHex("404060");
-    private static readonly Color Sep         = Color.ParseHex("FFFFFF16");
+    private static readonly Color BgLeft = Color.ParseHex("07070F");
+    private static readonly Color BgRight = Color.ParseHex("0D0D1C");
+    private static readonly Color Gold = Color.ParseHex("C4772A");
+    private static readonly Color GoldLight = Color.ParseHex("E8973C");
+    private static readonly Color White = Color.ParseHex("F2F2F6");
+    private static readonly Color Muted = Color.ParseHex("7878A0");
+    private static readonly Color Dim = Color.ParseHex("404060");
+    private static readonly Color Sep = Color.ParseHex("FFFFFF16");
 
     public async Task<byte[]> GenerateAsync(PrShareData data, CancellationToken ct = default)
     {
@@ -44,7 +44,7 @@ public sealed class PrShareImageService : IPrShareImageService
             // Panel edge: top at x=700, bottom at x=760 (slight inward diagonal)
             var panel = new Polygon(new LinearLineSegment(
                 new PointF(700, 0), new PointF(W, 0),
-                new PointF(W, H),  new PointF(760, H)));
+                new PointF(W, H), new PointF(760, H)));
 
             ctx.Fill(BgRight, panel);
 
@@ -58,7 +58,7 @@ public sealed class PrShareImageService : IPrShareImageService
                 panel);
 
             // ── 3. "PR" watermark (right panel) ──────────────────────────
-            var prFont    = family.CreateFont(270, FontStyle.Bold);
+            var prFont = family.CreateFont(270, FontStyle.Bold);
             var prMeasure = TextMeasurer.MeasureSize("PR", new TextOptions(prFont));
 
             // Center "PR" in the right panel (panel midpoint ≈ x=950)
@@ -97,22 +97,22 @@ public sealed class PrShareImageService : IPrShareImageService
             ctx.Fill(Sep, new RectangularPolygon(lx, 84f, 500f, 1f));
 
             // Exercise name
-            var nameFont   = family.CreateFont(70, FontStyle.Bold);
-            var nameText   = TruncateLine(data.ExerciseName, 20);
+            var nameFont = family.CreateFont(70, FontStyle.Bold);
+            var nameText = TruncateLine(data.ExerciseName, 20);
             ctx.DrawText(
                 new RichTextOptions(nameFont) { Origin = new PointF(lx, 104f) },
                 nameText, White);
 
             // Weight — hero stat in gold
             var weightFont = family.CreateFont(96, FontStyle.Bold);
-            var weightStr  = $"{data.WeightKg:0.##} kg";
+            var weightStr = $"{data.WeightKg:0.##} kg";
             ctx.DrawText(
                 new RichTextOptions(weightFont) { Origin = new PointF(lx, 200f) },
                 weightStr, Gold);
 
             // Reps — directly below
             var repsFont = family.CreateFont(36, FontStyle.Regular);
-            var repsStr  = $"× {data.Reps} rep{(data.Reps != 1 ? "s" : "")}";
+            var repsStr = $"× {data.Reps} rep{(data.Reps != 1 ? "s" : "")}";
             ctx.DrawText(
                 new RichTextOptions(repsFont) { Origin = new PointF(lx + 4f, 318f) },
                 repsStr, Muted);
@@ -153,13 +153,13 @@ public sealed class PrShareImageService : IPrShareImageService
                 $"Level {data.Level}  ·  {data.AchievedAt:dd MMM yyyy}", Muted);
 
             // ── 7. Branding ───────────────────────────────────────────────
-            var dotFont   = family.CreateFont(10, FontStyle.Regular);
+            var dotFont = family.CreateFont(10, FontStyle.Regular);
             var brandFont = family.CreateFont(19, FontStyle.Bold);
-            var dotMeas   = TextMeasurer.MeasureSize("● ", new TextOptions(dotFont));
+            var dotMeas = TextMeasurer.MeasureSize("● ", new TextOptions(dotFont));
             var brandMeas = TextMeasurer.MeasureSize("xenoh.online", new TextOptions(brandFont));
-            float brandX  = W - 52f - dotMeas.Width - brandMeas.Width;
-            float brandY  = H - 46f;
-            ctx.DrawText(new RichTextOptions(dotFont)   { Origin = new PointF(brandX, brandY + 5f) }, "●",            Gold.WithAlpha(0.55f));
+            float brandX = W - 52f - dotMeas.Width - brandMeas.Width;
+            float brandY = H - 46f;
+            ctx.DrawText(new RichTextOptions(dotFont) { Origin = new PointF(brandX, brandY + 5f) }, "●", Gold.WithAlpha(0.55f));
             ctx.DrawText(new RichTextOptions(brandFont) { Origin = new PointF(brandX + dotMeas.Width, brandY) }, "xenoh.online", Dim);
         });
 
@@ -174,10 +174,10 @@ public sealed class PrShareImageService : IPrShareImageService
     private static FontFamily GetFontFamily()
     {
         if (SystemFonts.TryGet("Segoe UI", out var f)) return f;
-        if (SystemFonts.TryGet("Arial",    out f))     return f;
-        if (SystemFonts.TryGet("DejaVu Sans", out f))  return f;
+        if (SystemFonts.TryGet("Arial", out f)) return f;
+        if (SystemFonts.TryGet("DejaVu Sans", out f)) return f;
         if (SystemFonts.TryGet("Liberation Sans", out f)) return f;
-        if (SystemFonts.TryGet("Helvetica", out f))    return f;
+        if (SystemFonts.TryGet("Helvetica", out f)) return f;
 
         string[] paths =
         [

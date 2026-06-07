@@ -1,5 +1,4 @@
 using Mediator;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.CoachClient.Queries.GetCoachDashboard;
 

@@ -36,14 +36,14 @@ public sealed class GetMyProfileHandler(
             : null;
         var dotsScore = CalculateDots(gender, latestLog, big3Prs);
 
-        big3Prs.TryGetValue(CompetitionLiftType.Squat,    out var squatPr);
-        big3Prs.TryGetValue(CompetitionLiftType.Bench,    out var benchPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Squat, out var squatPr);
+        big3Prs.TryGetValue(CompetitionLiftType.Bench, out var benchPr);
         big3Prs.TryGetValue(CompetitionLiftType.Deadlift, out var deadliftPr);
 
-        int    level    = Math.Max(1, user.Level);
-        long   totalXp  = user.TotalXp;
-        long   xpToNext = XpCalculator.XpToNextLevel(level);
-        string title    = XpCalculator.GetTitle(level);
+        int level = Math.Max(1, user.Level);
+        long totalXp = user.TotalXp;
+        long xpToNext = XpCalculator.XpToNextLevel(level);
+        string title = XpCalculator.GetTitle(level);
         return new UserProfileResponse(
             user.Id,
             user.Email!,

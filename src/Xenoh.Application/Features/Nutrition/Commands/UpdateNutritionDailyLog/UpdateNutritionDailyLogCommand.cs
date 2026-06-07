@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Mediator;
-using Xenoh.Application.Features.Nutrition;
 
 namespace Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionDailyLog;
 

@@ -1,5 +1,4 @@
 using Mediator;
-using Xenoh.Application.Features.Nutrition;
 
 namespace Xenoh.Application.Features.Nutrition.Queries.GetNutritionDailyLog;
 

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
-using Xenoh.Application.Features.Subscriptions;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 

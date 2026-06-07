@@ -18,7 +18,6 @@ using Xenoh.Application.Features.Plans.Queries.GetPlanById;
 using Xenoh.Application.Features.Plans.Queries.GetPlanDesignAnalysis;
 using Xenoh.Application.Features.Plans.Queries.ReviewPlanBalance;
 using Xenoh.Application.Features.Plans.Queries.ExportPlan;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
 

@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Xenoh.Application.Features.WeeklyWorkouts.Commands.UpdateWeeklyWorkout;
 using Xenoh.Application.Tests.Common;

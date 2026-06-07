@@ -10,13 +10,13 @@ namespace Xenoh.Application.Tests.Features.Admin;
 
 public sealed class AdminQueryHandlerTests : HandlerTestBase
 {
-    private GetAdminDashboardHandler   CreateDashboardHandler(ApplicationDbContext ctx) => new(ctx);
-    private GetAdminUsersHandler       CreateUsersHandler(ApplicationDbContext ctx)     => new(ctx);
-    private GetAdminPlansHandler       CreatePlansHandler(ApplicationDbContext ctx)     => new(ctx);
-    private GetAdminUserDetailHandler  CreateUserDetailHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetAdminDashboardHandler CreateDashboardHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetAdminUsersHandler CreateUsersHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetAdminPlansHandler CreatePlansHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetAdminUserDetailHandler CreateUserDetailHandler(ApplicationDbContext ctx) => new(ctx);
     private GetAdminSubscriptionsHandler CreateSubscriptionsHandler(ApplicationDbContext ctx) => new(ctx);
     private GetAdminAiUsageSummaryHandler CreateAiUsageSummaryHandler(ApplicationDbContext ctx) => new(ctx);
-    private GetReportSummaryHandler    CreateReportSummaryHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetReportSummaryHandler CreateReportSummaryHandler(ApplicationDbContext ctx) => new(ctx);
 
     // ── GetAdminDashboard ───────────────────────────────────────────────────
 
@@ -77,9 +77,9 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
     public async Task GetAdminUsers_WithTierFilter_ReturnsPaidUsersOnly()
     {
         var freeUserId = Guid.NewGuid();
-        var proUserId  = Guid.NewGuid();
+        var proUserId = Guid.NewGuid();
         await SeedUserAsync(freeUserId, "free@test.com");
-        await SeedUserAsync(proUserId,  "pro@test.com");
+        await SeedUserAsync(proUserId, "pro@test.com");
 
         await using var seedCtx = CreateContext();
         seedCtx.UserSubscriptions.Add(new UserSubscription
@@ -181,7 +181,7 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
         var u2 = await SeedUserAsync("sub2@test.com");
         await using var seed = CreateContext();
         seed.UserSubscriptions.Add(new UserSubscription { UserId = u1, Tier = PlanTier.ProIndividual, ExpiresAt = DateTime.UtcNow.AddDays(30) });
-        seed.UserSubscriptions.Add(new UserSubscription { UserId = u2, Tier = PlanTier.ProCoach,      ExpiresAt = DateTime.UtcNow.AddDays(60) });
+        seed.UserSubscriptions.Add(new UserSubscription { UserId = u2, Tier = PlanTier.ProCoach, ExpiresAt = DateTime.UtcNow.AddDays(60) });
         await seed.SaveChangesAsync();
 
         await using var ctx = CreateContext();
@@ -198,7 +198,7 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
         var u2 = await SeedUserAsync("coach1@test.com");
         await using var seed = CreateContext();
         seed.UserSubscriptions.Add(new UserSubscription { UserId = u1, Tier = PlanTier.ProIndividual, ExpiresAt = DateTime.UtcNow.AddDays(30) });
-        seed.UserSubscriptions.Add(new UserSubscription { UserId = u2, Tier = PlanTier.ProCoach,      ExpiresAt = DateTime.UtcNow.AddDays(60) });
+        seed.UserSubscriptions.Add(new UserSubscription { UserId = u2, Tier = PlanTier.ProCoach, ExpiresAt = DateTime.UtcNow.AddDays(60) });
         await seed.SaveChangesAsync();
 
         await using var ctx = CreateContext();
@@ -307,8 +307,11 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
         await using var ctx = CreateContext();
         ctx.ApplicationUsers.Add(new ApplicationUser
         {
-            Id = userId, Email = email, UserName = email,
-            FirstName = "Test", LastName = "User"
+            Id = userId,
+            Email = email,
+            UserName = email,
+            FirstName = "Test",
+            LastName = "User"
         });
         await ctx.SaveChangesAsync();
         return userId;

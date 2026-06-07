@@ -6,7 +6,7 @@ public static class XpCalculator
         int? actualReps, int plannedReps, bool isCompetitionLift)
     {
         var weight = actualWeight ?? plannedWeight ?? 0m;
-        var reps   = actualReps ?? plannedReps;
+        var reps = actualReps ?? plannedReps;
         int baseXp = Math.Max(1, (int)Math.Floor(weight / 2.5m)) * reps;
         return isCompetitionLift ? baseXp * 2 : baseXp;
     }
@@ -33,6 +33,6 @@ public static class XpCalculator
         < 70 => "Elite",
         < 80 => "Master",
         < 90 => "Grandmaster",
-        _    => "Legend",
+        _ => "Legend",
     };
 }

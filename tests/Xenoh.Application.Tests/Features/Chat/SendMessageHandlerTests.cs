@@ -97,7 +97,7 @@ public sealed class SendMessageHandlerTests : HandlerTestBase
         RelationshipStatus status = RelationshipStatus.Active)
     {
         var actualClientId = clientId ?? Guid.NewGuid();
-        var actualCoachId  = coachId  ?? Guid.NewGuid();
+        var actualCoachId = coachId ?? Guid.NewGuid();
         var today = DateOnly.FromDateTime(DateTime.Today);
 
         await using var ctx = CreateContext();
@@ -105,22 +105,28 @@ public sealed class SendMessageHandlerTests : HandlerTestBase
         if (!await ctx.ApplicationUsers.AnyAsync(u => u.Id == actualClientId))
             ctx.ApplicationUsers.Add(new ApplicationUser
             {
-                Id = actualClientId, Email = $"client_{actualClientId:N}@test.com",
-                UserName = $"client_{actualClientId:N}@test.com", FirstName = "Client", LastName = "User"
+                Id = actualClientId,
+                Email = $"client_{actualClientId:N}@test.com",
+                UserName = $"client_{actualClientId:N}@test.com",
+                FirstName = "Client",
+                LastName = "User"
             });
 
         if (!await ctx.ApplicationUsers.AnyAsync(u => u.Id == actualCoachId))
             ctx.ApplicationUsers.Add(new ApplicationUser
             {
-                Id = actualCoachId, Email = $"coach_{actualCoachId:N}@test.com",
-                UserName = $"coach_{actualCoachId:N}@test.com", FirstName = "Coach", LastName = "User"
+                Id = actualCoachId,
+                Email = $"coach_{actualCoachId:N}@test.com",
+                UserName = $"coach_{actualCoachId:N}@test.com",
+                FirstName = "Coach",
+                LastName = "User"
             });
 
         var relationship = new CoachClientRelationship
         {
             ClientId = actualClientId,
-            CoachId  = actualCoachId,
-            Status   = status,
+            CoachId = actualCoachId,
+            Status = status,
             StartDate = today
         };
         ctx.CoachClientRelationships.Add(relationship);

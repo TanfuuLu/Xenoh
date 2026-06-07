@@ -14,7 +14,6 @@ using Xenoh.Application.Features.Nutrition.Food.Queries.SearchFood;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionDailyLog;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionHistory;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionSummary;
-using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
 

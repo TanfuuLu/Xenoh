@@ -1,6 +1,5 @@
 using Mediator;
 using Xenoh.Application.Common.Interfaces.Repositories;
-using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Leaderboard.Queries.GetBig3Leaderboard;
@@ -13,9 +12,9 @@ public sealed class GetBig3LeaderboardHandler(ILeaderboardRepository leaderboard
     {
         var gender = request.Gender?.ToLowerInvariant() switch
         {
-            "male"   => (Gender?)Gender.Male,
+            "male" => (Gender?)Gender.Male,
             "female" => (Gender?)Gender.Female,
-            _        => null,
+            _ => null,
         };
 
         return await leaderboardRepo.GetBig3Async(gender, cancellationToken);

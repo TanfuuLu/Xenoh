@@ -11,7 +11,7 @@ public sealed class ExportPlanCsvHandler(
 ) : IRequestHandler<ExportPlanCsvQuery, PlanCsvExportResult>
 {
     private const int WeekCols = 5;   // Exercise | Sets | Reps | Weight | Notes
-    private const int SepCols  = 1;   // blank gap column between weeks
+    private const int SepCols = 1;   // blank gap column between weeks
 
     private static readonly string[] DataHeaders =
     [
@@ -39,7 +39,7 @@ public sealed class ExportPlanCsvHandler(
         using var workbook = new XLWorkbook();
         IXLWorksheet ws = workbook.Worksheets.Add("Plan");
 
-        int numWeeks  = data.Weeks.Count;
+        int numWeeks = data.Weeks.Count;
         int totalCols = numWeeks * WeekCols + Math.Max(0, numWeeks - 1) * SepCols;
 
         // 1-based starting column for week wi
@@ -51,23 +51,23 @@ public sealed class ExportPlanCsvHandler(
         int titleCol = (totalCols / 2) + 1; // roughly centred
         IXLCell titleCell = ws.Cell(row, titleCol);
         titleCell.Value = data.Name;
-        titleCell.Style.Font.Bold     = true;
+        titleCell.Style.Font.Bold = true;
         titleCell.Style.Font.FontSize = 16;
         row += 2; // blank row after title
 
         // ── Week headers ──────────────────────────────────────────────────────
         for (int wi = 0; wi < numWeeks; wi++)
         {
-            WeekExportData week     = data.Weeks[wi];
-            int            startCol = WeekStartCol(wi);
-            IXLCell        cell     = ws.Cell(row, startCol);
+            WeekExportData week = data.Weeks[wi];
+            int startCol = WeekStartCol(wi);
+            IXLCell cell = ws.Cell(row, startCol);
 
             cell.Value = $"WEEK {week.WeekNumber}  —  {week.Name}  " +
                          $"({week.StartDate:dd/MM/yyyy} – {week.EndDate:dd/MM/yyyy})";
-            cell.Style.Font.Bold                = true;
-            cell.Style.Font.FontSize            = 11;
-            cell.Style.Fill.BackgroundColor     = XLColor.FromHtml("#D6DCE4");
-            cell.Style.Alignment.Horizontal     = XLAlignmentHorizontalValues.Center;
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontSize = 11;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#D6DCE4");
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
             ws.Range(row, startCol, row, startCol + WeekCols - 1).Merge();
         }
@@ -80,8 +80,8 @@ public sealed class ExportPlanCsvHandler(
             for (int ci = 0; ci < DataHeaders.Length; ci++)
             {
                 IXLCell cell = ws.Cell(row, startCol + ci);
-                cell.Value                      = DataHeaders[ci];
-                cell.Style.Font.Bold            = true;
+                cell.Value = DataHeaders[ci];
+                cell.Style.Font.Bold = true;
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF2F7");
                 cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             }
@@ -104,11 +104,11 @@ public sealed class ExportPlanCsvHandler(
                 DayExportData day = data.Weeks[wi].Days[di];
                 if (day.Exercises.Count == 0) continue;
 
-                int     startCol = WeekStartCol(wi);
-                IXLCell cell     = ws.Cell(row, startCol);
+                int startCol = WeekStartCol(wi);
+                IXLCell cell = ws.Cell(row, startCol);
                 cell.Value = $"{day.DayOfWeek}  —  {day.Date:dd/MM/yyyy}";
-                cell.Style.Font.Bold            = true;
-                cell.Style.Font.Italic          = true;
+                cell.Style.Font.Bold = true;
+                cell.Style.Font.Italic = true;
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#EBF3FB");
 
                 ws.Range(row, startCol, row, startCol + WeekCols - 1).Merge();
@@ -126,8 +126,8 @@ public sealed class ExportPlanCsvHandler(
                     DayExportData day = data.Weeks[wi].Days[di];
                     if (ei >= day.Exercises.Count) continue;
 
-                    ExerciseExportData ex       = day.Exercises[ei];
-                    int                startCol = WeekStartCol(wi);
+                    ExerciseExportData ex = day.Exercises[ei];
+                    int startCol = WeekStartCol(wi);
 
                     ws.Cell(row, startCol + 0).Value = ex.Name;
                     ws.Cell(row, startCol + 1).Value = ex.PlannedSets;

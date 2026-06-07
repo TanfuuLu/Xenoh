@@ -1,5 +1,4 @@
 using Mediator;
-using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 using Xenoh.Domain.Entities;

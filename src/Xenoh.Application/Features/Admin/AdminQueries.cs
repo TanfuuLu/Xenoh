@@ -496,178 +496,178 @@ public sealed class GetAdminAiUsageSummaryHandler(IApplicationDbContext db)
 
 internal static class AdminQueryHelpers
 {
-internal static async Task<int> CountUsersInRoleAsync(IApplicationDbContext db, string roleName, CancellationToken ct)
-{
-    return await (
-        from userRole in db.UserRoles.AsNoTracking()
-        join role in db.Roles.AsNoTracking() on userRole.RoleId equals role.Id
-        where role.Name == roleName
-        select userRole.UserId)
-        .Distinct()
-        .CountAsync(ct);
-}
+    internal static async Task<int> CountUsersInRoleAsync(IApplicationDbContext db, string roleName, CancellationToken ct)
+    {
+        return await (
+            from userRole in db.UserRoles.AsNoTracking()
+            join role in db.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+            where role.Name == roleName
+            select userRole.UserId)
+            .Distinct()
+            .CountAsync(ct);
+    }
 
-internal static async Task<Dictionary<Guid, List<string>>> GetRoleMapAsync(IApplicationDbContext db, List<Guid> userIds, CancellationToken ct)
-{
-    var rows = await (
-        from userRole in db.UserRoles.AsNoTracking()
-        join role in db.Roles.AsNoTracking() on userRole.RoleId equals role.Id
-        where userIds.Contains(userRole.UserId)
-        select new { userRole.UserId, RoleName = role.Name ?? string.Empty })
-        .ToListAsync(ct);
+    internal static async Task<Dictionary<Guid, List<string>>> GetRoleMapAsync(IApplicationDbContext db, List<Guid> userIds, CancellationToken ct)
+    {
+        var rows = await (
+            from userRole in db.UserRoles.AsNoTracking()
+            join role in db.Roles.AsNoTracking() on userRole.RoleId equals role.Id
+            where userIds.Contains(userRole.UserId)
+            select new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+            .ToListAsync(ct);
 
-    return rows
-        .GroupBy(r => r.UserId)
-        .ToDictionary(g => g.Key, g => g.Select(r => r.RoleName).Where(r => r.Length > 0).Order().ToList());
-}
+        return rows
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.RoleName).Where(r => r.Length > 0).Order().ToList());
+    }
 
-internal static async Task<List<string>> GetUserRolesAsync(IApplicationDbContext db, Guid userId, CancellationToken ct)
-{
-    var roleMap = await GetRoleMapAsync(db, [userId], ct);
-    return roleMap.TryGetValue(userId, out var roles) ? roles : [];
-}
+    internal static async Task<List<string>> GetUserRolesAsync(IApplicationDbContext db, Guid userId, CancellationToken ct)
+    {
+        var roleMap = await GetRoleMapAsync(db, [userId], ct);
+        return roleMap.TryGetValue(userId, out var roles) ? roles : [];
+    }
 
-internal static async Task<Dictionary<Guid, int>> CountByUserAsync<TEntity>(
-    IQueryable<TEntity> query,
-    System.Linq.Expressions.Expression<Func<TEntity, Guid>> userIdSelector,
-    CancellationToken ct)
-{
-    return await query
-        .GroupBy(userIdSelector)
-        .Select(g => new { UserId = g.Key, Count = g.Count() })
-        .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
-}
+    internal static async Task<Dictionary<Guid, int>> CountByUserAsync<TEntity>(
+        IQueryable<TEntity> query,
+        System.Linq.Expressions.Expression<Func<TEntity, Guid>> userIdSelector,
+        CancellationToken ct)
+    {
+        return await query
+            .GroupBy(userIdSelector)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+    }
 
-internal static AdminUserListItemResponse ToUserListItem(
-    ApplicationUser user,
-    Dictionary<Guid, List<string>> roleMap,
-    Dictionary<Guid, int> planCounts,
-    Dictionary<Guid, int> workoutCounts,
-    Dictionary<Guid, int> reportsMade,
-    Dictionary<Guid, int> reportsReceived,
-    DateTime now)
-{
-    return new AdminUserListItemResponse(
-        user.Id,
-        user.Email ?? string.Empty,
-        FullName(user),
-        roleMap.TryGetValue(user.Id, out var roles) ? roles : [],
-        user.Subscription?.Tier ?? PlanTier.Free,
-        IsSubscriptionActive(user.Subscription, now),
-        user.LockoutEnd.HasValue && user.LockoutEnd.Value > now,
-        user.CreatedAt,
-        planCounts.GetValueOrDefault(user.Id),
-        workoutCounts.GetValueOrDefault(user.Id),
-        reportsMade.GetValueOrDefault(user.Id),
-        reportsReceived.GetValueOrDefault(user.Id));
-}
+    internal static AdminUserListItemResponse ToUserListItem(
+        ApplicationUser user,
+        Dictionary<Guid, List<string>> roleMap,
+        Dictionary<Guid, int> planCounts,
+        Dictionary<Guid, int> workoutCounts,
+        Dictionary<Guid, int> reportsMade,
+        Dictionary<Guid, int> reportsReceived,
+        DateTime now)
+    {
+        return new AdminUserListItemResponse(
+            user.Id,
+            user.Email ?? string.Empty,
+            FullName(user),
+            roleMap.TryGetValue(user.Id, out var roles) ? roles : [],
+            user.Subscription?.Tier ?? PlanTier.Free,
+            IsSubscriptionActive(user.Subscription, now),
+            user.LockoutEnd.HasValue && user.LockoutEnd.Value > now,
+            user.CreatedAt,
+            planCounts.GetValueOrDefault(user.Id),
+            workoutCounts.GetValueOrDefault(user.Id),
+            reportsMade.GetValueOrDefault(user.Id),
+            reportsReceived.GetValueOrDefault(user.Id));
+    }
 
-internal static async Task<List<AdminPlanRow>> ProjectAdminPlanRowsAsync(IQueryable<Plan> query, CancellationToken ct)
-{
-    return await query
-        .Select(p => new AdminPlanRow(
-            p.Id,
-            p.Name,
-            p.PlanType,
-            p.OwnerId,
-            p.Owner.FirstName,
-            p.Owner.LastName,
-            p.Owner.Email ?? string.Empty,
-            p.CreatedByCoachId,
-            p.CreatedByCoach == null ? null : p.CreatedByCoach.FirstName,
-            p.CreatedByCoach == null ? null : p.CreatedByCoach.LastName,
-            p.CreatedByCoach == null ? null : p.CreatedByCoach.Email,
-            p.StartDate,
-            p.EndDate,
-            p.IsActive,
-            p.CreatedAt,
-            p.WeeklyWorkouts.Count,
-            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(),
-            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts)
-                .Count(d =>
-                    d.Exercises.Any() &&
-                    !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted))),
-            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).Count(),
-            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
-                .Count(s => s.IsCompleted),
-            p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
-                .Where(s => s.IsCompleted)
-                .Sum(s => (decimal?)((s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))) ?? 0m))
-        .ToListAsync(ct);
-}
+    internal static async Task<List<AdminPlanRow>> ProjectAdminPlanRowsAsync(IQueryable<Plan> query, CancellationToken ct)
+    {
+        return await query
+            .Select(p => new AdminPlanRow(
+                p.Id,
+                p.Name,
+                p.PlanType,
+                p.OwnerId,
+                p.Owner.FirstName,
+                p.Owner.LastName,
+                p.Owner.Email ?? string.Empty,
+                p.CreatedByCoachId,
+                p.CreatedByCoach == null ? null : p.CreatedByCoach.FirstName,
+                p.CreatedByCoach == null ? null : p.CreatedByCoach.LastName,
+                p.CreatedByCoach == null ? null : p.CreatedByCoach.Email,
+                p.StartDate,
+                p.EndDate,
+                p.IsActive,
+                p.CreatedAt,
+                p.WeeklyWorkouts.Count,
+                p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).Count(),
+                p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts)
+                    .Count(d =>
+                        d.Exercises.Any() &&
+                        !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted))),
+                p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).Count(),
+                p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
+                    .Count(s => s.IsCompleted),
+                p.WeeklyWorkouts.SelectMany(w => w.DailyWorkouts).SelectMany(d => d.Exercises).SelectMany(e => e.Sets)
+                    .Where(s => s.IsCompleted)
+                    .Sum(s => (decimal?)((s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))) ?? 0m))
+            .ToListAsync(ct);
+    }
 
-internal static async Task<int> CountCompletedWorkoutDaysAsync(IQueryable<DailyWorkout> query, CancellationToken ct)
-{
-    return await query.CountAsync(d =>
-        d.Exercises.Any() &&
-        !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted)), ct);
-}
+    internal static async Task<int> CountCompletedWorkoutDaysAsync(IQueryable<DailyWorkout> query, CancellationToken ct)
+    {
+        return await query.CountAsync(d =>
+            d.Exercises.Any() &&
+            !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted)), ct);
+    }
 
-internal static AdminPlanListItemResponse ToAdminPlanListItem(AdminPlanRow plan)
-{
-    return new AdminPlanListItemResponse(
-        plan.Id,
-        plan.Name,
-        plan.PlanType,
-        plan.OwnerId,
-        FullName(plan.OwnerFirstName, plan.OwnerLastName, plan.OwnerEmail),
-        plan.OwnerEmail,
-        plan.CreatedByCoachId,
-        plan.CreatedByCoachId is null ? null : FullName(plan.CoachFirstName ?? string.Empty, plan.CoachLastName ?? string.Empty, plan.CoachEmail),
-        plan.CoachEmail,
-        plan.StartDate,
-        plan.EndDate,
-        plan.IsActive,
-        plan.CreatedAt,
-        plan.TotalWeeks,
-        plan.TotalDays,
-        plan.CompletedDays,
-        plan.CompletionPercent,
-        plan.TotalExercises,
-        plan.TotalCompletedSets,
-        plan.TotalVolume);
-}
+    internal static AdminPlanListItemResponse ToAdminPlanListItem(AdminPlanRow plan)
+    {
+        return new AdminPlanListItemResponse(
+            plan.Id,
+            plan.Name,
+            plan.PlanType,
+            plan.OwnerId,
+            FullName(plan.OwnerFirstName, plan.OwnerLastName, plan.OwnerEmail),
+            plan.OwnerEmail,
+            plan.CreatedByCoachId,
+            plan.CreatedByCoachId is null ? null : FullName(plan.CoachFirstName ?? string.Empty, plan.CoachLastName ?? string.Empty, plan.CoachEmail),
+            plan.CoachEmail,
+            plan.StartDate,
+            plan.EndDate,
+            plan.IsActive,
+            plan.CreatedAt,
+            plan.TotalWeeks,
+            plan.TotalDays,
+            plan.CompletedDays,
+            plan.CompletionPercent,
+            plan.TotalExercises,
+            plan.TotalCompletedSets,
+            plan.TotalVolume);
+    }
 
-internal static string FullName(ApplicationUser user)
-{
-    var name = $"{user.FirstName} {user.LastName}".Trim();
-    return string.IsNullOrWhiteSpace(name) ? user.Email ?? "Unknown user" : name;
-}
+    internal static string FullName(ApplicationUser user)
+    {
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? user.Email ?? "Unknown user" : name;
+    }
 
-internal static string FullName(string firstName, string lastName, string? email)
-{
-    var name = $"{firstName} {lastName}".Trim();
-    return string.IsNullOrWhiteSpace(name) ? email ?? "Unknown user" : name;
-}
+    internal static string FullName(string firstName, string lastName, string? email)
+    {
+        var name = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? email ?? "Unknown user" : name;
+    }
 
-internal static bool IsSubscriptionActive(UserSubscription? subscription, DateTime now)
-{
-    return subscription is null || subscription.Tier == PlanTier.Free || (subscription.ExpiresAt.HasValue && subscription.ExpiresAt.Value > now);
-}
+    internal static bool IsSubscriptionActive(UserSubscription? subscription, DateTime now)
+    {
+        return subscription is null || subscription.Tier == PlanTier.Free || (subscription.ExpiresAt.HasValue && subscription.ExpiresAt.Value > now);
+    }
 
-internal sealed record AdminPlanRow(
-    Guid Id,
-    string Name,
-    PlanType PlanType,
-    Guid OwnerId,
-    string OwnerFirstName,
-    string OwnerLastName,
-    string OwnerEmail,
-    Guid? CreatedByCoachId,
-    string? CoachFirstName,
-    string? CoachLastName,
-    string? CoachEmail,
-    DateOnly StartDate,
-    DateOnly EndDate,
-    bool IsActive,
-    DateTime CreatedAt,
-    int TotalWeeks,
-    int TotalDays,
-    int CompletedDays,
-    int TotalExercises,
-    int TotalCompletedSets,
-    decimal TotalVolume)
-{
-    public decimal CompletionPercent => TotalDays == 0 ? 0m : Math.Round(CompletedDays * 100m / TotalDays, 2);
-}
+    internal sealed record AdminPlanRow(
+        Guid Id,
+        string Name,
+        PlanType PlanType,
+        Guid OwnerId,
+        string OwnerFirstName,
+        string OwnerLastName,
+        string OwnerEmail,
+        Guid? CreatedByCoachId,
+        string? CoachFirstName,
+        string? CoachLastName,
+        string? CoachEmail,
+        DateOnly StartDate,
+        DateOnly EndDate,
+        bool IsActive,
+        DateTime CreatedAt,
+        int TotalWeeks,
+        int TotalDays,
+        int CompletedDays,
+        int TotalExercises,
+        int TotalCompletedSets,
+        decimal TotalVolume)
+    {
+        public decimal CompletionPercent => TotalDays == 0 ? 0m : Math.Round(CompletedDays * 100m / TotalDays, 2);
+    }
 }
