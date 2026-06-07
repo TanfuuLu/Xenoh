@@ -31,7 +31,7 @@ namespace Xenoh.API.Controllers;
 public sealed class CoachClientController(IMediator mediator) : ControllerBase
 {
     [HttpPut("accept/{relationshipId:guid}")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> AcceptRequest(Guid relationshipId, CancellationToken ct)
     {
         try

@@ -1,6 +1,8 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionDailyLog;
 using Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionProfile;
 using Xenoh.Application.Features.Nutrition.Food.Commands.CreateCustomFood;
@@ -96,7 +98,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("clients/{clientId:guid}/summary")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientSummary(Guid clientId, CancellationToken ct)
     {
         try
@@ -114,7 +116,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("clients/{clientId:guid}/profile")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> UpdateClientProfile(
         Guid clientId,
         [FromBody] UpdateNutritionProfileCommand command,
@@ -135,7 +137,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("clients/{clientId:guid}/logs/{date}")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientDailyLog(Guid clientId, DateOnly date, CancellationToken ct)
     {
         try
@@ -150,7 +152,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("clients/{clientId:guid}/logs/{date}")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> UpdateClientDailyLog(
         Guid clientId,
         DateOnly date,
@@ -172,7 +174,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("clients/{clientId:guid}/history")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientHistory(
         Guid clientId,
         [FromQuery] DateOnly from,
@@ -205,6 +207,8 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("foods/resolve")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting("ai")]
     public async Task<IActionResult> ResolveFood([FromQuery] string name, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name))

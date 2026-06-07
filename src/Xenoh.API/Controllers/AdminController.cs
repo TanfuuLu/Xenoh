@@ -143,6 +143,13 @@ public sealed class AdminController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("ai-usage/summary")]
+    public async Task<IActionResult> GetAiUsageSummary([FromQuery] DateOnly? periodStart, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetAdminAiUsageSummaryQuery(periodStart), ct);
+        return Ok(result);
+    }
+
     [HttpPost("users/{userId:guid}/unsuspend")]
     public async Task<IActionResult> UnsuspendUser(Guid userId, CancellationToken ct)
     {

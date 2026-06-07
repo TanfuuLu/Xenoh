@@ -16,6 +16,7 @@ public sealed record GetAdminPlanAnalyticsQuery(Guid PlanId) : IRequest<AdminPla
 public sealed record GetAdminPaymentsQuery(PaymentStatus? Status, PlanTier? Tier, DateTime? From, DateTime? To) : IRequest<List<AdminPaymentOrderResponse>>;
 public sealed record GetAdminPaymentsSummaryQuery : IRequest<AdminPaymentSummaryResponse>;
 public sealed record GetAdminSubscriptionsQuery(PlanTier? Tier, bool? Active) : IRequest<List<AdminSubscriptionResponse>>;
+public sealed record GetAdminAiUsageSummaryQuery(DateOnly? PeriodStart) : IRequest<AdminAiUsageSummaryResponse>;
 
 public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
     : IRequestHandler<GetAdminDashboardQuery, AdminDashboardResponse>
@@ -423,6 +424,73 @@ public sealed class GetAdminSubscriptionsHandler(IApplicationDbContext db)
                 s.ExpiresAt,
                 s.CreatedAt))
             .ToList();
+    }
+}
+
+public sealed class GetAdminAiUsageSummaryHandler(IApplicationDbContext db)
+    : IRequestHandler<GetAdminAiUsageSummaryQuery, AdminAiUsageSummaryResponse>
+{
+    public async ValueTask<AdminAiUsageSummaryResponse> Handle(GetAdminAiUsageSummaryQuery request, CancellationToken ct)
+    {
+        var periodStart = request.PeriodStart ?? CurrentPeriodStart();
+
+        var quotas = await db.AiUsageQuotas
+            .AsNoTracking()
+            .Include(q => q.User)
+            .Where(q => q.PeriodStart == periodStart)
+            .ToListAsync(ct);
+
+        var userIds = quotas.Select(q => q.UserId).Distinct().ToList();
+        var tiers = await db.UserSubscriptions
+            .AsNoTracking()
+            .Where(s => userIds.Contains(s.UserId))
+            .Select(s => new { s.UserId, s.Tier })
+            .ToDictionaryAsync(s => s.UserId, s => s.Tier, ct);
+
+        var requestsByTier = quotas
+            .GroupBy(q => tiers.GetValueOrDefault(q.UserId, PlanTier.Free))
+            .Select(g => new AdminMetricPointResponse(g.Key.ToString(), g.Sum(q => q.UsedRequests)))
+            .OrderBy(p => p.Label)
+            .ToList();
+
+        var featureRows = await db.AiFeatureUsages
+            .AsNoTracking()
+            .Where(u => u.PeriodStart == periodStart)
+            .ToListAsync(ct);
+
+        var requestsByFeature = featureRows
+            .GroupBy(u => u.Feature)
+            .Select(g => new AdminMetricPointResponse(g.Key, g.Sum(u => u.UsedRequests)))
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => p.Label)
+            .ToList();
+
+        var topUsers = quotas
+            .OrderByDescending(q => q.UsedRequests)
+            .ThenBy(q => q.User.Email)
+            .Take(10)
+            .Select(q => new AdminAiUsageTopUserResponse(
+                q.UserId,
+                FullName(q.User),
+                q.User.Email ?? string.Empty,
+                tiers.GetValueOrDefault(q.UserId, PlanTier.Free),
+                q.UsedRequests,
+                q.LastConsumedAt))
+            .ToList();
+
+        return new AdminAiUsageSummaryResponse(
+            periodStart,
+            quotas.Sum(q => q.UsedRequests),
+            quotas.Count(q => q.UsedRequests > 0),
+            requestsByTier,
+            requestsByFeature,
+            topUsers);
+    }
+
+    private static DateOnly CurrentPeriodStart()
+    {
+        var now = DateTime.UtcNow;
+        return new DateOnly(now.Year, now.Month, 1);
     }
 }
 

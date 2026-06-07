@@ -201,13 +201,13 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         public Task<PlanBalanceAiResult> ReviewPlanBalanceAsync(PlanBalanceAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
-        public Task<WorkoutGuidanceAiResult> GenerateWorkoutGuidanceAsync(WorkoutGuidanceAiRequest request, CancellationToken cancellationToken) =>
-            throw new NotImplementedException();
-
         public Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(CoachClientBriefAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(TrainingCoachTipAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<CoachChatAiResult> ChatAsync(CoachChatAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
     }
 

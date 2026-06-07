@@ -14,7 +14,7 @@ Xenoh helps athletes follow plans, log workouts, track progress, manage nutritio
 | Training plans | Weekly timeline, current week, completion status, below-target warnings, coach-client comments |
 | Workout logging | Exercises, sets, reps, weight, RPE, PR badges, volume, total time, AI suggestions |
 | Progress analytics | Training score, sessions, total volume, compliance, recommendations, muscle heatmaps |
-| Coach profile | Coach bio, pricing, contract status, reviews, rating, report, block, disconnect |
+| Coach connection | Invite-code based coach connection, contract status, report, block, disconnect |
 | Coach workspace | Client roster, active/inactive status, attention flags, missing plans, schedule timeline |
 | Client management | Client stats, plan progress, custom exercises, nutrition access, AI analysis |
 | AI insight | Client summary, risks, opportunities, plan balance, mistakes to fix, programming suggestions |
@@ -46,11 +46,11 @@ Progress view turns training history into scores, compliance, recommendations, w
 
 ![Progress analytics](docs/images/app/screen4.png)
 
-### 5. Coach Profile
+### 5. Coach Connection
 
-Athletes can view coach details, pricing, contract information, connected-client count, reviews, and relationship actions.
+Athletes can connect with a coach by invite code, view relationship state, and use report, block, or disconnect actions.
 
-![Coach profile](docs/images/app/screen5.png)
+![Coach connection](docs/images/app/screen5.png)
 
 ### 6. Coach Client Roster
 

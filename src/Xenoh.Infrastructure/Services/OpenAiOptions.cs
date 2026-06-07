@@ -8,4 +8,6 @@ public sealed class OpenAiOptions
     public string Model { get; init; } = "gpt-5.5";
     public string BaseUrl { get; init; } = "https://api.openai.com/v1";
     public int TimeoutSeconds { get; init; } = 60;
+    public int MaxChatCompletionTokens { get; init; } = 450;
+    public int MaxJsonCompletionTokens { get; init; } = 1200;
 }

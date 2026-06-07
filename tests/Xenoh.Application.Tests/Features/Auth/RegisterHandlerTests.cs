@@ -77,7 +77,7 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
     }
 
     [Fact]
-    public async Task Handle_WhenGenderMale_SetsDefaultMaleAvatar()
+    public async Task Handle_WhenGenderMale_DoesNotSetDefaultAvatar()
     {
         await SeedRolesAsync();
         var result = await CreateHandler().Handle(new RegisterCommand
@@ -93,7 +93,7 @@ public sealed class RegisterHandlerTests : IdentityHandlerTestBase
 
         await using var verify = CreateContext();
         var user = await verify.Users.SingleAsync(u => u.Id == result.UserId);
-        user.AvatarUrl.Should().Be("/assets/avatars/default-male.svg");
+        user.AvatarUrl.Should().BeNull();
     }
 
     [Fact]

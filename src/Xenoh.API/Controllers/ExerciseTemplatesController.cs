@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExerciseTemplate;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.CreateCustomExerciseTemplateForClient;
 using Xenoh.Application.Features.ExerciseTemplates.Commands.DeleteCustomExerciseTemplate;
@@ -48,7 +49,7 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     }
 
     [HttpGet("for-client/{clientId:guid}")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetForClient(
         [FromRoute] Guid clientId,
         [FromQuery] MuscleGroup? muscleGroup,
@@ -118,7 +119,7 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     }
 
     [HttpPost("custom/for-client/{clientId:guid}")]
-    [Authorize(Roles = UserRole.Coach)]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> CreateCustomForClient(
         [FromRoute] Guid clientId,
         [FromBody] CreateCustomExerciseTemplateForClientCommand command,

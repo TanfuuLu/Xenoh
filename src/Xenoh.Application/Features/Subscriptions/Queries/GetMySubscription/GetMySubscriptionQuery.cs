@@ -9,5 +9,13 @@ public sealed record SubscriptionResponse(
     string Tier,
     bool IsActive,
     DateTime? ExpiresAt,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    AiQuotaResponse AiQuota
+);
+
+public sealed record AiQuotaResponse(
+    int MonthlyLimit,
+    int UsedRequests,
+    int RemainingRequests,
+    DateOnly PeriodStart
 );

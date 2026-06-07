@@ -70,22 +70,26 @@ public static class DependencyInjection
 
         services.AddScoped<IPrShareImageService, PrShareImageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IAiQuotaService, AiQuotaService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
         services.AddSingleton<ISePayBankInfo, SePayBankInfo>();
         services.Configure<SePayOptions>(configuration.GetSection(SePayOptions.SectionName));
 
         // OpenAI-backed services
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
-        services.AddHttpClient<IUserAnalysisAi, OpenAiUserAnalysisAi>((sp, client) =>
+        services.AddHttpClient<OpenAiUserAnalysisAi>((sp, client) =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
             client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
         });
-        services.AddHttpClient<IFoodMacroAi, OpenAiFoodMacroAi>((sp, client) =>
+        services.AddScoped<IUserAnalysisAi, QuotaEnforcedUserAnalysisAi>();
+
+        services.AddHttpClient<OpenAiFoodMacroAi>((sp, client) =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
             client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
         });
+        services.AddScoped<IFoodMacroAi, QuotaEnforcedFoodMacroAi>();
 
         return services;
     }

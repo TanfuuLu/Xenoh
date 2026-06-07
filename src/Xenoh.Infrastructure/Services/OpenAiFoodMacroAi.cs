@@ -49,6 +49,7 @@ Return JSON ONLY matching this exact shape (no markdown, no commentary):
         {
             ["model"] = _options.Model,
             ["temperature"] = 0.1,
+            ["max_completion_tokens"] = _options.MaxJsonCompletionTokens,
             ["response_format"] = new JsonObject { ["type"] = "json_object" },
             ["messages"] = new JsonArray
             {

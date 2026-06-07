@@ -28,15 +28,6 @@ public sealed record PlanBalanceAiResult(
     string Json
 );
 
-public sealed record WorkoutGuidanceAiRequest(
-    string Language,
-    string SnapshotJson
-);
-
-public sealed record WorkoutGuidanceAiResult(
-    string Json
-);
-
 public sealed record CoachClientBriefAiRequest(
     string Language,
     string SnapshotJson
@@ -80,10 +71,6 @@ public interface IUserAnalysisAi
 
     Task<PlanBalanceAiResult> ReviewPlanBalanceAsync(
         PlanBalanceAiRequest request,
-        CancellationToken cancellationToken);
-
-    Task<WorkoutGuidanceAiResult> GenerateWorkoutGuidanceAsync(
-        WorkoutGuidanceAiRequest request,
         CancellationToken cancellationToken);
 
     Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(

@@ -13,6 +13,23 @@ public sealed class CoachChatHandler(
 {
     private const int MaxMessages = 30;
     private const int MaxMessageLength = 4000;
+    private const int MaxReplyLength = 1600;
+
+    private static readonly string[] FitnessTerms =
+    [
+        "training", "workout", "exercise", "nutrition", "protein", "calorie", "recovery", "sleep",
+        "gym", "lift", "squat", "bench", "deadlift", "cardio", "running", "hypertrophy", "powerlifting",
+        "tập", "luyện", "bài tập", "dinh dưỡng", "protein", "calo", "phục hồi", "ngủ", "gym",
+        "squat", "bench", "deadlift", "cardio", "chạy", "cơ", "sức mạnh", "giảm mỡ", "tăng cơ"
+    ];
+
+    private static readonly string[] OffTopicTerms =
+    [
+        "code", "programming", "javascript", "c#", "python", "sql", "crypto", "bitcoin", "stock",
+        "weather", "politics", "election", "movie", "song", "lyrics", "joke", "recipe",
+        "lập trình", "viết code", "tiền ảo", "bitcoin", "chứng khoán", "thời tiết", "chính trị",
+        "bầu cử", "phim", "bài hát", "lời bài hát", "truyện cười", "nấu ăn"
+    ];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -38,6 +55,9 @@ public sealed class CoachChatHandler(
             throw new InvalidOperationException("The last message must be from the user.");
 
         var language = string.Equals(request.Language, "vi", StringComparison.OrdinalIgnoreCase) ? "vi" : "en";
+        if (IsClearlyOffTopic(messages[^1].Content))
+            return new CoachChatResponse(OffTopicReply(language));
+
         var snapshot = await BuildContextAsync(userId, cancellationToken);
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
 
@@ -45,7 +65,27 @@ public sealed class CoachChatHandler(
             new CoachChatAiRequest(language, snapshotJson, messages),
             cancellationToken);
 
-        return new CoachChatResponse(result.Reply);
+        return new CoachChatResponse(TrimReply(result.Reply));
+    }
+
+    private static bool IsClearlyOffTopic(string message)
+    {
+        var normalized = message.ToLowerInvariant();
+        if (FitnessTerms.Any(normalized.Contains))
+            return false;
+
+        return OffTopicTerms.Any(normalized.Contains);
+    }
+
+    private static string OffTopicReply(string language) =>
+        language == "vi"
+            ? "Mình chỉ hỗ trợ các câu hỏi liên quan đến luyện tập, dinh dưỡng, phục hồi và tiến độ trong Xenoh. Bạn muốn mình xem phần nào trong kế hoạch tập của bạn?"
+            : "I can only help with training, nutrition, recovery, and progress inside Xenoh. Which part of your training plan do you want to review?";
+
+    private static string TrimReply(string reply)
+    {
+        var trimmed = reply.Trim();
+        return trimmed.Length <= MaxReplyLength ? trimmed : $"{trimmed[..MaxReplyLength].TrimEnd()}...";
     }
 
     private async Task<object> BuildContextAsync(Guid userId, CancellationToken ct)

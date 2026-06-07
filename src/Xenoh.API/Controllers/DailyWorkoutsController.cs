@@ -1,10 +1,8 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 using Xenoh.Application.Features.DailyWorkouts.Commands.MarkDayStatus;
-using Xenoh.Application.Features.DailyWorkouts.Queries.GetDailyWorkoutGuidance;
 using Xenoh.Application.Features.DailyWorkouts.Queries.GetDaysByWeek;
 using Xenoh.Domain.Enums;
 
@@ -51,28 +49,6 @@ public sealed class DailyWorkoutsController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
-        }
-    }
-
-    [HttpGet("/api/days/{dailyWorkoutId:guid}/ai-guidance")]
-    [EnableRateLimiting("ai")]
-    public async Task<IActionResult> GetAiGuidance(
-        Guid dailyWorkoutId,
-        [FromQuery] string? lang,
-        CancellationToken ct)
-    {
-        try
-        {
-            var result = await mediator.Send(new GetDailyWorkoutGuidanceQuery(dailyWorkoutId, lang), ct);
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
         }
     }
 

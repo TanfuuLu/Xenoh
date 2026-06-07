@@ -39,6 +39,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FoodLog> FoodLogs => Set<FoodLog>();
     public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
+    public DbSet<AiFeatureUsage> AiFeatureUsages => Set<AiFeatureUsage>();
+    public DbSet<AiUsageQuota> AiUsageQuotas => Set<AiUsageQuota>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     public DbSet<Message> Messages => Set<Message>();
     protected override void OnModelCreating(ModelBuilder builder)

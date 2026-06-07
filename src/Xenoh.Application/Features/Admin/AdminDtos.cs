@@ -135,3 +135,19 @@ public sealed record AdminSubscriptionResponse(
     bool IsActive,
     DateTime? ExpiresAt,
     DateTime CreatedAt);
+
+public sealed record AdminAiUsageTopUserResponse(
+    Guid UserId,
+    string UserName,
+    string UserEmail,
+    PlanTier CurrentTier,
+    int UsedRequests,
+    DateTime? LastConsumedAt);
+
+public sealed record AdminAiUsageSummaryResponse(
+    DateOnly PeriodStart,
+    int TotalUsedRequests,
+    int ActiveQuotaUsers,
+    List<AdminMetricPointResponse> RequestsByCurrentTier,
+    List<AdminMetricPointResponse> RequestsByFeature,
+    List<AdminAiUsageTopUserResponse> TopUsers);

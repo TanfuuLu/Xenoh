@@ -20,9 +20,9 @@ public sealed class CompleteExternalRegistrationHandler(
         CompleteExternalRegistrationCommand request,
         CancellationToken cancellationToken)
     {
-        var allowedRoles = new[] { UserRole.Individual, UserRole.Coach };
+        var allowedRoles = new[] { UserRole.Individual };
         if (!allowedRoles.Contains(request.Role))
-            throw new InvalidOperationException($"Role '{request.Role}' is not valid. Allowed: Individual, Coach.");
+            throw new InvalidOperationException($"Role '{request.Role}' is not allowed. Registration is open to Individual accounts only.");
 
         if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
             throw new InvalidOperationException("User is not authenticated.");

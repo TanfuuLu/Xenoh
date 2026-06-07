@@ -40,6 +40,8 @@ public interface IApplicationDbContext
     DbSet<FoodLog> FoodLogs { get; }
     DbSet<UserAnalysis> UserAnalyses { get; }
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
+    DbSet<AiFeatureUsage> AiFeatureUsages { get; }
+    DbSet<AiUsageQuota> AiUsageQuotas { get; }
     DbSet<RevokedToken> RevokedTokens { get; }
     DbSet<Message> Messages { get; }
 

@@ -15,6 +15,7 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
     private GetAdminPlansHandler       CreatePlansHandler(ApplicationDbContext ctx)     => new(ctx);
     private GetAdminUserDetailHandler  CreateUserDetailHandler(ApplicationDbContext ctx) => new(ctx);
     private GetAdminSubscriptionsHandler CreateSubscriptionsHandler(ApplicationDbContext ctx) => new(ctx);
+    private GetAdminAiUsageSummaryHandler CreateAiUsageSummaryHandler(ApplicationDbContext ctx) => new(ctx);
     private GetReportSummaryHandler    CreateReportSummaryHandler(ApplicationDbContext ctx) => new(ctx);
 
     // ── GetAdminDashboard ───────────────────────────────────────────────────
@@ -221,6 +222,82 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAdminAiUsageSummary_ReturnsUsageByTierAndFeature()
+    {
+        var periodStart = new DateOnly(2026, 6, 1);
+        var proUserId = await SeedUserAsync("ai-pro@test.com");
+        var coachUserId = await SeedUserAsync("ai-coach@test.com");
+
+        await using var seed = CreateContext();
+        seed.UserSubscriptions.Add(new UserSubscription
+        {
+            UserId = proUserId,
+            Tier = PlanTier.ProIndividual,
+            ExpiresAt = DateTime.UtcNow.AddDays(30)
+        });
+        seed.UserSubscriptions.Add(new UserSubscription
+        {
+            UserId = coachUserId,
+            Tier = PlanTier.ProCoach,
+            ExpiresAt = DateTime.UtcNow.AddDays(30)
+        });
+        seed.AiUsageQuotas.AddRange(
+            new AiUsageQuota
+            {
+                UserId = proUserId,
+                PeriodStart = periodStart,
+                UsedRequests = 3,
+                LastFeature = "food-macro",
+                LastConsumedAt = DateTime.UtcNow
+            },
+            new AiUsageQuota
+            {
+                UserId = coachUserId,
+                PeriodStart = periodStart,
+                UsedRequests = 5,
+                LastFeature = "coach-client-ai-brief",
+                LastConsumedAt = DateTime.UtcNow
+            });
+        seed.AiFeatureUsages.AddRange(
+            new AiFeatureUsage
+            {
+                UserId = proUserId,
+                PeriodStart = periodStart,
+                Feature = "food-macro",
+                UsedRequests = 3
+            },
+            new AiFeatureUsage
+            {
+                UserId = coachUserId,
+                PeriodStart = periodStart,
+                Feature = "coach-client-ai-brief",
+                UsedRequests = 4
+            },
+            new AiFeatureUsage
+            {
+                UserId = coachUserId,
+                PeriodStart = periodStart,
+                Feature = "food-macro",
+                UsedRequests = 1
+            });
+        await seed.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var result = await CreateAiUsageSummaryHandler(ctx).Handle(
+            new GetAdminAiUsageSummaryQuery(periodStart),
+            CancellationToken.None);
+
+        result.TotalUsedRequests.Should().Be(8);
+        result.ActiveQuotaUsers.Should().Be(2);
+        result.RequestsByCurrentTier.Should().Contain(p => p.Label == PlanTier.ProIndividual.ToString() && p.Value == 3);
+        result.RequestsByCurrentTier.Should().Contain(p => p.Label == PlanTier.ProCoach.ToString() && p.Value == 5);
+        result.RequestsByFeature.Should().Contain(p => p.Label == "food-macro" && p.Value == 4);
+        result.RequestsByFeature.Should().Contain(p => p.Label == "coach-client-ai-brief" && p.Value == 4);
+        result.TopUsers.Should().HaveCount(2);
+        result.TopUsers[0].UserId.Should().Be(coachUserId);
+    }
 
     private async Task<Guid> SeedUserAsync(string email = "user@test.com")
         => await SeedUserAsync(Guid.NewGuid(), email);
