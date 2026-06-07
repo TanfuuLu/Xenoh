@@ -158,8 +158,12 @@ builder.Services.AddCors(options =>
                 "https://127.0.0.1:5173", "https://127.0.0.1:5174", "https://127.0.0.1:5175"
             }
             : [];
+        // Additional origins (e.g. public domain served over the Cloudflare tunnel).
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
         var origins = new[] { frontendUrl }
             .Concat(developmentOrigins)
+            .Concat(configuredOrigins.Select(origin => origin?.TrimEnd('/')))
             .Where(origin => !string.IsNullOrWhiteSpace(origin))
             .Select(origin => origin!)
             .Distinct(StringComparer.OrdinalIgnoreCase)

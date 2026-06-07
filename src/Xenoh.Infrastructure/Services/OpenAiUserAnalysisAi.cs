@@ -132,7 +132,12 @@ Exercise catalog:
 ```
 """;
 
-        var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.35, cancellationToken);
+        var json = await SendJsonPromptAsync(
+            systemPrompt,
+            userPrompt,
+            0.35,
+            cancellationToken,
+            _options.MaxStarterPlanCompletionTokens);
         return new StarterPlanAiResult(json);
     }
 
@@ -359,7 +364,8 @@ trainingContext:
         string systemPrompt,
         string userPrompt,
         double temperature,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? maxCompletionTokens = null)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
             throw new InvalidOperationException("OpenAI API key is not configured.");
@@ -368,7 +374,7 @@ trainingContext:
         {
             ["model"] = _options.Model,
             ["temperature"] = temperature,
-            ["max_completion_tokens"] = _options.MaxJsonCompletionTokens,
+            ["max_completion_tokens"] = maxCompletionTokens ?? _options.MaxJsonCompletionTokens,
             ["response_format"] = new JsonObject { ["type"] = "json_object" },
             ["messages"] = new JsonArray
             {
@@ -390,8 +396,20 @@ trainingContext:
             throw new InvalidOperationException($"OpenAI request failed ({(int)response.StatusCode}): {raw}");
 
         using var doc = JsonDocument.Parse(raw);
-        var content = doc.RootElement
-            .GetProperty("choices")[0]
+        var choice = doc.RootElement.GetProperty("choices")[0];
+
+        // When the model hits the token cap it stops mid-string, so the returned JSON is
+        // incomplete. Fail with a clear message instead of letting JSON deserialization
+        // crash with a confusing "Expected end of string ... reached end of data".
+        if (choice.TryGetProperty("finish_reason", out var finishReason) &&
+            finishReason.GetString() == "length")
+        {
+            throw new InvalidOperationException(
+                "AI response was cut off before completing. Please try again with a shorter plan " +
+                "(fewer days per week or a shorter description).");
+        }
+
+        var content = choice
             .GetProperty("message")
             .GetProperty("content")
             .GetString();
