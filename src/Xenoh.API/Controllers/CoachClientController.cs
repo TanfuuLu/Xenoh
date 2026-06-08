@@ -72,7 +72,9 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetMyCoach(CancellationToken ct)
     {
         var result = await mediator.Send(new GetMyCoachQuery(), ct);
-        return result is null ? NotFound() : Ok(result);
+        // Returns 200 with a null body when the client has no coach — the endpoint
+        // is nullable, so "no coach" is a normal state, not a 404.
+        return Ok(result);
     }
 
     [HttpPost("{relationshipId:guid}/request-termination")]
