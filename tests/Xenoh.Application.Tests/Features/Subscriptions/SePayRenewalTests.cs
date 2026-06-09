@@ -14,14 +14,14 @@ namespace Xenoh.Application.Tests.Features.Subscriptions;
 public sealed class SePayRenewalTests
 {
     [Fact]
-    public async Task Handle_WhenSubscriptionActive_ExtendsFromCurrentExpiry()
+    public async Task Handle_WhenSameTierRenewal_ExtendsFromCurrentExpiry()
     {
         var userId = Guid.NewGuid();
         var currentExpiry = DateTime.UtcNow.AddDays(10);
         var subscription = new UserSubscription
         {
             UserId = userId,
-            Tier = PlanTier.ProIndividual,
+            Tier = PlanTier.ProCoach,
             ExpiresAt = currentExpiry
         };
         var order = CreateOrder(userId, subscription.Id, durationMonths: 1);
@@ -32,6 +32,30 @@ public sealed class SePayRenewalTests
         order.Status.Should().Be(PaymentStatus.Completed);
         subscription.Tier.Should().Be(order.RequestedTier);
         subscription.ExpiresAt.Should().BeCloseTo(currentExpiry.AddMonths(1), TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task Handle_WhenUpgradingTier_ResetsFromPaymentTime()
+    {
+        var userId = Guid.NewGuid();
+        var beforePayment = DateTime.UtcNow;
+        // Active Pro Individual with plenty of remaining time, upgrading to Pro Coach.
+        var subscription = new UserSubscription
+        {
+            UserId = userId,
+            Tier = PlanTier.ProIndividual,
+            ExpiresAt = DateTime.UtcNow.AddDays(365)
+        };
+        var order = CreateOrder(userId, subscription.Id, durationMonths: 1);
+        var handler = CreateHandler(order, subscription);
+
+        await handler.Handle(CreateWebhookCommand(order.TransferCode), CancellationToken.None);
+
+        order.Status.Should().Be(PaymentStatus.Completed);
+        subscription.Tier.Should().Be(PlanTier.ProCoach);
+        // Remaining 365 days do NOT carry over — term restarts from payment time.
+        subscription.ExpiresAt.Should().BeAfter(beforePayment.AddMonths(1).AddSeconds(-2));
+        subscription.ExpiresAt.Should().BeBefore(DateTime.UtcNow.AddMonths(1).AddSeconds(2));
     }
 
     [Fact]

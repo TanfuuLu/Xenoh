@@ -65,12 +65,16 @@ public sealed class HandleSePayWebhookHandler(
             ?? throw new InvalidOperationException($"Subscription not found for user {order.UserId}.");
 
         var now = DateTime.UtcNow;
-        var currentExpiry = (subscription.ExpiresAt.HasValue && subscription.ExpiresAt > now)
-            ? subscription.ExpiresAt.Value
-            : now;
+
+        // Same-tier renewal stacks onto remaining time; switching tier (upgrade/downgrade)
+        // starts a fresh term from payment time — remaining days do not carry over.
+        var isSameTierRenewal = subscription.Tier == order.RequestedTier
+            && subscription.ExpiresAt.HasValue
+            && subscription.ExpiresAt > now;
+        var baseDate = isSameTierRenewal ? subscription.ExpiresAt!.Value : now;
 
         subscription.Tier = order.RequestedTier;
-        subscription.ExpiresAt = currentExpiry.AddMonths(order.DurationMonths);
+        subscription.ExpiresAt = baseDate.AddMonths(order.DurationMonths);
         subscription.UpdatedAt = DateTime.UtcNow;
 
         await subscriptionRepo.SaveChangesAsync(cancellationToken);
