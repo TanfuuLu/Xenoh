@@ -65,6 +65,9 @@ public sealed class CoachChatHandlerTests : HandlerTestBase
         public Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(CoachClientBriefAiRequest request, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(PlanProgressInsightAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(TrainingCoachTipAiRequest request, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 

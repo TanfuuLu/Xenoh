@@ -44,6 +44,8 @@ public interface IApplicationDbContext
     DbSet<AiUsageQuota> AiUsageQuotas { get; }
     DbSet<RevokedToken> RevokedTokens { get; }
     DbSet<Message> Messages { get; }
+    DbSet<CycleDailyLog> CycleDailyLogs { get; }
+    DbSet<CycleSettings> CycleSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

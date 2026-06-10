@@ -43,6 +43,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<AiUsageQuota> AiUsageQuotas => Set<AiUsageQuota>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<CycleDailyLog> CycleDailyLogs => Set<CycleDailyLog>();
+    public DbSet<CycleSettings> CycleSettings => Set<CycleSettings>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

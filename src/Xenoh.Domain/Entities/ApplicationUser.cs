@@ -49,6 +49,10 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<NutritionDailyLog> NutritionDailyLogs { get; set; } = [];
     public ICollection<FoodLog> FoodLogs { get; set; } = [];
 
+    // Menstrual cycle tracking
+    public CycleSettings? CycleSettings { get; set; }
+    public ICollection<CycleDailyLog> CycleDailyLogs { get; set; } = [];
+
     // As client
     public CoachClientRelationship? CoachRelationship { get; set; }
 

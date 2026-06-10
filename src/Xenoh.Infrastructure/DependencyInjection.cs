@@ -96,6 +96,13 @@ public static class DependencyInjection
         });
         services.AddScoped<IFoodMacroAi, QuotaEnforcedFoodMacroAi>();
 
+        services.AddHttpClient<OpenAiCycleInsightAi>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        services.AddScoped<ICycleInsightAi, QuotaEnforcedCycleInsightAi>();
+
         return services;
     }
 }

@@ -217,6 +217,9 @@ public sealed class GetTrainingCoachTipHandlerTests : HandlerTestBase
         public Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
+        public Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(PlanProgressInsightAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public Task<StarterPlanAiResult> GenerateStarterPlanAsync(StarterPlanAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 

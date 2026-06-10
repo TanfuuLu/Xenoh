@@ -195,6 +195,9 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         public Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(new UserAnalysisAiResult(AnalysisJson));
 
+        public Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(PlanProgressInsightAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public Task<StarterPlanAiResult> GenerateStarterPlanAsync(StarterPlanAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
