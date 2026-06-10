@@ -28,6 +28,15 @@ public sealed record PlanBalanceAiResult(
     string Json
 );
 
+public sealed record PlanProgressInsightAiRequest(
+    string Language,
+    string TrendSnapshotJson
+);
+
+public sealed record PlanProgressInsightAiResult(
+    string Json
+);
+
 public sealed record CoachClientBriefAiRequest(
     string Language,
     string SnapshotJson
@@ -71,6 +80,10 @@ public interface IUserAnalysisAi
 
     Task<PlanBalanceAiResult> ReviewPlanBalanceAsync(
         PlanBalanceAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(
+        PlanProgressInsightAiRequest request,
         CancellationToken cancellationToken);
 
     Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(

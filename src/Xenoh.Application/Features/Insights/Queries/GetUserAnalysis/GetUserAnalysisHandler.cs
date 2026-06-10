@@ -16,7 +16,7 @@ public sealed class GetUserAnalysisHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
-    private const int AnalysisPromptVersion = 2;
+    private const int AnalysisPromptVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

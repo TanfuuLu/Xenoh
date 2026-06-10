@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Common.Exceptions;
 using Xenoh.Application.Features.Subscriptions.Commands.CreatePaymentOrder;
 using Xenoh.Application.Features.Subscriptions.Commands.DevActivateSubscription;
 using Xenoh.Application.Features.Subscriptions.Queries.GetMySubscription;
@@ -27,6 +28,12 @@ public sealed class SubscriptionsController(IMediator mediator, IWebHostEnvironm
         {
             var result = await mediator.Send(command, ct);
             return Ok(result);
+        }
+        catch (PaymentServiceUnavailableException ex)
+        {
+            // SePay unreachable or server can't honor a payment — no QR is shown so the user
+            // doesn't transfer money we couldn't refund. Client should retry later.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {

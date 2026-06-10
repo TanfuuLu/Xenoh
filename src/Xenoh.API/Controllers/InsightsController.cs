@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Insights.Commands.CoachChat;
+using Xenoh.Application.Features.Insights.Queries.GetPlanProgressInsight;
 using Xenoh.Application.Features.Insights.Queries.GetTrainingCoachTip;
 using Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
 
@@ -28,6 +29,26 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         {
             var language = string.Equals(lang, "vi", StringComparison.OrdinalIgnoreCase) ? "vi" : "en";
             var result = await mediator.Send(new GetUserAnalysisQuery(language), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Returns a plan-scoped AI progress insight focused on a single plan's week-over-week
+    /// trajectory. Distinct from <see cref="GetMyAnalysis"/>, which is an account-wide review.
+    /// </summary>
+    [HttpGet("plan/{planId:guid}/progress")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting("ai")]
+    public async Task<IActionResult> GetPlanProgressInsight(Guid planId, [FromQuery] string? lang, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetPlanProgressInsightQuery(planId, lang), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

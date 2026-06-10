@@ -13,6 +13,7 @@ using Xenoh.Application.Features.Users.Queries.GetExercisePrs;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Application.Features.Users.Queries.GetMyPreferences;
 using Xenoh.Application.Features.Users.Queries.GetMyTrainingActivity;
+using Xenoh.Application.Features.Users.Queries.GetMyVolumeHistory;
 using Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
 
@@ -151,6 +152,13 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpGet("me/volume-history")]
+    public async Task<IActionResult> GetMyVolumeHistory([FromQuery] int months, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetMyVolumeHistoryQuery(months <= 0 ? 6 : months), ct);
+        return Ok(result);
     }
 
     [HttpGet("{userId:guid}/bodyweight")]

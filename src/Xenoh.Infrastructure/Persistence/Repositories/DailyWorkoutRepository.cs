@@ -51,6 +51,8 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
               .ThenInclude(w => w.Plan)
           .Include(d => d.Exercises)
               .ThenInclude(e => e.Sets)
+          // Two nested collections (exercises x sets) — split avoids a cartesian JOIN.
+          .AsSplitQuery()
           .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId, ct);
 
     public Task<int> SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);

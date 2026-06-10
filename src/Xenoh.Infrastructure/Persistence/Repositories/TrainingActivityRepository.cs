@@ -72,4 +72,27 @@ public sealed class TrainingActivityRepository(ApplicationDbContext db) : ITrain
 
         return new TrainingActivitySnapshot(totalDurationSeconds, totalWeightTrainedKg, trainedDates);
     }
+
+    public async Task<List<MonthlyVolumeBucket>> GetMonthlyVolumeAsync(
+        Guid userId,
+        DateOnly fromDate,
+        DateOnly today,
+        CancellationToken ct = default)
+    {
+        return await db.ExerciseSets
+            .AsNoTracking()
+            .Where(s =>
+                s.IsCompleted &&
+                (s.ActualReps ?? s.PlannedReps) > 0 &&
+                (s.ActualWeight ?? s.PlannedWeight) > 0m &&
+                s.Exercise.DailyWorkout.WeeklyWorkout.Plan.OwnerId == userId &&
+                s.Exercise.DailyWorkout.Date >= fromDate &&
+                s.Exercise.DailyWorkout.Date <= today)
+            .GroupBy(s => new { s.Exercise.DailyWorkout.Date.Year, s.Exercise.DailyWorkout.Date.Month })
+            .Select(g => new MonthlyVolumeBucket(
+                g.Key.Year,
+                g.Key.Month,
+                g.Sum(s => (s.ActualReps ?? s.PlannedReps) * (s.ActualWeight ?? s.PlannedWeight ?? 0m))))
+            .ToListAsync(ct);
+    }
 }

@@ -48,6 +48,8 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
               .ThenInclude(d => d.Exercises)
               .ThenInclude(e => e.Sets)
           .Include(w => w.Plan)
+          // Three nested collections (days x exercises x sets) — split avoids a cartesian JOIN.
+          .AsSplitQuery()
           .FirstOrDefaultAsync(w => w.Id == weekId, ct);
 
     public void RemoveRange(IEnumerable<WeeklyWorkout> weeks) =>

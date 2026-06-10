@@ -74,6 +74,11 @@ public static class DependencyInjection
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
         services.AddSingleton<ISePayBankInfo, SePayBankInfo>();
         services.Configure<SePayOptions>(configuration.GetSection(SePayOptions.SectionName));
+        services.AddHttpClient<IPaymentPreflightService, PaymentPreflightService>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SePayOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(opts.HealthTimeoutSeconds + 5);
+        });
 
         // OpenAI-backed services
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));

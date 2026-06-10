@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Common.Exceptions;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
@@ -10,7 +11,8 @@ public sealed class CreatePaymentOrderHandler(
     ISubscriptionRepository subscriptionRepo,
     IPaymentOrderRepository paymentOrderRepo,
     ICurrentUserService currentUser,
-    ISePayBankInfo bankInfo
+    ISePayBankInfo bankInfo,
+    IPaymentPreflightService preflight
 ) : IRequestHandler<CreatePaymentOrderCommand, PaymentOrderResponse>
 {
     public async ValueTask<PaymentOrderResponse> Handle(
@@ -24,6 +26,13 @@ public sealed class CreatePaymentOrderHandler(
         catch { throw new InvalidOperationException("Invalid tier/duration combination."); }
 
         ValidateBankInfo();
+
+        // Fail closed BEFORE creating an order / showing the QR: if SePay is unreachable or the
+        // server can't honor the payment, don't let the user transfer money we couldn't refund.
+        var health = await preflight.CheckAsync(cancellationToken);
+        if (!health.Healthy)
+            throw new PaymentServiceUnavailableException(
+                health.Reason ?? "Payment service is temporarily unavailable. Please try again later.");
 
         var userId = currentUser.UserId;
 

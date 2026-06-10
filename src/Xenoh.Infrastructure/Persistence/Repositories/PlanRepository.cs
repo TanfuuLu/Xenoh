@@ -60,6 +60,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
           .Include(p => p.CreatedByCoach)
           .Include(p => p.WeeklyWorkouts)
               .ThenInclude(w => w.DailyWorkouts)
+          // Two nested collections (weeks x days) — split avoids a cartesian JOIN.
+          .AsSplitQuery()
           .FirstOrDefaultAsync(p => p.Id == planId, ct);
 
     public Task<Plan?> FindByIdAndCallerAsync(Guid planId, Guid userId, CancellationToken ct) =>
@@ -222,6 +224,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                             .ToList()))
                     .ToList()
             })
+            // Nested projected collections (weeks -> days -> exercises) — split to avoid explosion.
+            .AsSplitQuery()
             .ToListAsync(ct);
 
         var days = weeks
@@ -336,6 +340,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                         })).ToList()
                 }).ToList()
             })
+            // Nested projected collections (weeks -> days -> sets) — split to avoid explosion.
+            .AsSplitQuery()
             .ToListAsync(ct);
 
         var weeklyCompliance = weeks.Select(w => new WeekCompliancePoint(
@@ -480,6 +486,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                     })
                     .ToList()
             })
+            // Nested projected collections (weeks -> days -> exercises) — split to avoid explosion.
+            .AsSplitQuery()
             .FirstOrDefaultAsync(ct);
 
         if (raw is null) return null;
@@ -517,6 +525,9 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               .ThenInclude(w => w.DailyWorkouts)
                   .ThenInclude(d => d.Exercises)
                       .ThenInclude(e => e.Sets)
+          // Four nested collections (weeks x days x exercises x sets) — a single JOIN would
+          // multiply rows ~weeks*days*exercises*sets. Split runs one query per level instead.
+          .AsSplitQuery()
           .FirstOrDefaultAsync(p => p.Id == planId &&
               (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
 

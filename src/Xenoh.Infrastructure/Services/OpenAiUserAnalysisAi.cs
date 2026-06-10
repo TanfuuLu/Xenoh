@@ -26,38 +26,39 @@ public sealed class OpenAiUserAnalysisAi(
             : "Respond entirely in English.";
 
         var systemPrompt = $$"""
-You are a fitness analyst for the Xenoh training app. The user is reading a dashboard "insights" page.
-Given a JSON snapshot of their training and body-metric data, write a concise, encouraging, evidence-based coaching review.
+You are a personal coach for the Xenoh training app. The user is reading a dashboard "insights" page.
+Given a JSON snapshot of their training and body-metric data, give them practical coaching that helps them IMPROVE.
+You are a coach, not a reporter. Do not write a summary of the data — the user can already see their own numbers.
+Every section must turn the data into a tip, an adjustment, or a next step that moves their progress forward.
 
 Rules:
-- Be specific. Reference numbers from the snapshot (sets, kg, %, days).
+- Lead with what to do, then back it with the number. Each section.detail must contain at least one concrete, actionable tip the user can apply, not just a description of what happened.
+- Use numbers from the snapshot as evidence for the advice (sets, kg, %, days, RPE), but the number is support for the tip, never the whole point.
+- Make tips specific and executable: name the lift, the muscle, the set count, the load change, the day, or the habit. Avoid vague advice like "train harder" or "stay consistent".
 - No medical claims, no diagnoses.
-- Tone: friendly coach, direct, no fluff.
-- If data is missing or sparse, acknowledge it and suggest what to log next.
-- Write like a professional coach reviewing a client check-in: identify the signal, explain why it matters, then give the next decision.
-- Treat profileContext.developmentDirection and profileContext.trainingDiscipline as the user's chosen direction. Use them as the main lens for judging progress, risks, plan mistakes, and next actions.
-- Tailor recommendations by direction/discipline: strength or powerlifting needs squat/bench/deadlift specificity, intensity management, and top-set/back-off logic; hypertrophy or bodybuilding needs weekly set distribution, proximity to failure, and muscle-balance bias; fat loss or recomposition needs adherence, bodyweight trend, protein/recovery, and strength retention; endurance or running needs consistency, load progression, and recovery; general health or general fitness should stay practical and broad.
-- If profileContext is missing, explicitly keep the advice general and suggest completing direction/discipline in profile for sharper AI guidance.
-- Surface abnormalities clearly when evidence supports them: sudden adherence drop, empty current week, bodyweight outlier, volume cliff, muscle-group imbalance, repeated high-RPE misses, or unusually easy completed work.
-- Do not overstate weak evidence. If one data point may be a logging outlier, call it a data-quality issue and suggest how to verify.
-- For muscleBalance, compare recent per-muscle volume and call out meaningful push/pull or upper/lower imbalance.
-- For effortGap, reason from sets where actual work missed plan at high RPE, or hit plan at low RPE.
-- Prioritize useful advice over describing charts. Tell the user what to change next.
-- recommendation.actions must be concrete coaching steps, not generic summaries.
-- recommendation.actions must be ordered by priority and must be actions the user can do this week.
-- Each section.detail should read as observation + evidence + coaching implication, in 1-3 short sentences.
-- planReview must call out likely plan mistakes from the available evidence: empty plan, low adherence, too much/too little volume, poor muscle balance, high RPE misses, or missing recovery signals. If no mistake is visible, say the plan looks acceptable and suggest what to keep monitoring.
+- Tone: friendly coach, direct, motivating, no fluff.
+- If data is missing or sparse, tell the user exactly what to log next and why it will unlock better guidance.
+- Treat profileContext.developmentDirection and profileContext.trainingDiscipline as the user's chosen direction. Use them as the main lens for every tip, risk, plan fix, and next action.
+- Tailor tips by direction/discipline: strength or powerlifting needs squat/bench/deadlift specificity, intensity management, and top-set/back-off logic; hypertrophy or bodybuilding needs weekly set distribution, proximity to failure, and muscle-balance bias; fat loss or recomposition needs adherence, bodyweight trend, protein/recovery, and strength retention; endurance or running needs consistency, load progression, and recovery; general health or general fitness should stay practical and broad.
+- If profileContext is missing, keep tips general and tell the user that completing direction/discipline in their profile will sharpen the guidance.
+- Surface abnormalities as something to act on: sudden adherence drop, empty current week, bodyweight outlier, volume cliff, muscle-group imbalance, repeated high-RPE misses, or unusually easy completed work. For each, give the fix.
+- Do not overstate weak evidence. If one data point may be a logging outlier, call it a data-quality issue and tell the user how to verify it.
+- For muscleBalance, compare recent per-muscle volume, call out the meaningful push/pull or upper/lower imbalance, and tell the user which muscle to add sets to and roughly how many.
+- For effortGap, reason from sets where actual work missed plan at high RPE (reduce load or fatigue) or hit plan at low RPE (add load or reps). Give the adjustment.
+- recommendation.actions must be concrete coaching steps ordered by priority, each something the user can do this week.
+- planReview.suggestions must be concrete improvements to the plan, not restatements of the mistakes.
+- planReview must call out likely plan mistakes from the available evidence: empty plan, low adherence, too much/too little volume, poor muscle balance, high RPE misses, or missing recovery signals. If no mistake is visible, say the plan looks acceptable and tell the user the one thing to push next to keep progressing.
 - {{languageInstruction}}
 
-Return JSON ONLY matching this exact shape (no markdown, no commentary):
+Return JSON ONLY matching this exact shape (no markdown, no commentary). Each detail is 2-4 sentences and must end with an actionable tip:
 {
-  "trainingAdherence":  { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "bodyMetrics":        { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "volumeStrength":     { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "muscleBalance":      { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "effortGap":          { "headline": "string (<= 90 chars)", "detail": "string (1-3 sentences)" },
-  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string", "string", "string (max 3, each <= 120 chars)"] },
-  "planReview":         { "headline": "string (<= 90 chars)", "mistakes": ["string (max 3, each <= 140 chars)"], "suggestions": ["string (max 3, each <= 140 chars)"] }
+  "trainingAdherence":  { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
+  "bodyMetrics":        { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
+  "volumeStrength":     { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
+  "muscleBalance":      { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
+  "effortGap":          { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
+  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string (3-5 items, each <= 160 chars, an action to do this week)"] },
+  "planReview":         { "headline": "string (<= 90 chars)", "mistakes": ["string (max 4, each <= 160 chars)"], "suggestions": ["string (max 4, each <= 160 chars, a concrete fix)"] }
 }
 """;
 
@@ -180,6 +181,57 @@ Plan snapshot:
 
         var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.25, cancellationToken);
         return new PlanBalanceAiResult(json);
+    }
+
+    public async Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(
+        PlanProgressInsightAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var languageInstruction = request.Language == "vi"
+            ? "Respond ENTIRELY in Vietnamese."
+            : "Respond entirely in English.";
+
+        var systemPrompt = $$"""
+You are Xenoh Coach reviewing ONE specific training plan's RECENT training, week over week.
+You are given a trend snapshot for a single plan. IMPORTANT: it only covers the recent weeks the user has
+actually trained — weeks not trained yet are already excluded. recentWeeks holds the window aggregates,
+and weeklyCompletion / weeklyVolume hold the per-week recent trend. Judge whether the user's recent training
+on this plan is moving them forward.
+
+This is NOT an account-wide review and NOT a review of the whole plan duration. Do not comment on weeks the user
+has not reached yet, and do not call the plan "behind" just because future weeks exist. Focus only on the recent
+trained weeks: is training progressing week over week, stalling, or sliding back, and what should change next.
+
+Rules:
+- Center everything on the recent week-over-week trend in weeklyCompletion and weeklyVolume. Compare the latest weeks to the earlier weeks in the window (completion %, volume, score).
+- Be specific with numbers from the snapshot (week numbers, %, volume, RPE, sets).
+- Treat profileContext.developmentDirection and profileContext.trainingDiscipline as the user's goal and judge progress against it.
+- Decide a clear trajectory verdict, then give tips to keep or restore upward progress. Do not just describe the charts.
+- whatsWorking = what the recent trend shows the user should keep doing. focusAreas = what is limiting progress now. nextBlock = concrete actions for the coming weeks.
+- If there is too little recent training for a trend (recentWeeks.weeksTrained is 0 or 1, or little data), set trajectory to "TooEarly" and tell the user what to train/log to unlock a real trend read.
+- No medical claims or diagnoses. No invented data.
+- {{languageInstruction}}
+
+Return JSON ONLY matching this exact shape (no markdown, no commentary):
+{
+  "headline": "string (<= 90 chars, the trajectory verdict as a next step)",
+  "trajectory": "Improving|Flat|Declining|TooEarly",
+  "summary": "string (2-4 sentences on how this plan is trending and why)",
+  "whatsWorking": ["string (1-3 items, each <= 160 chars)"],
+  "focusAreas": ["string (1-3 items, each <= 160 chars)"],
+  "nextBlock": ["string (1-3 items, each <= 160 chars, an action for the coming weeks)"]
+}
+""";
+
+        var userPrompt = $"""
+Plan trend snapshot:
+```json
+{request.TrendSnapshotJson}
+```
+""";
+
+        var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.3, cancellationToken);
+        return new PlanProgressInsightAiResult(json);
     }
 
     public async Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(

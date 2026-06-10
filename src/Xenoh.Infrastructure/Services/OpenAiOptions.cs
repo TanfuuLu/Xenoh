@@ -9,7 +9,7 @@ public sealed class OpenAiOptions
     public string BaseUrl { get; init; } = "https://api.openai.com/v1";
     public int TimeoutSeconds { get; init; } = 60;
     public int MaxChatCompletionTokens { get; init; } = 450;
-    public int MaxJsonCompletionTokens { get; init; } = 1200;
+    public int MaxJsonCompletionTokens { get; init; } = 1800;
 
     /// <summary>
     /// Larger budget for the AI starter-plan call, whose JSON (multiple days × exercises × notes)

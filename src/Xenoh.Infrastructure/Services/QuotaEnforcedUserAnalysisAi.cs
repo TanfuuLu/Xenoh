@@ -31,6 +31,14 @@ public sealed class QuotaEnforcedUserAnalysisAi(
         return await inner.ReviewPlanBalanceAsync(request, cancellationToken);
     }
 
+    public async Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(
+        PlanProgressInsightAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        await quotaService.ConsumeAsync("plan-progress", cancellationToken);
+        return await inner.GeneratePlanProgressInsightAsync(request, cancellationToken);
+    }
+
     public async Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(
         CoachClientBriefAiRequest request,
         CancellationToken cancellationToken)
