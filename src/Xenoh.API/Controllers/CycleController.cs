@@ -7,6 +7,7 @@ using Xenoh.Application.Features.Cycle.Commands.DeleteCycleDailyLog;
 using Xenoh.Application.Features.Cycle.Commands.UpdateCycleSettings;
 using Xenoh.Application.Features.Cycle.Commands.UpsertCycleDailyLog;
 using Xenoh.Application.Features.Cycle.Queries.GetClientCycleOverview;
+using Xenoh.Application.Features.Cycle.Queries.GetCycleDayMarkers;
 using Xenoh.Application.Features.Cycle.Queries.GetCycleInsight;
 using Xenoh.Application.Features.Cycle.Queries.GetCycleLogs;
 using Xenoh.Application.Features.Cycle.Queries.GetCycleOverview;
@@ -94,6 +95,20 @@ public sealed class CycleController(IMediator mediator) : ControllerBase
         try
         {
             return Ok(await mediator.Send(command, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("day-markers")]
+    public async Task<IActionResult> GetDayMarkers(
+        [FromQuery] DateOnly from, [FromQuery] DateOnly to, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetCycleDayMarkersQuery(from, to), ct));
         }
         catch (InvalidOperationException ex)
         {

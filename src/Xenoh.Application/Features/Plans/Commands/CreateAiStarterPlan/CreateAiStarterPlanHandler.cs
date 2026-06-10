@@ -3,6 +3,7 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.Cycle.Common;
 using Xenoh.Application.Features.Plans.Commands.CreatePlan;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -87,6 +88,12 @@ public sealed class CreateAiStarterPlanHandler(
             .FirstOrDefaultAsync(cancellationToken);
 
         var language = string.Equals(request.Language, "vi", StringComparison.OrdinalIgnoreCase) ? "vi" : "en";
+
+        // For female users, project menstrual / pre-menstrual day spans across the plan
+        // range so the AI can periodize training around the cycle. Null for non-female users.
+        var cycleContext = await CycleContextBuilder.TryBuildAsync(
+            db, userId, request.StartDate, request.EndDate, cancellationToken);
+
         var questionnaire = new
         {
             ProfileContext = profileContext,
@@ -98,7 +105,8 @@ public sealed class CreateAiStarterPlanHandler(
             request.Equipment,
             request.StartDate,
             request.EndDate,
-            request.Description
+            request.Description,
+            CycleContext = cycleContext
         };
 
         var aiResult = await ai.GenerateStarterPlanAsync(

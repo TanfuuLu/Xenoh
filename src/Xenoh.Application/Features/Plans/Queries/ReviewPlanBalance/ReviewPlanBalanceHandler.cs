@@ -2,6 +2,7 @@ using System.Text.Json;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Cycle.Common;
 
 namespace Xenoh.Application.Features.Plans.Queries.ReviewPlanBalance;
 
@@ -91,6 +92,13 @@ public sealed class ReviewPlanBalanceHandler(
             .OrderByDescending(x => x.Sets)
             .ToList();
 
+        // Only surface the owner's cycle data on self-review. A coach reviewing a client's
+        // plan must not see menstrual/pre-menstrual dates (that data is gated by the separate
+        // ShareWithCoach opt-in), so we omit cycle context unless the requester is the owner.
+        var cycleContext = plan.OwnerId == userId
+            ? await CycleContextBuilder.TryBuildAsync(db, userId, plan.StartDate, plan.EndDate, cancellationToken)
+            : null;
+
         var snapshot = new
         {
             plan.Name,
@@ -98,6 +106,7 @@ public sealed class ReviewPlanBalanceHandler(
             plan.EndDate,
             PlanType = plan.PlanType.ToString(),
             ProfileContext = plan.OwnerProfile,
+            CycleContext = cycleContext,
             TotalExercises = exercises.Count,
             MuscleTotals = muscleTotals,
             Weeks = plan.Weeks

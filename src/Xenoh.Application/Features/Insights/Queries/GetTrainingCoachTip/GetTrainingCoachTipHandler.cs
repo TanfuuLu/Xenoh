@@ -5,6 +5,7 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Cycle.Common;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -18,7 +19,7 @@ public sealed class GetTrainingCoachTipHandler(
 ) : IRequestHandler<GetTrainingCoachTipQuery, TrainingCoachTipResponse>
 {
     private const string FeatureName = "training-coach-tip";
-    private const int PromptVersion = 1;
+    private const int PromptVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -228,12 +229,17 @@ public sealed class GetTrainingCoachTipHandler(
             .Take(5)
             .ToListAsync(ct);
 
+        // Cycle context for female users (next 2 weeks). Null for non-female users.
+        var cycleContext = await CycleContextBuilder.TryBuildAsync(
+            db, userId, today, today.AddDays(14), ct);
+
         return new
         {
             AsOf = today,
             PromptVersion,
             IsSparse = activePlan is null && recentSets.Count == 0,
             ProfileContext = profile,
+            CycleContext = cycleContext,
             ActivePlan = planSummary,
             CoachingDecision = BuildCoachingDecision(activePlan, recentSets, nutritionLogs, profile.TrainingDiscipline),
             Recent28Days = new

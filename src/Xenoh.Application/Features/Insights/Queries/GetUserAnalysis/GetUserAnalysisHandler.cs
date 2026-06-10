@@ -5,6 +5,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Cycle.Common;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
@@ -16,7 +17,7 @@ public sealed class GetUserAnalysisHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
-    private const int AnalysisPromptVersion = 3;
+    private const int AnalysisPromptVersion = 4;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -367,6 +368,11 @@ public sealed class GetUserAnalysisHandler(
             .Take(30)
             .ToListAsync(ct);
 
+        // Cycle context for female users (next ~5 weeks) so adherence/recovery advice
+        // can account for menstrual and pre-menstrual windows. Null for non-female users.
+        var cycleContext = await CycleContextBuilder.TryBuildAsync(
+            db, userId, today, today.AddDays(35), ct);
+
         return new Snapshot(
             today,
             new ProfileContext(
@@ -376,6 +382,7 @@ public sealed class GetUserAnalysisHandler(
                 user.DevelopmentDirection?.ToString(),
                 user.TrainingDiscipline?.ToString()
             ),
+            cycleContext,
             bw,
             workoutDates.Count,
             planSnap,
@@ -400,6 +407,11 @@ public sealed class GetUserAnalysisHandler(
             language,
             snapshot.AsOf,
             snapshot.ProfileContext,
+            CycleSig = snapshot.CycleContext is null
+                ? null
+                : $"{snapshot.CycleContext.CurrentPhase}:{snapshot.CycleContext.CycleDay}:{snapshot.CycleContext.NeedsData}:" +
+                  $"{string.Join(',', snapshot.CycleContext.MenstrualSpans.Select(s => $"{s.Start:O}-{s.End:O}"))}|" +
+                  $"{string.Join(',', snapshot.CycleContext.PreMenstrualSpans.Select(s => $"{s.Start:O}-{s.End:O}"))}",
             snapshot.Plan,
             snapshot.CurrentWeek,
             snapshot.PreviousWeek,
@@ -421,6 +433,7 @@ public sealed class GetUserAnalysisHandler(
     private sealed record Snapshot(
         DateOnly AsOf,
         ProfileContext ProfileContext,
+        AiCycleContext? CycleContext,
         IReadOnlyList<BodyweightPoint> RecentBodyweight,
         int Last30DaysWorkoutDates,
         PlanSnapshot? Plan,

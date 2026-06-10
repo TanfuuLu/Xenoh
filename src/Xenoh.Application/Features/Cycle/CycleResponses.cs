@@ -36,6 +36,20 @@ public sealed record CycleSettingsResponse(
     int? AveragePeriodLengthOverride,
     bool ShareWithCoach);
 
+/// <summary>A single plan/calendar day annotated with its cycle marker.</summary>
+public sealed record CycleDayMarkerResponse(DateOnly Date, string Marker);
+
+/// <summary>
+/// Menstrual / pre-menstrual day markers across a requested date window, used to overlay
+/// cycle awareness onto training plans. Only non-empty markers are returned in <see cref="Days"/>.
+/// </summary>
+public sealed record CycleDayMarkersResponse(
+    DateOnly From,
+    DateOnly To,
+    int PreMenstrualWindowDays,
+    bool NeedsData,
+    IReadOnlyList<CycleDayMarkerResponse> Days);
+
 /// <summary>
 /// Coach-facing summary: phase, predictions, and the client's most frequent recent symptoms.
 /// Deliberately excludes per-day flow, mood, energy, and free-text notes (kept private).

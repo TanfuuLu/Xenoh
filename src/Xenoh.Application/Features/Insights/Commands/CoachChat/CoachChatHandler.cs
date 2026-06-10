@@ -2,6 +2,7 @@ using System.Text.Json;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Cycle.Common;
 
 namespace Xenoh.Application.Features.Insights.Commands.CoachChat;
 
@@ -165,10 +166,16 @@ public sealed class CoachChatHandler(
             .Where(l => l.UserId == userId && l.Date >= since)
             .ToListAsync(ct);
 
+        // Cycle context for female users (next 3 weeks) so the coach can answer
+        // period-aware training/recovery questions. Null for non-female users.
+        var cycleContext = await CycleContextBuilder.TryBuildAsync(
+            db, userId, today, today.AddDays(21), ct);
+
         return new
         {
             AsOf = today,
             Profile = profile,
+            CycleContext = cycleContext,
             LatestBodyweightKg = latestBodyweight,
             ActivePlan = activePlan is null ? null : new
             {

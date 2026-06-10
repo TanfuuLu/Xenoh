@@ -17,6 +17,21 @@ public sealed class OpenAiUserAnalysisAi(
 {
     private readonly OpenAiOptions _options = optionsAccessor.Value;
 
+    /// <summary>
+    /// Reusable rule appended to coaching prompts so advice is cycle-aware for female users.
+    /// Safe no-op when the snapshot has no cycleContext (non-female users): the model is told
+    /// to stay silent about the cycle in that case.
+    /// </summary>
+    private const string CycleGuidance =
+        "- MENSTRUAL CYCLE AWARENESS: snapshot.cycleContext is present ONLY for female users. " +
+        "When it is present and cycleContext.needsData is false, factor the menstrual cycle into your coaching using " +
+        "cycleContext.currentPhase, cycleDay, menstrualSpans (period days), and preMenstrualSpans (late-luteal days). " +
+        "Expect higher training capacity in the follicular/ovulatory window (a good time to progress loads and add volume) " +
+        "and reduced capacity, lower energy, or symptom load on pre-menstrual and menstrual days (favor autoregulation, " +
+        "lighter loads, recovery, sleep, and protein/iron-supporting nutrition). Keep it supportive and actionable, " +
+        "never diagnose, and do not claim medical certainty. " +
+        "If cycleContext is absent or cycleContext.needsData is true, do NOT mention the menstrual cycle at all.";
+
     public async Task<UserAnalysisAiResult> GenerateAsync(
         UserAnalysisAiRequest request,
         CancellationToken cancellationToken)
@@ -48,6 +63,7 @@ Rules:
 - recommendation.actions must be concrete coaching steps ordered by priority, each something the user can do this week.
 - planReview.suggestions must be concrete improvements to the plan, not restatements of the mistakes.
 - planReview must call out likely plan mistakes from the available evidence: empty plan, low adherence, too much/too little volume, poor muscle balance, high RPE misses, or missing recovery signals. If no mistake is visible, say the plan looks acceptable and tell the user the one thing to push next to keep progressing.
+{{CycleGuidance}}
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape (no markdown, no commentary). Each detail is 2-4 sentences and must end with an actionable tip:
@@ -98,6 +114,12 @@ Rules:
 - Use conservative beginner/intermediate loading: plannedWeight may be null when unknown.
 - Keep each workout 4-7 exercises.
 - Use DayOfWeek enum names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday.
+- MENSTRUAL CYCLE AWARENESS: questionnaire.cycleContext is present ONLY for female users. When it is present and cycleContext.needsData is false, periodize the plan around the cycle using cycleContext.menstrualSpans (period days) and cycleContext.preMenstrualSpans (the luteal days just before a period):
+  * Treat the follicular phase (the days after a period ends up to ovulation, roughly mid-cycle) as the window to push intensity and add volume / progress loads.
+  * On pre-menstrual (late-luteal) days, slightly reduce expected intensity and avoid scheduling the heaviest top sets or new maxes; keep volume moderate and recovery-friendly.
+  * On menstrual (period) days, prioritize lower-impact, autoregulated work and clearly lighter loads; do not schedule the most demanding sessions here. It is fine if a hard training day still lands here — the plan repeats a weekly pattern across dates — but bias the focus labels and notes to be supportive.
+  * Add a short, supportive cycle note to exercise.notes (or the day focus) for days that fall on menstrual or pre-menstrual spans, e.g. "Period day — lighter loads, listen to your body" or "Pre-menstrual — keep intensity moderate, skip new PRs". Keep it practical and non-medical; never diagnose.
+  * If cycleContext is absent or cycleContext.needsData is true, do NOT mention the menstrual cycle at all and program normally.
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape:
@@ -160,6 +182,7 @@ Rules:
 - Do not diagnose injuries or make medical claims.
 - If the plan is empty or sparse, say so and recommend what to add.
 - Keep warnings non-blocking and coach-like.
+{{CycleGuidance}}
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape:
@@ -303,6 +326,7 @@ Rules:
 - Do not merely restate the dashboard. Decide whether to progress, repeat, deload, change exercise emphasis, improve adherence, or improve nutrition support.
 - category must be one of: Technique, Progression, Recovery, Adherence, Volume, Powerlifting, General.
 - confidence must be Low when data is sparse or weak, Moderate for useful but limited evidence, High only when multiple snapshot signals support the tip.
+{{CycleGuidance}}
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape:
@@ -350,6 +374,7 @@ Rules:
 - If the context is sparse, say what the user should log so you can help better. Never invent data that is not in the context.
 - Do not claim to be a real named coach or a doctor.
 - Plain conversational text (light markdown like bullets/bold is fine). Do NOT return JSON.
+{{CycleGuidance}}
 - {{languageInstruction}}
 
 trainingContext:
