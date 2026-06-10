@@ -21,6 +21,14 @@ public static class CyclePredictionLoader
             .Select(l => new { l.Date, l.Flow })
             .ToListAsync(ct);
 
+        // Days the user logged but with NO flow ("normal" days). Used to detect an
+        // early-ended period so the calendar re-predicts the remaining days.
+        var noFlowDates = await db.CycleDailyLogs
+            .AsNoTracking()
+            .Where(l => l.UserId == userId && l.Flow == null && l.Date >= since && l.Date <= today)
+            .Select(l => l.Date)
+            .ToListAsync(ct);
+
         var settings = await db.CycleSettings
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == userId, ct);
@@ -31,6 +39,7 @@ public static class CyclePredictionLoader
             fd,
             settings?.AverageCycleLengthOverride,
             settings?.AveragePeriodLengthOverride,
-            today);
+            today,
+            noFlowDates);
     }
 }

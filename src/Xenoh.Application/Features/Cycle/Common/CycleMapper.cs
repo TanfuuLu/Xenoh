@@ -47,6 +47,7 @@ public static class CycleMapper
             DaysLate: p.DaysLate,
             LastPeriodStart: p.LastPeriodStart,
             NextPeriodStart: p.NextPeriodStart,
+            CurrentPeriodPredictedEnd: p.CurrentPeriodPredictedEnd,
             PredictedPeriods: p.PredictedPeriods.Select(x => new PredictedPeriodResponse(x.Start, x.End)).ToList(),
             OvulationDates: p.OvulationDates,
             FertileWindows: p.FertileWindows.Select(x => new FertileWindowResponse(x.Start, x.End)).ToList(),

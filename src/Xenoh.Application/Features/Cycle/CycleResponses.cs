@@ -19,6 +19,7 @@ public sealed record CycleOverviewResponse(
     int? DaysLate,
     DateOnly? LastPeriodStart,
     DateOnly? NextPeriodStart,
+    DateOnly? CurrentPeriodPredictedEnd,
     IReadOnlyList<PredictedPeriodResponse> PredictedPeriods,
     IReadOnlyList<DateOnly> OvulationDates,
     IReadOnlyList<FertileWindowResponse> FertileWindows,

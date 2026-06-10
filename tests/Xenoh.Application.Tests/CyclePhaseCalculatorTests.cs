@@ -226,4 +226,76 @@ public class CyclePhaseCalculatorTests
         var firstPeriod = result.PredictedPeriods[0];
         result.OvulationDates[0].Should().Be(firstPeriod.Start.AddDays(-14));
     }
+
+    // Builds 5 past 5-day periods + a current period with only `currentFlowDays` days logged.
+    private static List<CycleFlowDay> HistoryWithShortCurrentPeriod(DateOnly lastStart, int currentFlowDays)
+    {
+        var days = new List<CycleFlowDay>();
+        for (var c = 1; c <= 5; c++)
+        {
+            var ps = lastStart.AddDays(-28 * c);
+            for (var d = 0; d < 5; d++)
+                days.Add(new CycleFlowDay(ps.AddDays(d), FlowIntensity.Medium));
+        }
+        for (var d = 0; d < currentFlowDays; d++)
+            days.Add(new CycleFlowDay(lastStart.AddDays(d), FlowIntensity.Medium));
+        return days;
+    }
+
+    [Fact]
+    public void WithoutNormalLog_StillPredictsAveragePeriodLength()
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = HistoryWithShortCurrentPeriod(lastStart, currentFlowDays: 3);
+        var today = lastStart.AddDays(3); // day 4, no flow logged today
+
+        var result = CyclePhaseCalculator.Calculate(days, null, null, today);
+
+        result.EffectivePeriodLengthDays.Should().Be(5);
+        // No "normal" day logged → still predicts the full average period window.
+        result.Phase.Should().Be(CyclePhase.Menstrual);
+        result.CurrentPeriodPredictedEnd.Should().Be(lastStart.AddDays(4));
+    }
+
+    [Fact]
+    public void EarlyEndedPeriod_LoggedNormal_RepredictsAsFollicular()
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = HistoryWithShortCurrentPeriod(lastStart, currentFlowDays: 3);
+        var today = lastStart.AddDays(3); // day 4
+        var normalDays = new[] { today }; // user logged a no-flow "normal" day today
+
+        var result = CyclePhaseCalculator.Calculate(days, null, null, today, normalDays);
+
+        // Period ended at the last logged flow day → remaining days re-predict as follicular,
+        // and ovulation / next period shift EARLIER than the start-only estimate.
+        result.CurrentPeriodPredictedEnd.Should().Be(lastStart.AddDays(2));
+        result.Phase.Should().Be(CyclePhase.Follicular);
+        result.OvulationDates[0].Should().Be(lastStart.AddDays(12));   // vs 14 for a normal period
+        result.NextPeriodStart.Should().Be(lastStart.AddDays(26));     // vs 28 for a normal period
+    }
+
+    [Fact]
+    public void LongerPeriodThanPredicted_PushesOvulationAndNextPeriodLater()
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        // 5 past 5-day periods + a current period still bleeding on day 8 (longer than avg).
+        var days = new List<CycleFlowDay>();
+        for (var c = 1; c <= 5; c++)
+        {
+            var ps = lastStart.AddDays(-28 * c);
+            for (var d = 0; d < 5; d++)
+                days.Add(new CycleFlowDay(ps.AddDays(d), FlowIntensity.Medium));
+        }
+        for (var d = 0; d < 8; d++)
+            days.Add(new CycleFlowDay(lastStart.AddDays(d), FlowIntensity.Medium));
+        var today = lastStart.AddDays(8); // day 9, just after the long period
+
+        // Override period length to 5 so the average doesn't absorb the long current period.
+        var result = CyclePhaseCalculator.Calculate(days, cycleLengthOverride: 28, periodLengthOverride: 5, today);
+
+        result.CurrentPeriodPredictedEnd.Should().Be(lastStart.AddDays(7)); // follows actual flow
+        result.OvulationDates[0].Should().Be(lastStart.AddDays(17));        // vs 14 for a normal period
+        result.NextPeriodStart.Should().Be(lastStart.AddDays(31));          // vs 28 for a normal period
+    }
 }

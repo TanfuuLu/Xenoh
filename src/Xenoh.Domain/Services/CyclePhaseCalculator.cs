@@ -34,7 +34,8 @@ public sealed record CyclePrediction(
     IReadOnlyList<DateOnly> OvulationDates,
     IReadOnlyList<FertileWindow> FertileWindows,
     string Confidence,
-    bool NeedsData);
+    bool NeedsData,
+    DateOnly? CurrentPeriodPredictedEnd = null);
 
 /// <summary>
 /// Pure, deterministic calendar-method cycle prediction. No dependencies, no I/O.
@@ -60,7 +61,8 @@ public static class CyclePhaseCalculator
         IEnumerable<CycleFlowDay> flowDays,
         int? cycleLengthOverride,
         int? periodLengthOverride,
-        DateOnly today)
+        DateOnly today,
+        IEnumerable<DateOnly>? noFlowLogDates = null)
     {
         var ordered = flowDays
             .GroupBy(f => f.Date)
@@ -147,19 +149,43 @@ public static class CyclePhaseCalculator
                 NeedsData: true);
         }
 
-        // Predicted future period starts (next 3 cycles from the last known start).
+        var cycleDay = daysSinceLastStart + 1; // day 1 == last period start
+
+        // Effective end of the CURRENT period. Normally the average period length from the
+        // start (so logging day 1 auto-fills the rest), but it follows the actual logged flow
+        // when the period runs long ("not done yet"), and collapses to the last flow day when
+        // the user ends early and logs a "normal" (no-flow) day inside the window.
+        var currentFlowEnd = lastStart.AddDays(periods[^1].Length - 1);
+        var avgPeriodEnd = lastStart.AddDays(effectivePeriod - 1);
+        var currentPeriodPredictedEnd = avgPeriodEnd > currentFlowEnd ? avgPeriodEnd : currentFlowEnd;
+
+        if (noFlowLogDates is not null && currentFlowEnd < avgPeriodEnd)
+        {
+            var endedEarly = noFlowLogDates.Any(d => d > currentFlowEnd && d <= avgPeriodEnd);
+            if (endedEarly)
+                currentPeriodPredictedEnd = currentFlowEnd;
+        }
+
+        // Re-predict the rest of the cycle from the ACTUAL current period rather than only its
+        // start: anchor ovulation to the real period end plus a fixed follicular gap, so a
+        // shorter/longer-than-predicted period shifts ovulation, the fertile window, and the
+        // next period. The gap is chosen so a normal-length period reproduces the standard
+        // calendar estimate (ovulation ≈ start + cycle − 14, next period ≈ start + cycle).
+        var follicularGap = Math.Max(2, effectiveCycle - 13 - effectivePeriod);
+        var currentOvulation = currentPeriodPredictedEnd.AddDays(follicularGap);
+        var firstNextStart = currentOvulation.AddDays(14);
+
         var predictedPeriods = new List<PredictedPeriod>();
         var ovulationDates = new List<DateOnly>();
         var fertileWindows = new List<FertileWindow>();
 
         DateOnly? nextStart = null;
-        for (var n = 1; n <= 4; n++)
+        for (var n = 0; n < 4; n++)
         {
-            var start = lastStart.AddDays(effectiveCycle * n);
+            var start = firstNextStart.AddDays(effectiveCycle * n);
             var end = start.AddDays(effectivePeriod - 1);
             predictedPeriods.Add(new PredictedPeriod(start, end));
 
-            // Ovulation 14 days before this predicted start; fertile window around it.
             var ovulation = start.AddDays(-14);
             ovulationDates.Add(ovulation);
             fertileWindows.Add(new FertileWindow(ovulation.AddDays(-5), ovulation.AddDays(1)));
@@ -170,31 +196,28 @@ public static class CyclePhaseCalculator
 
         nextStart ??= predictedPeriods[0].Start;
 
-        // Current phase.
-        var cycleDay = daysSinceLastStart + 1; // day 1 == last period start
-        var ovulationDay = effectiveCycle - 14; // cycle-day index of ovulation
-
+        // Current phase, derived from the (re-predicted) period end, ovulation, and next start.
         CyclePhase phase;
         int? daysLate = null;
 
         var loggedFlowToday = ordered.Any(f => f.Date == today);
-        var withinPeriod = cycleDay <= effectivePeriod;
+        var withinPeriod = today >= lastStart && today <= currentPeriodPredictedEnd;
 
         if (loggedFlowToday || withinPeriod)
         {
             phase = CyclePhase.Menstrual;
         }
-        else if (cycleDay > effectiveCycle)
+        else if (today >= firstNextStart)
         {
-            // Period is late — stay luteal and surface how late.
+            // Next period is due/overdue but no new flow logged — stay luteal, surface lateness.
             phase = CyclePhase.Luteal;
-            daysLate = cycleDay - effectiveCycle;
+            daysLate = today.DayNumber - firstNextStart.DayNumber + 1;
         }
-        else if (cycleDay < ovulationDay - 1)
+        else if (today < currentOvulation.AddDays(-1))
         {
             phase = CyclePhase.Follicular;
         }
-        else if (cycleDay <= ovulationDay + 1)
+        else if (today <= currentOvulation.AddDays(1))
         {
             phase = CyclePhase.Ovulation;
         }
@@ -223,7 +246,8 @@ public static class CyclePhaseCalculator
             OvulationDates: ovulationDates,
             FertileWindows: fertileWindows,
             Confidence: confidence,
-            NeedsData: false);
+            NeedsData: false,
+            CurrentPeriodPredictedEnd: currentPeriodPredictedEnd);
     }
 
     private sealed record DetectedPeriod(DateOnly Start, int Length);
