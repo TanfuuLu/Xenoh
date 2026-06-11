@@ -19,7 +19,7 @@ public sealed class GetTrainingCoachTipHandler(
 ) : IRequestHandler<GetTrainingCoachTipQuery, TrainingCoachTipResponse>
 {
     private const string FeatureName = "training-coach-tip";
-    private const int PromptVersion = 2;
+    private const int PromptVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

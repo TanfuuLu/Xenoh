@@ -17,7 +17,7 @@ public sealed class GetUserAnalysisHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
-    private const int AnalysisPromptVersion = 4;
+    private const int AnalysisPromptVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -407,11 +407,7 @@ public sealed class GetUserAnalysisHandler(
             language,
             snapshot.AsOf,
             snapshot.ProfileContext,
-            CycleSig = snapshot.CycleContext is null
-                ? null
-                : $"{snapshot.CycleContext.CurrentPhase}:{snapshot.CycleContext.CycleDay}:{snapshot.CycleContext.NeedsData}:" +
-                  $"{string.Join(',', snapshot.CycleContext.MenstrualSpans.Select(s => $"{s.Start:O}-{s.End:O}"))}|" +
-                  $"{string.Join(',', snapshot.CycleContext.PreMenstrualSpans.Select(s => $"{s.Start:O}-{s.End:O}"))}",
+            CycleSig = snapshot.CycleContext,
             snapshot.Plan,
             snapshot.CurrentWeek,
             snapshot.PreviousWeek,

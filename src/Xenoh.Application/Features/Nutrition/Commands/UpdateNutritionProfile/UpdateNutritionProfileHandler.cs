@@ -8,16 +8,13 @@ namespace Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionProfile;
 
 public sealed class UpdateNutritionProfileHandler(
     INutritionRepository nutritionRepo,
-    ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdateNutritionProfileCommand, NutritionProfileResponse>
 {
     public async ValueTask<NutritionProfileResponse> Handle(
         UpdateNutritionProfileCommand request, CancellationToken cancellationToken)
     {
-        var callerId = currentUser.UserId;
-        var userId = request.UserId ?? callerId;
-        await EnsureAccessAsync(callerId, userId, cancellationToken);
+        var userId = currentUser.UserId;
 
         var profile = await nutritionRepo.GetProfileAsync(userId, cancellationToken);
         if (profile is null)
@@ -36,14 +33,5 @@ public sealed class UpdateNutritionProfileHandler(
 
         await nutritionRepo.SaveChangesAsync(cancellationToken);
         return GetNutritionSummaryHandler.ToProfileResponse(profile);
-    }
-
-    private async Task EnsureAccessAsync(Guid callerId, Guid userId, CancellationToken ct)
-    {
-        if (callerId == userId) return;
-
-        var hasRelationship = await coachClientRepo.HasActiveRelationshipAsync(callerId, userId, ct);
-        if (!hasRelationship)
-            throw new UnauthorizedAccessException("You do not have access to edit this user's nutrition profile.");
     }
 }

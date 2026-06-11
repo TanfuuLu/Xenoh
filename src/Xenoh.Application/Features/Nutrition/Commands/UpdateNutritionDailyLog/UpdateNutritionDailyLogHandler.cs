@@ -8,16 +8,13 @@ namespace Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionDailyLog;
 
 public sealed class UpdateNutritionDailyLogHandler(
     INutritionRepository nutritionRepo,
-    ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<UpdateNutritionDailyLogCommand, NutritionDailyLogResponse>
 {
     public async ValueTask<NutritionDailyLogResponse> Handle(
         UpdateNutritionDailyLogCommand request, CancellationToken cancellationToken)
     {
-        var callerId = currentUser.UserId;
-        var userId = request.UserId ?? callerId;
-        await EnsureAccessAsync(callerId, userId, cancellationToken);
+        var userId = currentUser.UserId;
 
         var log = await nutritionRepo.GetDailyLogAsync(userId, request.Date, cancellationToken);
         if (log is null)
@@ -35,14 +32,5 @@ public sealed class UpdateNutritionDailyLogHandler(
 
         await nutritionRepo.SaveChangesAsync(cancellationToken);
         return GetNutritionSummaryHandler.ToDailyLogResponse(log);
-    }
-
-    private async Task EnsureAccessAsync(Guid callerId, Guid userId, CancellationToken ct)
-    {
-        if (callerId == userId) return;
-
-        var hasRelationship = await coachClientRepo.HasActiveRelationshipAsync(callerId, userId, ct);
-        if (!hasRelationship)
-            throw new UnauthorizedAccessException("You do not have access to edit this user's nutrition logs.");
     }
 }

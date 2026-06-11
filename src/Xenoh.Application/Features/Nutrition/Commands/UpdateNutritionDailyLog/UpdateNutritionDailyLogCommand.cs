@@ -7,9 +7,6 @@ namespace Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionDailyLog;
 public sealed record UpdateNutritionDailyLogCommand : IRequest<NutritionDailyLogResponse>
 {
     [JsonIgnore]
-    public Guid? UserId { get; init; }
-
-    [JsonIgnore]
     public DateOnly Date { get; init; }
 
     [Range(0, 20000)]

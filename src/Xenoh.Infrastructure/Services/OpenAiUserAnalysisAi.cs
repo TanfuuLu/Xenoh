@@ -23,14 +23,27 @@ public sealed class OpenAiUserAnalysisAi(
     /// to stay silent about the cycle in that case.
     /// </summary>
     private const string CycleGuidance =
-        "- MENSTRUAL CYCLE AWARENESS: snapshot.cycleContext is present ONLY for female users. " +
-        "When it is present and cycleContext.needsData is false, factor the menstrual cycle into your coaching using " +
-        "cycleContext.currentPhase, cycleDay, menstrualSpans (period days), and preMenstrualSpans (late-luteal days). " +
-        "Expect higher training capacity in the follicular/ovulatory window (a good time to progress loads and add volume) " +
-        "and reduced capacity, lower energy, or symptom load on pre-menstrual and menstrual days (favor autoregulation, " +
-        "lighter loads, recovery, sleep, and protein/iron-supporting nutrition). Keep it supportive and actionable, " +
-        "never diagnose, and do not claim medical certainty. " +
-        "If cycleContext is absent or cycleContext.needsData is true, do NOT mention the menstrual cycle at all.";
+        """
+        - MENSTRUAL CYCLE AWARENESS: snapshot.cycleContext is present ONLY for female users.
+          When it is present and cycleContext.needsData is false, you MUST factor the menstrual cycle into the advice.
+          Calendar inputs: currentPhase, cycleDay, daysUntilNextPeriod, daysLate, menstrualSpans (period dates), preMenstrualSpans (late-luteal dates).
+          Logged-feel inputs (cycleContext.recentLogs, last 14 days, may be null): loggedDays, avgEnergyLevel and latestEnergyLevel (1=drained, 5=energized), dominantMood and latestMood (Great/Good/Neutral/Low/Irritable), topSymptoms (symptom + days logged), latestSymptoms, latestLogDate.
+          Per-phase coaching defaults:
+          * Menstrual (period days): expect reduced capacity. Favor lighter loads (~10-20% off top sets), lower-impact work, technique focus, longer warm-ups, sleep, hydration, and protein/iron-supporting nutrition. No PR attempts or new maxes; reassure that lighter sessions here still drive progress.
+          * Follicular (after the period, before mid-cycle): usually the highest training capacity of the cycle. This is the window to progress loads, add sets, attempt PRs, and place the hardest sessions.
+          * Ovulation (around mid-cycle): strength and energy often peak; great for top sets, but cue strict technique and complete warm-ups because high drive can mask fatigue.
+          * Luteal / pre-menstrual (preMenstrualSpans): capacity gradually declines and symptoms build. Keep intensity moderate, hold rather than progress loads, bias recovery and sleep; cravings and small bodyweight upticks from water retention are normal here - say so instead of flagging fat gain.
+          Symptom-responsive adjustments - recentLogs is how the user ACTUALLY feels and OVERRIDES the calendar defaults:
+          * avgEnergyLevel <= 2.5 or latestEnergyLevel <= 2: actively reduce this week's planned intensity/volume, suggest shorter sessions or an extra rest day, and frame it as smart autoregulation, not failure.
+          * avgEnergyLevel >= 4: do NOT hold training back because of the calendar - green-light normal or harder training even in the luteal phase.
+          * Frequent Cramps or BackPain: avoid heavy spinal loading on bad days; offer swaps (machines, hip thrust, glute work instead of heavy squat/deadlift) and gentle movement.
+          * Frequent Fatigue or Insomnia: lead with sleep advice; cut volume before cutting frequency.
+          * Frequent Bloating or BreastTenderness: offer comfort-based exercise swaps (less prone/high-impact work) without dropping the session.
+          * Cravings: steer nutrition tips toward protein-forward snacks and planned treats, never restriction or shame.
+          * dominantMood Low or Irritable: soften the tone, lower target pressure, highlight quick wins.
+          When cycleContext is present, anchor at least one concrete tip to the cycle (name the phase, an upcoming period date from menstrualSpans, or a logged symptom). Use "expected/predicted" for future dates, never certainty. Never diagnose; PMS-like patterns are coaching context, not medical conclusions.
+          If cycleContext is absent or cycleContext.needsData is true, do NOT mention the menstrual cycle at all.
+        """;
 
     public async Task<UserAnalysisAiResult> GenerateAsync(
         UserAnalysisAiRequest request,
@@ -119,6 +132,7 @@ Rules:
   * On pre-menstrual (late-luteal) days, slightly reduce expected intensity and avoid scheduling the heaviest top sets or new maxes; keep volume moderate and recovery-friendly.
   * On menstrual (period) days, prioritize lower-impact, autoregulated work and clearly lighter loads; do not schedule the most demanding sessions here. It is fine if a hard training day still lands here — the plan repeats a weekly pattern across dates — but bias the focus labels and notes to be supportive.
   * Add a short, supportive cycle note to exercise.notes (or the day focus) for days that fall on menstrual or pre-menstrual spans, e.g. "Period day — lighter loads, listen to your body" or "Pre-menstrual — keep intensity moderate, skip new PRs". Keep it practical and non-medical; never diagnose.
+  * Use cycleContext.recentLogs when present: if avgEnergyLevel <= 2.5, or Fatigue / Cramps appear in topSymptoms on several days, bias the whole plan slightly more conservative (one fewer hard set per exercise, an extra rest day) and say why in the plan notes.
   * If cycleContext is absent or cycleContext.needsData is true, do NOT mention the menstrual cycle at all and program normally.
 - {{languageInstruction}}
 
@@ -232,7 +246,9 @@ Rules:
 - Decide a clear trajectory verdict, then give tips to keep or restore upward progress. Do not just describe the charts.
 - whatsWorking = what the recent trend shows the user should keep doing. focusAreas = what is limiting progress now. nextBlock = concrete actions for the coming weeks.
 - If there is too little recent training for a trend (recentWeeks.weeksTrained is 0 or 1, or little data), set trajectory to "TooEarly" and tell the user what to train/log to unlock a real trend read.
+- If cycleContext is present, check whether weaker recent weeks overlap menstrualSpans or preMenstrualSpans before judging the trend: a dip that lines up with period or late-luteal days is expected, say so, and do not call the trajectory "Declining" on that evidence alone. Place the next block's hardest week in the follicular window when possible.
 - No medical claims or diagnoses. No invented data.
+{{CycleGuidance}}
 - {{languageInstruction}}
 
 Return JSON ONLY matching this exact shape (no markdown, no commentary):

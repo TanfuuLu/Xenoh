@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using Mediator;
 using Xenoh.Domain.Enums;
 
@@ -7,9 +6,6 @@ namespace Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionProfile;
 
 public sealed record UpdateNutritionProfileCommand : IRequest<NutritionProfileResponse>
 {
-    [JsonIgnore]
-    public Guid? UserId { get; init; }
-
     [Required]
     public ActivityLevel ActivityLevel { get; init; }
 

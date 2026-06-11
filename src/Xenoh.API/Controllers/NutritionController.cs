@@ -41,7 +41,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     {
         try
         {
-            return Ok(await mediator.Send(command with { UserId = null }, ct));
+            return Ok(await mediator.Send(command, ct));
         }
         catch (InvalidOperationException ex)
         {
@@ -71,7 +71,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
     {
         try
         {
-            return Ok(await mediator.Send(command with { Date = date, UserId = null }, ct));
+            return Ok(await mediator.Send(command with { Date = date }, ct));
         }
         catch (InvalidOperationException ex)
         {
@@ -114,27 +114,6 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
         }
     }
 
-    [HttpPut("clients/{clientId:guid}/profile")]
-    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
-    public async Task<IActionResult> UpdateClientProfile(
-        Guid clientId,
-        [FromBody] UpdateNutritionProfileCommand command,
-        CancellationToken ct)
-    {
-        try
-        {
-            return Ok(await mediator.Send(command with { UserId = clientId }, ct));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     [HttpGet("clients/{clientId:guid}/logs/{date}")]
     [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientDailyLog(Guid clientId, DateOnly date, CancellationToken ct)
@@ -147,28 +126,6 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
-        }
-    }
-
-    [HttpPut("clients/{clientId:guid}/logs/{date}")]
-    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
-    public async Task<IActionResult> UpdateClientDailyLog(
-        Guid clientId,
-        DateOnly date,
-        [FromBody] UpdateNutritionDailyLogCommand command,
-        CancellationToken ct)
-    {
-        try
-        {
-            return Ok(await mediator.Send(command with { UserId = clientId, Date = date }, ct));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
         }
     }
 

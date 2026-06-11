@@ -3,6 +3,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Cycle.Common;
 using Xenoh.Application.Features.Plans.Queries.GetPlanAnalytics;
 using Xenoh.Domain.Entities;
 
@@ -51,7 +52,12 @@ public sealed class GetPlanProgressInsightHandler(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        var snapshot = BuildTrendSnapshot(planName, user, analytics);
+        // Past 28 days explain recent weekly dips; the next 21 days inform the next-block scheduling.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var cycleContext = await CycleContextBuilder.TryBuildAsync(
+            db, userId, today.AddDays(-28), today.AddDays(21), cancellationToken);
+
+        var snapshot = BuildTrendSnapshot(planName, user, analytics, cycleContext);
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
 
         var aiResult = await ai.GeneratePlanProgressInsightAsync(
@@ -79,7 +85,8 @@ public sealed class GetPlanProgressInsightHandler(
     private static object BuildTrendSnapshot(
         string planName,
         ApplicationUser user,
-        PlanAnalyticsResponse a)
+        PlanAnalyticsResponse a,
+        AiCycleContext? cycleContext)
     {
         // The plan can span weeks the user has not trained yet (future weeks with 0 completion
         // and 0 volume). Those would distort the trajectory, so we drop the not-yet-trained tail
@@ -121,6 +128,7 @@ public sealed class GetPlanProgressInsightHandler(
                 developmentDirection = user.DevelopmentDirection?.ToString(),
                 trainingDiscipline = user.TrainingDiscipline?.ToString(),
             },
+            cycleContext,
             // Aggregates over the recent trained weeks only (excludes not-yet-trained weeks).
             recentWeeks = new
             {
