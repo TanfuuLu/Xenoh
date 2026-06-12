@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
-using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -9,19 +8,9 @@ namespace Xenoh.Infrastructure.Persistence.Repositories;
 
 public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerciseTemplateRepository
 {
-    public Task<PagedResponse<ExerciseTemplateResponse>> GetAllAsync(
+    public async Task<IReadOnlyList<ExerciseTemplateResponse>> GetAvailableForUserAsync(
         Guid userId,
         MuscleGroup? muscleGroup,
-        int pageNumber,
-        int pageSize,
-        CancellationToken ct) =>
-        GetAvailableForUserAsync(userId, muscleGroup, pageNumber, pageSize, ct);
-
-    public async Task<PagedResponse<ExerciseTemplateResponse>> GetAvailableForUserAsync(
-        Guid userId,
-        MuscleGroup? muscleGroup,
-        int pageNumber,
-        int pageSize,
         CancellationToken ct)
     {
         var query = db.ExerciseTemplates
@@ -31,15 +20,13 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
         if (muscleGroup is not null)
             query = query.Where(t => t.PrimaryMuscleGroup == muscleGroup);
 
-        var orderedQuery = query
-            .OrderBy(t => t.OwnerId == null ? 0 : 1)
+        // Custom (owned) templates first so a user's own exercises sit at the top
+        // of the list, ahead of the shared Xenoh library. The whole set is returned
+        // eagerly (no paging) — the library is bounded and filtered client-side.
+        return await query
+            .OrderBy(t => t.OwnerId == null ? 1 : 0)
             .ThenBy(t => t.PrimaryMuscleGroup)
-            .ThenBy(t => t.Name);
-
-        var totalCount = await orderedQuery.CountAsync(ct);
-        var items = await orderedQuery
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+            .ThenBy(t => t.Name)
             .Select(t => new ExerciseTemplateResponse(
                 t.Id,
                 t.Name,
@@ -52,13 +39,6 @@ public sealed class ExerciseTemplateRepository(ApplicationDbContext db) : IExerc
                 t.OwnerId,
                 t.ImageUrl))
             .ToListAsync(ct);
-
-        return new PagedResponse<ExerciseTemplateResponse>(
-            items,
-            pageNumber,
-            pageSize,
-            totalCount,
-            pageNumber * pageSize < totalCount);
     }
 
     public Task<ExerciseTemplate?> FindByIdAsync(Guid id, CancellationToken ct) =>

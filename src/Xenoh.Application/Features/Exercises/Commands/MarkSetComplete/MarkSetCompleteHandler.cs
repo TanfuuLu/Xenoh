@@ -36,6 +36,9 @@ public sealed class MarkSetCompleteHandler(
         if (plan.OwnerId != userId)
             throw new InvalidOperationException("Access denied.");
 
+        if (exercise.IsSkipped)
+            throw new InvalidOperationException("Cannot complete a skipped exercise.");
+
         if (set.IsCompleted)
         {
             var personalRecordWeight = await GetPersonalRecordWeight(userId, exercise.ExerciseTemplateId, cancellationToken);
@@ -75,7 +78,8 @@ public sealed class MarkSetCompleteHandler(
             .AnyAsync(e =>
                 e.DailyWorkoutId == dailyWorkout.Id &&
                 e.Id != exercise.Id &&
-                !e.IsCompleted,
+                !e.IsCompleted &&
+                !e.IsSkipped,
                 cancellationToken);
         bool allExercisesDone = allSetsDone && !hasIncompleteOtherExercise;
         var dayJustCompleted = !dayWasCompleted && allExercisesDone;

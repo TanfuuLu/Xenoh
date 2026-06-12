@@ -14,10 +14,12 @@ public class ExerciseConfiguration : IEntityTypeConfiguration<Exercise>
             .HasColumnType("jsonb");
         builder.Property(e => e.ExerciseKind).HasDefaultValue(Xenoh.Domain.Enums.ExerciseKind.Strength);
         builder.Property(e => e.EstimatedMet).HasPrecision(5, 2).HasDefaultValue(5.0m);
+        builder.Property(e => e.IsSkipped).HasDefaultValue(false);
         builder.Property(e => e.XpAwarded).HasDefaultValue(false);
 
         builder.HasIndex(e => new { e.DailyWorkoutId, e.SortOrder });
         builder.HasIndex(e => new { e.DailyWorkoutId, e.IsCompleted });
+        builder.HasIndex(e => new { e.DailyWorkoutId, e.IsSkipped });
         builder.HasIndex(e => e.ExerciseTemplateId);
 
         builder.HasOne(e => e.ExerciseTemplate)

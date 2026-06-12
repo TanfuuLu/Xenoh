@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Xenoh.Application.Features.DailyWorkouts.Commands.CompleteDayWorkout;
 using Xenoh.Application.Features.DailyWorkouts.Commands.CopyDailyWorkout;
 using Xenoh.Application.Features.DailyWorkouts.Commands.MarkDayStatus;
 using Xenoh.Application.Features.DailyWorkouts.Queries.GetDaysByWeek;
@@ -49,6 +50,20 @@ public sealed class DailyWorkoutsController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("/api/days/{dailyWorkoutId:guid}/complete-all")]
+    public async Task<IActionResult> CompleteAll(Guid dailyWorkoutId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new CompleteDayWorkoutCommand(dailyWorkoutId), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

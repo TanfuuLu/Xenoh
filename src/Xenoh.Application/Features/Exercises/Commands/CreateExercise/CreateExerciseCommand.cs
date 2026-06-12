@@ -48,6 +48,7 @@ public sealed record ExerciseResponse(
     decimal? PlannedWeight,
     int CompletedSetsCount,
     bool IsCompleted,
+    bool IsSkipped,
     string? Notes,
     Guid DailyWorkoutId,
     int SortOrder,

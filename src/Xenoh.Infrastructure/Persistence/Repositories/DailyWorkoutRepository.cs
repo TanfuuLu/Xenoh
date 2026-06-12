@@ -24,9 +24,10 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
           .OrderBy(d => d.Date)
           .Select(d => new DailyWorkoutResponse(
               d.Id, d.Date, d.DayOfWeek.ToString(),
-              d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted), d.WeeklyWorkoutId,
+              d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted || e.IsSkipped), d.WeeklyWorkoutId,
               d.Exercises.Count,
               d.Exercises.Count(e => e.IsCompleted),
+              d.Exercises.Count(e => e.IsSkipped),
               d.Exercises.Any(e => e.Sets.Any(s =>
                   s.IsCompleted &&
                   ((s.ActualReps != null && s.ActualReps < s.PlannedReps) ||

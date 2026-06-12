@@ -30,14 +30,16 @@ public sealed class UpdateExerciseHandler(
                     ? "This plan is managed by your coach and cannot be edited."
                     : "Access denied.");
 
-        if (request.PlannedSets is not null && request.PlannedSets.Value != exercise.PlannedSets)
+        var plannedSetsChanged = request.PlannedSets is not null && request.PlannedSets.Value != exercise.PlannedSets;
+
+        if (plannedSetsChanged)
         {
             bool hasCompletedSets = exercise.Sets.Any(s => s.IsCompleted);
             if (hasCompletedSets)
                 throw new InvalidOperationException("Cannot change PlannedSets after sets have been completed.");
 
             exerciseRepo.RemoveSetRange(exercise.Sets);
-            exercise.PlannedSets = request.PlannedSets.Value;
+            exercise.PlannedSets = request.PlannedSets!.Value;
 
             int reps = request.PlannedReps ?? exercise.PlannedReps;
             decimal? weight = request.PlannedWeight ?? exercise.PlannedWeight;
@@ -53,8 +55,26 @@ public sealed class UpdateExerciseHandler(
             }
         }
 
-        if (request.PlannedReps is not null) exercise.PlannedReps = request.PlannedReps.Value;
-        if (request.PlannedWeight is not null) exercise.PlannedWeight = request.PlannedWeight;
+        if (request.PlannedReps is not null)
+        {
+            exercise.PlannedReps = request.PlannedReps.Value;
+            if (!plannedSetsChanged)
+            {
+                foreach (var set in exercise.Sets.Where(s => !s.IsCompleted))
+                    set.PlannedReps = request.PlannedReps.Value;
+            }
+        }
+
+        if (request.PlannedWeight is not null)
+        {
+            exercise.PlannedWeight = request.PlannedWeight;
+            if (!plannedSetsChanged)
+            {
+                foreach (var set in exercise.Sets.Where(s => !s.IsCompleted))
+                    set.PlannedWeight = request.PlannedWeight;
+            }
+        }
+
         if (request.Notes is not null) exercise.Notes = request.Notes;
 
         exercise.UpdatedAt = DateTime.UtcNow;

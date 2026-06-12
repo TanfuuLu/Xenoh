@@ -21,6 +21,7 @@ public class Exercise : BaseEntity
     public int SortOrder { get; set; }
 
     public bool IsCompleted { get; set; }
+    public bool IsSkipped { get; set; }
     public bool XpAwarded { get; set; }
     public DateTime? StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }

@@ -14,6 +14,7 @@ public sealed record DailyWorkoutResponse(
     Guid WeeklyWorkoutId,
     int TotalExercises,
     int CompletedExercises,
+    int SkippedExercises,
     bool HasWarning,
     string Status
 );

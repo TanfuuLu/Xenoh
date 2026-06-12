@@ -111,6 +111,7 @@ public sealed class CreateExerciseHandler(
             e.PlannedWeight,
             e.Sets.Count(s => s.IsCompleted),
             e.IsCompleted,
+            e.IsSkipped,
             e.Notes,
             e.DailyWorkoutId,
             e.SortOrder,

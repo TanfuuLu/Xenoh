@@ -21,11 +21,9 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] MuscleGroup? muscleGroup,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetExerciseTemplatesQuery(muscleGroup, pageNumber, pageSize), ct);
+        var result = await mediator.Send(new GetExerciseTemplatesQuery(muscleGroup), ct);
         return Ok(result);
     }
 
@@ -53,13 +51,11 @@ public sealed class ExerciseTemplatesController(IMediator mediator) : Controller
     public async Task<IActionResult> GetForClient(
         [FromRoute] Guid clientId,
         [FromQuery] MuscleGroup? muscleGroup,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         try
         {
-            var result = await mediator.Send(new GetClientExerciseTemplatesQuery(clientId, muscleGroup, pageNumber, pageSize), ct);
+            var result = await mediator.Send(new GetClientExerciseTemplatesQuery(clientId, muscleGroup), ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

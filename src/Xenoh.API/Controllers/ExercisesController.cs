@@ -8,6 +8,7 @@ using Xenoh.Application.Features.Exercises.Commands.SetExerciseTimerDuration;
 using Xenoh.Application.Features.Exercises.Commands.MarkSetComplete;
 using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
 using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
+using Xenoh.Application.Features.Exercises.Commands.SkipExercise;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByWeek;
@@ -141,6 +142,26 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
     {
         if (exerciseId != command.ExerciseId)
             return BadRequest(new { message = "ExerciseId mismatch." });
+        try
+        {
+            var result = await mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("{exerciseId:guid}/skip")]
+    public async Task<IActionResult> Skip(
+        Guid exerciseId,
+        [FromBody] SkipExerciseCommand command,
+        CancellationToken ct)
+    {
+        if (exerciseId != command.ExerciseId)
+            return BadRequest(new { message = "ExerciseId mismatch." });
+
         try
         {
             var result = await mediator.Send(command, ct);
