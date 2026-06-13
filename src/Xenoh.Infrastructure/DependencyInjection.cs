@@ -1,7 +1,10 @@
+using Amazon.Runtime;
+using Amazon.S3;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
@@ -64,6 +67,18 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
         services.AddScoped<IChatRealtimeService, ChatRealtimeService>();
+        services.Configure<R2AvatarOptions>(configuration.GetSection(R2AvatarOptions.SectionName));
+        services.AddSingleton<IAmazonS3>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<R2AvatarOptions>>().Value;
+            return new AmazonS3Client(
+                new BasicAWSCredentials(opts.AccessKeyId, opts.SecretAccessKey),
+                new AmazonS3Config
+                {
+                    ServiceURL = $"https://{opts.AccountId}.r2.cloudflarestorage.com",
+                    AuthenticationRegion = "auto"
+                });
+        });
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddScoped<IEmailService, SmtpEmailService>();

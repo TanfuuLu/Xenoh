@@ -27,15 +27,18 @@ public static class DatabaseInitializer
             var db = services.GetRequiredService<ApplicationDbContext>();
             await db.Database.MigrateAsync(ct);
 
-            await SeedRolesAsync(services, ct);
+            await SeedRolesAsync(services);
 
             if (isDevelopment)
+            {
                 await SeedDevelopmentAdminAsync(services, db, ct);
+                await SeedDevelopmentLinhAsync(services);
+            }
 
             await SeedExerciseTemplatesAsync(db, ct);
             await SeedFoodItemsAsync(db, ct);
 
-            if (isDevelopment)
+            if (isDevelopment && !await db.Plans.AnyAsync(ct))
                 await DemoUserSeeder.SeedAsync(services);
         }
         catch (Exception ex)
@@ -44,7 +47,7 @@ public static class DatabaseInitializer
         }
     }
 
-    private static async Task SeedRolesAsync(IServiceProvider services, CancellationToken ct)
+    private static async Task SeedRolesAsync(IServiceProvider services)
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         string[] roles = [UserRole.Individual, UserRole.Coach, UserRole.Admin];
@@ -99,98 +102,150 @@ public static class DatabaseInitializer
         }
     }
 
+    private static async Task SeedDevelopmentLinhAsync(IServiceProvider services)
+    {
+        const string email = "linhnguyen@xenoh.app";
+        const string password = "LinhNguyen123!";
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                Email = email,
+                UserName = email,
+                FirstName = "Linh",
+                LastName = "Nguyen",
+            };
+
+            var createResult = await userManager.CreateAsync(user, password);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create Linh Nguyen seed user: {errors}");
+            }
+        }
+
+        if (!await userManager.IsInRoleAsync(user, UserRole.Individual))
+            await userManager.AddToRoleAsync(user, UserRole.Individual);
+    }
+
     private static async Task SeedExerciseTemplatesAsync(ApplicationDbContext db, CancellationToken ct)
     {
         var seededTemplates = ExerciseTemplateSeeder.GetTemplates();
-        var existingTemplateNameSet = (await db.ExerciseTemplates
-                .Select(t => t.Name.ToLower())
-                .ToListAsync(ct))
-            .ToHashSet();
-        var missingTemplates = seededTemplates
-            .Where(t => !existingTemplateNameSet.Contains(t.Name.ToLower()))
-            .ToList();
+        var existingSystemTemplateRows = await db.ExerciseTemplates
+            .Where(t => t.OwnerId == null)
+            .OrderBy(t => t.CreatedAt)
+            .ToListAsync(ct);
+        var existingSystemTemplates = existingSystemTemplateRows
+            .GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        if (missingTemplates.Count > 0)
+        var changed = false;
+        foreach (var seededTemplate in seededTemplates)
         {
-            db.ExerciseTemplates.AddRange(missingTemplates);
-            await db.SaveChangesAsync(ct);
-        }
-
-        var seededByName = seededTemplates.ToDictionary(t => t.Name.ToLower());
-        var templatesToSync = await db.ExerciseTemplates.ToListAsync(ct);
-        var syncedAny = false;
-        var toDelete = new List<ExerciseTemplate>();
-        foreach (var template in templatesToSync)
-        {
-            if (!seededByName.TryGetValue(template.Name.ToLower(), out var seededTemplate))
+            if (!existingSystemTemplates.TryGetValue(seededTemplate.Name, out var existingTemplate))
             {
-                // Remove system templates that are no longer in the seed list
-                if (template.OwnerId == null)
-                    toDelete.Add(template);
+                db.ExerciseTemplates.Add(seededTemplate);
+                changed = true;
                 continue;
             }
 
-            if (template.ExerciseKind == seededTemplate.ExerciseKind &&
-                template.EstimatedMet == seededTemplate.EstimatedMet &&
-                template.ImageUrl == seededTemplate.ImageUrl)
+            if (existingTemplate.Description == seededTemplate.Description &&
+                existingTemplate.PrimaryMuscleGroup == seededTemplate.PrimaryMuscleGroup &&
+                existingTemplate.SecondaryMuscleGroups.SequenceEqual(seededTemplate.SecondaryMuscleGroups) &&
+                existingTemplate.ExerciseKind == seededTemplate.ExerciseKind &&
+                existingTemplate.EstimatedMet == seededTemplate.EstimatedMet &&
+                existingTemplate.IsCompetitionLift == seededTemplate.IsCompetitionLift &&
+                existingTemplate.CompetitionLiftType == seededTemplate.CompetitionLiftType &&
+                existingTemplate.ImageUrl == seededTemplate.ImageUrl)
                 continue;
 
-            template.ExerciseKind = seededTemplate.ExerciseKind;
-            template.EstimatedMet = seededTemplate.EstimatedMet;
-            template.ImageUrl = seededTemplate.ImageUrl;
-            syncedAny = true;
+            existingTemplate.Description = seededTemplate.Description;
+            existingTemplate.PrimaryMuscleGroup = seededTemplate.PrimaryMuscleGroup;
+            existingTemplate.SecondaryMuscleGroups = seededTemplate.SecondaryMuscleGroups;
+            existingTemplate.ExerciseKind = seededTemplate.ExerciseKind;
+            existingTemplate.EstimatedMet = seededTemplate.EstimatedMet;
+            existingTemplate.IsCompetitionLift = seededTemplate.IsCompetitionLift;
+            existingTemplate.CompetitionLiftType = seededTemplate.CompetitionLiftType;
+            existingTemplate.ImageUrl = seededTemplate.ImageUrl;
+            changed = true;
         }
 
-        if (toDelete.Count > 0)
-        {
-            db.ExerciseTemplates.RemoveRange(toDelete);
-            syncedAny = true;
-        }
-
-        if (syncedAny)
+        if (changed)
             await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedFoodItemsAsync(ApplicationDbContext db, CancellationToken ct)
     {
         var seededFoods = FoodItemSeeder.GetItems();
-        var existingFoodNameSet = (await db.FoodItems
-                .Where(f => f.Source == FoodItemSource.Seed)
-                .Select(f => f.NameEn.ToLower())
-                .ToListAsync(ct))
-            .ToHashSet();
-
-        // Add new foods (with their servings via navigation) in a single round-trip.
-        // BaseEntity.Id is client-generated, so EF fixes up the FK without an interim save.
-        var newFoods = seededFoods
-            .Where(item => !existingFoodNameSet.Contains(item.Food.NameEn.ToLower()))
-            .ToList();
-        foreach (var (food, servings) in newFoods)
-        {
-            foreach (var (labelVi, labelEn, grams) in servings)
-                food.Servings.Add(new FoodServing { LabelVi = labelVi, LabelEn = labelEn, Grams = grams });
-            db.FoodItems.Add(food);
-        }
-
-        if (newFoods.Count > 0)
-            await db.SaveChangesAsync(ct);
-
-        // Backfill LabelEn for existing seeded food servings that have NULL LabelEn
-        var servingsWithNullLabelEn = await db.FoodServings
-            .Where(s => s.LabelEn == null && s.FoodItem.Source == FoodItemSource.Seed)
-            .Include(s => s.FoodItem)
+        var existingSeedFoodRows = await db.FoodItems
+            .Where(f => f.Source == FoodItemSource.Seed)
+            .Include(f => f.Servings)
+            .OrderBy(f => f.CreatedAt)
             .ToListAsync(ct);
-        if (servingsWithNullLabelEn.Count > 0)
+        var existingSeedFoods = existingSeedFoodRows
+            .GroupBy(f => f.NameEn, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var changed = false;
+        foreach (var (food, servings) in seededFoods)
         {
-            var labelEnMap = seededFoods
-                .SelectMany(item => item.Servings.Select(sv => (FoodNameEn: item.Food.NameEn.ToLower(), sv.LabelVi, sv.LabelEn)))
-                .ToDictionary(x => (x.FoodNameEn, x.LabelVi), x => x.LabelEn);
-            foreach (var serving in servingsWithNullLabelEn)
+            if (!existingSeedFoods.TryGetValue(food.NameEn, out var existingFood))
             {
-                if (labelEnMap.TryGetValue((serving.FoodItem.NameEn.ToLower(), serving.LabelVi), out var labelEn))
-                    serving.LabelEn = labelEn;
+                foreach (var (labelVi, labelEn, grams) in servings)
+                    food.Servings.Add(new FoodServing { LabelVi = labelVi, LabelEn = labelEn, Grams = grams });
+
+                db.FoodItems.Add(food);
+                changed = true;
+                continue;
             }
-            await db.SaveChangesAsync(ct);
+
+            if (existingFood.NameVi != food.NameVi ||
+                existingFood.CaloriesPer100g != food.CaloriesPer100g ||
+                existingFood.ProteinPer100g != food.ProteinPer100g ||
+                existingFood.CarbsPer100g != food.CarbsPer100g ||
+                existingFood.FatPer100g != food.FatPer100g ||
+                existingFood.IsVerified != food.IsVerified)
+            {
+                existingFood.NameVi = food.NameVi;
+                existingFood.CaloriesPer100g = food.CaloriesPer100g;
+                existingFood.ProteinPer100g = food.ProteinPer100g;
+                existingFood.CarbsPer100g = food.CarbsPer100g;
+                existingFood.FatPer100g = food.FatPer100g;
+                existingFood.IsVerified = food.IsVerified;
+                changed = true;
+            }
+
+            var existingServings = existingFood.Servings
+                .OrderBy(s => s.CreatedAt)
+                .GroupBy(s => s.LabelVi, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            foreach (var (labelVi, labelEn, grams) in servings)
+            {
+                if (!existingServings.TryGetValue(labelVi, out var existingServing))
+                {
+                    existingFood.Servings.Add(new FoodServing
+                    {
+                        LabelVi = labelVi,
+                        LabelEn = labelEn,
+                        Grams = grams
+                    });
+                    changed = true;
+                    continue;
+                }
+
+                if (existingServing.LabelEn == labelEn && existingServing.Grams == grams)
+                    continue;
+
+                existingServing.LabelEn = labelEn;
+                existingServing.Grams = grams;
+                changed = true;
+            }
         }
+
+        if (changed)
+            await db.SaveChangesAsync(ct);
     }
 }

@@ -1,7 +1,7 @@
+using Amazon.S3.Model;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Xenoh.Infrastructure.Identity;
 using Xenoh.Infrastructure.Services;
 using Xunit;
@@ -28,8 +28,14 @@ public sealed class SecurityHardeningTests
     [Fact]
     public async Task SaveAsync_RejectsSpoofedImageContent()
     {
-        using var tempRoot = new TempDirectory();
-        var storage = new UserAvatarStorageService(new TestWebHostEnvironment(tempRoot.Path));
+        var uploadCalled = false;
+        var storage = new UserAvatarStorageService(
+            (_, _) =>
+            {
+                uploadCalled = true;
+                return Task.FromResult(new PutObjectResponse());
+            },
+            CreateR2AvatarOptions());
         await using var stream = new MemoryStream("not actually a png"u8.ToArray());
 
         var act = () => storage.SaveAsync(
@@ -41,15 +47,20 @@ public sealed class SecurityHardeningTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Avatar image content is invalid.");
-        Directory.Exists(System.IO.Path.Combine(tempRoot.Path, "uploads", "users-avatar"))
-            .Should().BeFalse();
+        uploadCalled.Should().BeFalse();
     }
 
     [Fact]
-    public async Task SaveAsync_AcceptsValidPngAndUsesGeneratedFileName()
+    public async Task SaveAsync_AcceptsValidPngAndUsesGeneratedR2Key()
     {
-        using var tempRoot = new TempDirectory();
-        var storage = new UserAvatarStorageService(new TestWebHostEnvironment(tempRoot.Path));
+        PutObjectRequest? capturedRequest = null;
+        var storage = new UserAvatarStorageService(
+            (request, _) =>
+            {
+                capturedRequest = request;
+                return Task.FromResult(new PutObjectResponse());
+            },
+            CreateR2AvatarOptions());
         var userId = Guid.NewGuid();
         await using var stream = new MemoryStream(
         [
@@ -65,14 +76,15 @@ public sealed class SecurityHardeningTests
             stream,
             CancellationToken.None);
 
-        url.Should().StartWith($"/uploads/users-avatar/{userId:N}-");
+        url.Should().StartWith($"https://avatars.example.com/users-avatar/{userId:N}-");
         url.Should().EndWith(".png");
-
-        var savedPath = System.IO.Path.Combine(
-            tempRoot.Path,
-            url.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar));
-        File.Exists(savedPath).Should().BeTrue();
-        System.IO.Path.GetFileName(savedPath).Should().NotContain("avatar.exe");
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.BucketName.Should().Be("user-avatar");
+        capturedRequest.Key.Should().StartWith($"users-avatar/{userId:N}-");
+        capturedRequest.Key.Should().EndWith(".png");
+        capturedRequest.Key.Should().NotContain("avatar.exe");
+        capturedRequest.ContentType.Should().Be("image/png");
+        capturedRequest.Headers.CacheControl.Should().Be("public, max-age=31536000, immutable");
     }
 
     private static TokenService CreateTokenService()
@@ -90,30 +102,13 @@ public sealed class SecurityHardeningTests
         return new TokenService(configuration);
     }
 
-    private sealed class TestWebHostEnvironment(string webRootPath) : IWebHostEnvironment
-    {
-        public string ApplicationName { get; set; } = "Xenoh.Tests";
-        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
-        public string WebRootPath { get; set; } = webRootPath;
-        public string EnvironmentName { get; set; } = "Development";
-        public string ContentRootPath { get; set; } = webRootPath;
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
-    }
-
-    private sealed class TempDirectory : IDisposable
-    {
-        public TempDirectory()
+    private static IOptions<R2AvatarOptions> CreateR2AvatarOptions() =>
+        Options.Create(new R2AvatarOptions
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"xenoh-tests-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-                Directory.Delete(Path, recursive: true);
-        }
-    }
+            AccountId = "test-account-id",
+            BucketName = "user-avatar",
+            AccessKeyId = "test-access-key",
+            SecretAccessKey = "test-secret-key",
+            PublicBaseUrl = "https://avatars.example.com"
+        });
 }

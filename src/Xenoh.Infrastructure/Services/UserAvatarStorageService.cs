@@ -1,10 +1,29 @@
-using Microsoft.AspNetCore.Hosting;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces;
 
 namespace Xenoh.Infrastructure.Services;
 
-public sealed class UserAvatarStorageService(IWebHostEnvironment environment) : IUserAvatarStorageService
+public sealed class UserAvatarStorageService : IUserAvatarStorageService
 {
+    private readonly Func<PutObjectRequest, CancellationToken, Task<PutObjectResponse>> _putObjectAsync;
+    private readonly IOptions<R2AvatarOptions> _options;
+
+    public UserAvatarStorageService(IAmazonS3 s3, IOptions<R2AvatarOptions> options)
+    {
+        _putObjectAsync = (request, cancellationToken) => s3.PutObjectAsync(request, cancellationToken);
+        _options = options;
+    }
+
+    public UserAvatarStorageService(
+        Func<PutObjectRequest, CancellationToken, Task<PutObjectResponse>> putObjectAsync,
+        IOptions<R2AvatarOptions> options)
+    {
+        _putObjectAsync = putObjectAsync;
+        _options = options;
+    }
+
     public async Task<string> SaveAsync(
         Guid userId,
         string fileName,
@@ -12,6 +31,9 @@ public sealed class UserAvatarStorageService(IWebHostEnvironment environment) : 
         Stream content,
         CancellationToken cancellationToken)
     {
+        var avatarOptions = _options.Value;
+        EnsureConfigured(avatarOptions);
+
         await using var bufferedContent = new MemoryStream();
         await content.CopyToAsync(bufferedContent, cancellationToken);
 
@@ -20,21 +42,37 @@ public sealed class UserAvatarStorageService(IWebHostEnvironment environment) : 
 
         bufferedContent.Position = 0;
 
-        var webRootPath = environment.WebRootPath;
-        if (string.IsNullOrWhiteSpace(webRootPath))
-            webRootPath = Path.Combine(environment.ContentRootPath, "wwwroot");
+        var key = $"users-avatar/{userId:N}-{Guid.NewGuid():N}{extension}";
+        var request = new PutObjectRequest
+        {
+            BucketName = avatarOptions.BucketName,
+            Key = key,
+            InputStream = bufferedContent,
+            ContentType = contentType,
+            DisablePayloadSigning = true,
+            DisableDefaultChecksumValidation = true
+        };
+        request.Headers.CacheControl = "public, max-age=31536000, immutable";
 
-        var uploadRoot = Path.Combine(webRootPath, "uploads", "users-avatar");
-        Directory.CreateDirectory(uploadRoot);
+        await _putObjectAsync(request, cancellationToken);
 
-        var generatedFileName = $"{userId:N}-{Guid.NewGuid():N}{extension}";
-        var destinationPath = Path.Combine(uploadRoot, generatedFileName);
-
-        await using var fileStream = File.Create(destinationPath);
-        await bufferedContent.CopyToAsync(fileStream, cancellationToken);
-
-        return $"/uploads/users-avatar/{generatedFileName}";
+        return $"{avatarOptions.PublicBaseUrl.TrimEnd('/')}/{key}";
     }
+
+    private static void EnsureConfigured(R2AvatarOptions options)
+    {
+        if (IsMissing(options.AccountId) ||
+            IsMissing(options.BucketName) ||
+            IsMissing(options.AccessKeyId) ||
+            IsMissing(options.SecretAccessKey) ||
+            IsMissing(options.PublicBaseUrl))
+            throw new InvalidOperationException("R2 avatar storage is not configured.");
+    }
+
+    private static bool IsMissing(string value) =>
+        string.IsNullOrWhiteSpace(value) ||
+        value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("_SECRET", StringComparison.OrdinalIgnoreCase);
 
     private static bool TryGetValidatedImageExtension(byte[] bytes, string contentType, out string extension)
     {

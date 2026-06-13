@@ -85,7 +85,12 @@ internal static class ExternalAuthHelpers
             "Authentication:Facebook:AppId",
             "Authentication:Facebook:AppSecret",
             "SePay:ApiKey",
-            "OpenAi:ApiKey"
+            "OpenAi:ApiKey",
+            "R2Avatar:AccountId",
+            "R2Avatar:BucketName",
+            "R2Avatar:AccessKeyId",
+            "R2Avatar:SecretAccessKey",
+            "R2Avatar:PublicBaseUrl"
         };
 
         var missingKeys = requiredKeys
