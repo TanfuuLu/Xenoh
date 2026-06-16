@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Prometheus;
 using Scalar.AspNetCore;
@@ -26,6 +27,13 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -159,7 +167,7 @@ builder.Services.AddCors(options =>
             }
             : [];
         // Public production frontend origin — applies in all environments.
-        var productionOrigins = new[] { "https://www.xenoh.online", "https://cp.xenoh.online" };
+        var productionOrigins = new[] { "https://www.xenoh.online"};
         // Additional origins (e.g. public domain served over the Cloudflare tunnel).
         var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
@@ -216,11 +224,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseForwardedHeaders();
 app.UseCors("FrontendPolicy");
 app.UseResponseCaching();
 app.UseRateLimiter();
-//if (!app.Environment.IsDevelopment())
-//    app.UseHsts();
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseTokenBlacklistMiddleware();
