@@ -50,7 +50,7 @@ deploy_production:
     - test
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
+      when: on_success
   before_script:
     - apk add --no-cache openssh-client
     - mkdir -p ~/.ssh
