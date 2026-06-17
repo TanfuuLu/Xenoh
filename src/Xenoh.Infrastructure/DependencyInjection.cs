@@ -84,6 +84,8 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, SmtpEmailService>();
 
         services.AddScoped<IPrShareImageService, PrShareImageService>();
+        services.Configure<R2ShareOptions>(configuration.GetSection(R2ShareOptions.SectionName));
+        services.AddScoped<IPrShareImageStorage, PrShareImageStorageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IAiQuotaService, AiQuotaService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
