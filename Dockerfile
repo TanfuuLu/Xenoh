@@ -19,6 +19,14 @@ RUN dotnet publish src/Xenoh.API/Xenoh.API.csproj -c Release -o /app/publish --n
 # ---- Runtime stage ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+# Fonts for server-side PR share-card rendering (SixLabors.Fonts). The base image
+# ships with none, which makes SystemFonts.Families empty and crashes text drawing.
+# fonts-dejavu-core provides /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 # Listen on plain HTTP inside the container (TLS is terminated upstream in prod;

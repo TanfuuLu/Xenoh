@@ -311,7 +311,12 @@ public sealed class PrShareImageService(IWebHostEnvironment environment, IHttpCl
         foreach (var p in paths)
             if (File.Exists(p)) return fc.Add(p);
 
-        return SystemFonts.Families.First();
+        var fallback = SystemFonts.Families.FirstOrDefault();
+        if (fallback != default) return fallback;
+
+        throw new InvalidOperationException(
+            "No fonts available for PR share-card rendering. Install a font package " +
+            "(e.g. fonts-dejavu-core) in the runtime environment.");
     }
 
     private static string TruncateLine(string text, int max)
