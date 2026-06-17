@@ -2,6 +2,7 @@ namespace Xenoh.Application.Features.Share.Queries.GetPrShareData;
 
 public sealed record PrShareData(
     string UserName,
+    string? AvatarUrl,
     string ExerciseName,
     decimal WeightKg,
     int Reps,

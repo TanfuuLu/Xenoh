@@ -38,6 +38,7 @@ public sealed class GetPrShareDataHandler(IApplicationDbContext db)
 
         return new PrShareData(
             UserName: userName,
+            AvatarUrl: user.AvatarUrl,
             ExerciseName: template.Name,
             WeightKg: pr.Weight,
             Reps: pr.Reps,
