@@ -32,6 +32,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
     public DbSet<UserReport> UserReports => Set<UserReport>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
+    public DbSet<Friendship> Friendships => Set<Friendship>();
+    public DbSet<TrainingDayShare> TrainingDayShares => Set<TrainingDayShare>();
+    public DbSet<TrainingDayShareExercise> TrainingDayShareExercises => Set<TrainingDayShareExercise>();
+    public DbSet<TrainingDayShareSet> TrainingDayShareSets => Set<TrainingDayShareSet>();
+    public DbSet<TrainingDayShareLove> TrainingDayShareLoves => Set<TrainingDayShareLove>();
     public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();
     public DbSet<NutritionDailyLog> NutritionDailyLogs => Set<NutritionDailyLog>();
     public DbSet<FoodItem> FoodItems => Set<FoodItem>();

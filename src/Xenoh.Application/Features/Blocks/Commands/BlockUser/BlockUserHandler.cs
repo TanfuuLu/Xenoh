@@ -40,6 +40,14 @@ public sealed class BlockUserHandler(
         if (existing is not null)
             return Unit.Value;
 
+        var friendships = await db.Friendships
+            .Where(f =>
+                (f.UserAId == blockerId && f.UserBId == request.TargetUserId) ||
+                (f.UserAId == request.TargetUserId && f.UserBId == blockerId))
+            .ToListAsync(cancellationToken);
+        if (friendships.Count > 0)
+            db.Friendships.RemoveRange(friendships);
+
         await blockRepo.AddAsync(new UserBlock
         {
             BlockerId = blockerId,

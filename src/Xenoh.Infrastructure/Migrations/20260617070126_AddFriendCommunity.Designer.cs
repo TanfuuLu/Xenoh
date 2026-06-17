@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xenoh.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Xenoh.Infrastructure.Persistence;
 namespace Xenoh.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617070126_AddFriendCommunity")]
+    partial class AddFriendCommunity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1512,15 +1515,11 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                      b.Property<decimal?>("AverageRpe")
-                          .HasColumnType("decimal(4,2)");
- 
-                      b.Property<string>("Caption")
-                          .HasMaxLength(500)
-                          .HasColumnType("character varying(500)");
- 
-                      b.Property<int>("CompletedSets")
-                          .HasColumnType("integer");
+                    b.Property<decimal?>("AverageRpe")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<int>("CompletedSets")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1535,9 +1534,6 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Property<int>("ExerciseCount")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("HasPersonalRecord")
-                        .HasColumnType("boolean");
 
                     b.Property<Guid>("SourceDailyWorkoutId")
                         .HasColumnType("uuid");
@@ -1563,39 +1559,11 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                      b.ToTable("TrainingDayShares");
-                  });
- 
-            modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareLove", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("TrainingDayShareId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrainingDayShareId", "UserId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TrainingDayShareLoves");
+                    b.ToTable("TrainingDayShares");
                 });
- 
+
             modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareExercise", b =>
-                  {
+                {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
@@ -1612,9 +1580,6 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.Property<bool>("IsSkipped")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsPersonalRecord")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -2444,37 +2409,18 @@ namespace Xenoh.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareExercise", b =>
-                  {
-                      b.HasOne("Xenoh.Domain.Entities.TrainingDayShare", "TrainingDayShare")
+                {
+                    b.HasOne("Xenoh.Domain.Entities.TrainingDayShare", "TrainingDayShare")
                         .WithMany("Exercises")
                         .HasForeignKey("TrainingDayShareId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                      b.Navigation("TrainingDayShare");
-                  });
- 
-            modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareLove", b =>
-                {
-                    b.HasOne("Xenoh.Domain.Entities.TrainingDayShare", "TrainingDayShare")
-                        .WithMany("Loves")
-                        .HasForeignKey("TrainingDayShareId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("TrainingDayShareLoves")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("TrainingDayShare");
-
-                    b.Navigation("User");
                 });
- 
+
             modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareSet", b =>
-                  {
+                {
                     b.HasOne("Xenoh.Domain.Entities.TrainingDayShareExercise", "TrainingDayShareExercise")
                         .WithMany("Sets")
                         .HasForeignKey("TrainingDayShareExerciseId")
@@ -2666,10 +2612,8 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Navigation("Subscription");
 
-                      b.Navigation("TrainingDayShares");
- 
-                      b.Navigation("TrainingDayShareLoves");
-                  });
+                    b.Navigation("TrainingDayShares");
+                });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
                 {
@@ -2696,11 +2640,9 @@ namespace Xenoh.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShare", b =>
-                  {
-                      b.Navigation("Exercises");
- 
-                      b.Navigation("Loves");
-                  });
+                {
+                    b.Navigation("Exercises");
+                });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.TrainingDayShareExercise", b =>
                 {

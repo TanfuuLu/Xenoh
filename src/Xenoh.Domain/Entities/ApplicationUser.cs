@@ -66,6 +66,12 @@ public class ApplicationUser : IdentityUser<Guid>
 
     public ICollection<UserBlock> BlocksMade { get; set; } = [];
     public ICollection<UserBlock> BlocksReceived { get; set; } = [];
+    public ICollection<Friendship> FriendshipsAsUserA { get; set; } = [];
+    public ICollection<Friendship> FriendshipsAsUserB { get; set; } = [];
+    public ICollection<Friendship> FriendRequestsMade { get; set; } = [];
+    public ICollection<Friendship> FriendRequestsReceived { get; set; } = [];
+    public ICollection<TrainingDayShare> TrainingDayShares { get; set; } = [];
+    public ICollection<TrainingDayShareLove> TrainingDayShareLoves { get; set; } = [];
 
     // XP / Leveling
     public long TotalXp { get; set; } = 0;

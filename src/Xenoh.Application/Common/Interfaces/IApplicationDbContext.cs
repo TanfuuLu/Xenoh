@@ -31,6 +31,11 @@ public interface IApplicationDbContext
     DbSet<PaymentOrder> PaymentOrders { get; }
     DbSet<UserReport> UserReports { get; }
     DbSet<UserBlock> UserBlocks { get; }
+    DbSet<Friendship> Friendships { get; }
+    DbSet<TrainingDayShare> TrainingDayShares { get; }
+    DbSet<TrainingDayShareExercise> TrainingDayShareExercises { get; }
+    DbSet<TrainingDayShareSet> TrainingDayShareSets { get; }
+    DbSet<TrainingDayShareLove> TrainingDayShareLoves { get; }
     DbSet<IdentityRole<Guid>> Roles { get; }
     DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }
