@@ -1,7 +1,5 @@
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -17,6 +15,7 @@ using Xenoh.Infrastructure;
 using Xenoh.Infrastructure.BackgroundServices;
 using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence.Seeders;
+using Xenoh.API.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,9 +29,7 @@ builder.Services.AddControllers()
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
+    ForwardedHeadersSetup.ConfigureTrustedForwardedHeaders(options, builder.Configuration);
 });
 
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -116,41 +113,7 @@ builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<ContractExpiryService>();
 
-builder.Services.AddRateLimiter(options =>
-{
-    // Auth endpoints: 10 requests per minute per IP
-    options.AddPolicy("auth", ctx =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0
-            }));
-
-    // AI endpoints: 30 requests per minute per authenticated user (falls back to IP).
-    // The limiter runs before the handler, so it also counts cache hits (the AI
-    // analysis is cached server-side per user/language). A single dashboard +
-    // insights browse already fires several requests, so the budget must be
-    // generous enough that normal navigation plus refresh clicks never trips 429,
-    // while still capping abuse of the underlying OpenAI calls.
-    options.AddPolicy("ai", ctx =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? ctx.Connection.RemoteIpAddress?.ToString()
-                ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 30,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0
-            }));
-
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-});
+builder.Services.AddXenohRateLimiting(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
@@ -225,6 +188,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+app.UseXenohSecurityHeaders();
 app.Use(async (context, next) =>
 {
     if (!context.Request.Path.StartsWithSegments("/api/share"))
@@ -249,21 +213,23 @@ app.Use(async (context, next) =>
 
     await next();
 });
-app.UseCors("FrontendPolicy");
-app.UseResponseCaching();
-app.UseRateLimiter();
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseTokenBlacklistMiddleware();
+app.UseRouting();
+app.UseCors("FrontendPolicy");
+app.UseResponseCaching();
 app.UseAuthentication();
+app.UseRateLimiter();
+app.UseTokenBlacklistMiddleware();
 app.UseAuthorization();
 
 // Prometheus: collect HTTP request metrics and expose the scrape endpoint at /metrics.
 // .NET runtime metrics (GC, threadpool, exceptions) are collected automatically.
 app.UseHttpMetrics();
-app.MapMetrics();
+if (builder.Configuration.GetValue("Security:ExposeMetrics", app.Environment.IsDevelopment()))
+    app.MapMetrics();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");

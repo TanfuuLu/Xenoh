@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionDailyLog;
 using Xenoh.Application.Features.Nutrition.Commands.UpdateNutritionProfile;
@@ -164,7 +165,7 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
 
     [HttpGet("foods/resolve")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> ResolveFood([FromQuery] string name, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name))

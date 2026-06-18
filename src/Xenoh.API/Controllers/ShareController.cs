@@ -1,6 +1,8 @@
 using Mediator;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Share.Queries.GetPrShareData;
 
@@ -21,6 +23,7 @@ public sealed class ShareController(
     /// (used by the clipboard flow, which needs a same-response CORS image).
     /// </summary>
     [HttpGet("pr/{userId:guid}/{exerciseTemplateId:guid}/image.png")]
+    [EnableRateLimiting(RateLimitPolicyNames.PublicShare)]
     public async Task<IActionResult> GetShareImage(
         Guid userId,
         Guid exerciseTemplateId,

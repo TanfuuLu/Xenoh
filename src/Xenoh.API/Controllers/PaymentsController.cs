@@ -1,5 +1,7 @@
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Subscriptions.Commands.HandleSePayWebhook;
 
@@ -14,6 +16,7 @@ public sealed class PaymentsController(
 ) : ControllerBase
 {
     [HttpPost("webhook")]
+    [EnableRateLimiting(RateLimitPolicyNames.Webhook)]
     public async Task<IActionResult> SePayWebhook(
         [FromBody] SePayWebhookPayload payload, CancellationToken ct)
     {

@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Cycle.Commands.DeleteCycleDailyLog;
 using Xenoh.Application.Features.Cycle.Commands.UpdateCycleSettings;
@@ -118,7 +119,7 @@ public sealed class CycleController(IMediator mediator) : ControllerBase
 
     [HttpGet("insight")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> GetInsight([FromQuery] string? lang, CancellationToken ct)
     {
         try

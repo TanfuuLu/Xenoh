@@ -33,5 +33,6 @@ COPY --from=build /app/publish .
 # locally Prometheus scrapes this directly over the Docker network).
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
+USER app
 
 ENTRYPOINT ["dotnet", "Xenoh.API.dll"]

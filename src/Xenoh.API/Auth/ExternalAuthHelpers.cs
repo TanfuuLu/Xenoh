@@ -90,21 +90,34 @@ internal static class ExternalAuthHelpers
             "R2Avatar:BucketName",
             "R2Avatar:AccessKeyId",
             "R2Avatar:SecretAccessKey",
-            "R2Avatar:PublicBaseUrl"
+            "R2Avatar:PublicBaseUrl",
+            "R2Share:AccountId",
+            "R2Share:BucketName",
+            "R2Share:AccessKeyId",
+            "R2Share:SecretAccessKey",
+            "R2Share:PublicBaseUrl"
         };
 
         var missingKeys = requiredKeys
             .Where(key =>
             {
                 var value = configuration[key];
-                return string.IsNullOrWhiteSpace(value) ||
-                       value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
-                       value.Contains("_SECRET", StringComparison.OrdinalIgnoreCase);
+                return IsPlaceholder(value);
             })
             .ToArray();
 
         if (missingKeys.Length > 0)
             throw new InvalidOperationException(
                 $"Missing or placeholder production configuration: {string.Join(", ", missingKeys)}");
+
+        if ((configuration["Jwt:Key"]?.Length ?? 0) < 32)
+            throw new InvalidOperationException("Production JWT signing key must be at least 32 characters.");
     }
+
+    private static bool IsPlaceholder(string? value) =>
+        string.IsNullOrWhiteSpace(value) ||
+        value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("PLACEHOLDER", StringComparison.OrdinalIgnoreCase) ||
+        value.Contains("_SECRET", StringComparison.OrdinalIgnoreCase);
 }

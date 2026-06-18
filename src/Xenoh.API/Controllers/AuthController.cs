@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.Application.Features.Auth.Commands.ChangePassword;
 using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
 using Xenoh.Application.Features.Auth.Commands.ForgotPassword;
@@ -23,7 +24,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
 
     [HttpPost("register")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
     public async Task<IActionResult> Register([FromBody] RegisterCommand command, CancellationToken ct)
     {
         try
@@ -38,7 +39,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("login")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
     {
         try
@@ -54,6 +55,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("refresh-token")]
+    [EnableRateLimiting(RateLimitPolicyNames.RefreshToken)]
     public async Task<IActionResult> RefreshToken(CancellationToken ct)
     {
         try
@@ -113,7 +115,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("forgot-password/send-code")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
     public async Task<IActionResult> SendForgotPasswordCode([FromBody] SendForgotPasswordCodeCommand command, CancellationToken ct)
     {
         try
@@ -128,7 +130,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("forgot-password/reset")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordWithCodeCommand command, CancellationToken ct)
     {
         try
@@ -143,6 +145,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("external/{provider}")]
+    [EnableRateLimiting(RateLimitPolicyNames.ExternalAuth)]
     public IActionResult ExternalLogin([FromRoute] string provider)
     {
         var scheme = provider.ToLowerInvariant() switch
@@ -169,6 +172,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("external/exchange")]
+    [EnableRateLimiting(RateLimitPolicyNames.ExternalAuth)]
     public async Task<IActionResult> ExchangeExternalLoginTicket(
         [FromBody] ExchangeExternalLoginTicketCommand command,
         CancellationToken ct)

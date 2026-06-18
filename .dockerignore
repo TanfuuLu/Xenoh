@@ -12,6 +12,10 @@
 # Local secrets — mounted at runtime, never baked into the image
 **/appsettings.Development.json
 **/appsettings.*.local.json
+**/*.pem
+**/*.key
+**/.env
+**/.env.*
 
 # Git / docs
 .git/

@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
@@ -210,7 +211,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
 
     [HttpGet("clients/{clientId:guid}/ai-brief")]
     [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> GetClientAiBrief(
         Guid clientId,
         [FromQuery] string? lang,

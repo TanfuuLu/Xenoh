@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Xenoh.API.Security;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.Insights.Commands.CoachChat;
 using Xenoh.Application.Features.Insights.Queries.GetPlanProgressInsight;
@@ -22,7 +23,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("me")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> GetMyAnalysis([FromQuery] string? lang, CancellationToken ct)
     {
         try
@@ -43,7 +44,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("plan/{planId:guid}/progress")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> GetPlanProgressInsight(Guid planId, [FromQuery] string? lang, CancellationToken ct)
     {
         try
@@ -64,7 +65,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("me/coach-tip")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> GetMyCoachTip([FromQuery] string? lang, CancellationToken ct)
     {
         try
@@ -84,7 +85,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpPost("me/coach-chat")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting("ai")]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
     public async Task<IActionResult> CoachChat([FromBody] CoachChatCommand command, CancellationToken ct)
     {
         try
