@@ -38,20 +38,54 @@ public sealed class UpdateExerciseHandler(
             if (hasCompletedSets)
                 throw new InvalidOperationException("Cannot change PlannedSets after sets have been completed.");
 
-            exerciseRepo.RemoveSetRange(exercise.Sets);
             exercise.PlannedSets = request.PlannedSets!.Value;
 
             int reps = request.PlannedReps ?? exercise.PlannedReps;
             decimal? weight = request.PlannedWeight ?? exercise.PlannedWeight;
 
-            for (int i = 1; i <= exercise.PlannedSets; i++)
+            // Change only the delta. Recreating every set (remove-all + re-add) left the
+            // removed entities marked Deleted *while still attached* to exercise.Sets, an
+            // inconsistent tracker state that made EF emit a DELETE matching 0 rows
+            // (DbUpdateConcurrencyException) when reducing the count.
+            var ordered = exercise.Sets.OrderBy(s => s.SetNumber).ToList();
+
+            if (ordered.Count > exercise.PlannedSets)
             {
-                exercise.Sets.Add(new ExerciseSet
+                // Reduce: drop the surplus sets from both the DbSet and the navigation.
+                var surplus = ordered.Skip(exercise.PlannedSets).ToList();
+                exerciseRepo.RemoveSetRange(surplus);
+                foreach (var set in surplus)
+                    exercise.Sets.Remove(set);
+            }
+            else
+            {
+                // Grow: append the missing sets. Add them through the DbSet so EF marks
+                // them Added — a brand-new set carries a non-default Guid from BaseEntity,
+                // so adding it only to the tracked parent's navigation makes EF treat it
+                // as an existing row (Modified) and emit an UPDATE that matches 0 rows.
+                var newSets = new List<ExerciseSet>();
+                for (int i = ordered.Count + 1; i <= exercise.PlannedSets; i++)
                 {
-                    SetNumber = i,
-                    PlannedReps = reps,
-                    PlannedWeight = weight
-                });
+                    var set = new ExerciseSet
+                    {
+                        SetNumber = i,
+                        PlannedReps = reps,
+                        PlannedWeight = weight,
+                        ExerciseId = exercise.Id
+                    };
+                    exercise.Sets.Add(set);
+                    newSets.Add(set);
+                }
+                exerciseRepo.AddSetRange(newSets);
+            }
+
+            // Apply the target reps/weight to the remaining sets and keep numbering contiguous.
+            int setNumber = 1;
+            foreach (var set in exercise.Sets.OrderBy(s => s.SetNumber))
+            {
+                set.SetNumber = setNumber++;
+                set.PlannedReps = reps;
+                set.PlannedWeight = weight;
             }
         }
 

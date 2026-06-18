@@ -24,6 +24,7 @@ public interface IExerciseRepository
     void Remove(Exercise exercise);
     void RemoveRange(IEnumerable<Exercise> exercises);
     void AddRange(IEnumerable<Exercise> exercises);
+    void AddSetRange(IEnumerable<ExerciseSet> sets);
     void RemoveSetRange(IEnumerable<ExerciseSet> sets);
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

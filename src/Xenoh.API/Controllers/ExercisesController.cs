@@ -10,6 +10,7 @@ using Xenoh.Application.Features.Exercises.Commands.ReorderExercises;
 using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
 using Xenoh.Application.Features.Exercises.Commands.SkipExercise;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
+using Xenoh.Application.Features.Exercises.Commands.UpdateSetPlan;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByWeek;
 
@@ -178,6 +179,23 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpPatch("sets/{setId:guid}/complete")]
     public async Task<IActionResult> MarkSetComplete(Guid setId, [FromBody] MarkSetCompleteCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { SetId = setId }, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Edit a single set's planned reps/weight without completing it.
+    /// </summary>
+    [HttpPatch("sets/{setId:guid}")]
+    public async Task<IActionResult> UpdateSetPlan(Guid setId, [FromBody] UpdateSetPlanCommand command, CancellationToken ct)
     {
         try
         {

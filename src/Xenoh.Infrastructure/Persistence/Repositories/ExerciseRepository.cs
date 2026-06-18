@@ -175,6 +175,9 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
     public void AddRange(IEnumerable<Exercise> exercises) =>
         db.Exercises.AddRange(exercises);
 
+    public void AddSetRange(IEnumerable<ExerciseSet> sets) =>
+        db.ExerciseSets.AddRange(sets);
+
     public void RemoveSetRange(IEnumerable<ExerciseSet> sets) =>
         db.ExerciseSets.RemoveRange(sets);
 

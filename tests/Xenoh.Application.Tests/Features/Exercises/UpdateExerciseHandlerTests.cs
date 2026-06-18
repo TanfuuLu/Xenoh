@@ -59,6 +59,53 @@ public sealed class UpdateExerciseHandlerTests : HandlerTestBase
         response.Sets.Single(s => s.SetNumber == 2).PlannedWeight.Should().Be(40m);
     }
 
+    [Fact]
+    public async Task Handle_WhenPlannedSetsReduced_RemovesSurplusSetsAndRenumbers()
+    {
+        var exerciseId = await SeedExerciseAsync(); // seeds 2 sets
+
+        await using var ctx = CreateContext();
+        var response = await CreateHandler(ctx).Handle(
+            new UpdateExerciseCommand
+            {
+                ExerciseId = exerciseId,
+                PlannedSets = 1
+            },
+            CancellationToken.None);
+
+        response.PlannedSets.Should().Be(1);
+        response.Sets.Should().HaveCount(1);
+        response.Sets.Single().SetNumber.Should().Be(1);
+
+        await using var verify = CreateContext();
+        verify.ExerciseSets.Where(s => s.ExerciseId == exerciseId).Should().HaveCount(1);
+        verify.Exercises.Single(e => e.Id == exerciseId).PlannedSets.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPlannedSetsIncreased_AddsMissingSetsWithContiguousNumbers()
+    {
+        var exerciseId = await SeedExerciseAsync(); // seeds 2 sets
+
+        await using var ctx = CreateContext();
+        var response = await CreateHandler(ctx).Handle(
+            new UpdateExerciseCommand
+            {
+                ExerciseId = exerciseId,
+                PlannedSets = 4,
+                PlannedWeight = 50m
+            },
+            CancellationToken.None);
+
+        response.PlannedSets.Should().Be(4);
+        response.Sets.Should().HaveCount(4);
+        response.Sets.Select(s => s.SetNumber).Should().BeEquivalentTo(new[] { 1, 2, 3, 4 });
+        response.Sets.Should().OnlyContain(s => s.PlannedWeight == 50m);
+
+        await using var verify = CreateContext();
+        verify.ExerciseSets.Where(s => s.ExerciseId == exerciseId).Should().HaveCount(4);
+    }
+
     private async Task<Guid> SeedExerciseAsync(bool completedFirstSet = false)
     {
         await using var ctx = CreateContext();
