@@ -14,11 +14,21 @@ internal static class ExternalAuthHelpers
         {
             OnRedirectToAuthorizationEndpoint = context =>
             {
-                var backendUrl = configuration["Authentication:BackendUrl"]?.TrimEnd('/');
+                // The redirect_uri MUST point back to the same origin the browser used to
+                // start the flow, otherwise the OAuth correlation cookie (set on that origin)
+                // is not sent on the callback and the handshake fails. Prefer the live request
+                // origin (already normalized by UseForwardedHeaders to the public scheme/host),
+                // and fall back to the configured BackendUrl only if it is unavailable.
+                var request = context.HttpContext.Request;
+                var originFromRequest = request.Host.HasValue
+                    ? $"{request.Scheme}://{request.Host.Value}"
+                    : null;
+                var callbackOrigin = originFromRequest
+                    ?? configuration["Authentication:BackendUrl"]?.TrimEnd('/');
                 var callbackPath = context.Options.CallbackPath.Value;
-                if (!string.IsNullOrWhiteSpace(backendUrl) && !string.IsNullOrWhiteSpace(callbackPath))
+                if (!string.IsNullOrWhiteSpace(callbackOrigin) && !string.IsNullOrWhiteSpace(callbackPath))
                 {
-                    var publicCallbackUrl = $"{backendUrl}{callbackPath}";
+                    var publicCallbackUrl = $"{callbackOrigin.TrimEnd('/')}{callbackPath}";
                     context.RedirectUri = ReplaceQueryValue(context.RedirectUri, "redirect_uri", publicCallbackUrl);
                 }
 
@@ -59,6 +69,15 @@ internal static class ExternalAuthHelpers
             },
             OnRemoteFailure = context =>
             {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Xenoh.API.Auth.ExternalLogin");
+                logger.LogError(
+                    context.Failure,
+                    "External login via {Provider} failed at the OAuth callback. Verify Authentication:BackendUrl ({BackendUrl}) matches the public API origin the browser used and that this callback URL is registered with the provider.",
+                    provider,
+                    configuration["Authentication:BackendUrl"]);
+
                 var redirectUrl = BuildFrontendRedirectUrl(configuration, "login", ("externalError", "External login failed."));
                 context.Response.Redirect(redirectUrl);
                 context.HandleResponse();
