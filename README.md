@@ -168,6 +168,46 @@ https://localhost:7017
 
 </details>
 
+## Production Social Login
+
+The API already exposes provider starts at:
+
+```text
+https://api.xenoh.online/api/auth/external/google
+https://api.xenoh.online/api/auth/external/facebook
+```
+
+Configure these callback URLs in the provider consoles:
+
+```text
+https://api.xenoh.online/api/auth/external/google/callback
+https://api.xenoh.online/api/auth/external/facebook/callback
+```
+
+Production environment variables:
+
+```bash
+ASPNETCORE_ENVIRONMENT=Production
+Authentication__BackendUrl=https://api.xenoh.online
+Authentication__FrontendUrl=https://xenoh.online
+Authentication__Google__ClientId=<google-client-id>
+Authentication__Google__ClientSecret=<google-client-secret>
+Authentication__Facebook__AppId=<facebook-app-id>
+Authentication__Facebook__AppSecret=<facebook-app-secret>
+ForwardedHeaders__KnownProxies__0=127.0.0.1
+```
+
+If the app is behind Nginx on EC2, the reverse proxy must forward the public scheme and host:
+
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
+
+Without these headers, Google/Facebook can receive an internal `http://localhost` redirect URI and reject the login.
+
 ## Security
 
 Public config files contain placeholders only. Local secrets are ignored by Git.

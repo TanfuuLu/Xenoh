@@ -32,3 +32,4 @@ Thumbs.db
 ## Claude
 .claude/
 /src/Xenoh.API/appsettings.Development.json
+/src/Xenoh.API/appsettings.Development.example.json

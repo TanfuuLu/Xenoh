@@ -12,6 +12,19 @@ internal static class ExternalAuthHelpers
     {
         return new OAuthEvents
         {
+            OnRedirectToAuthorizationEndpoint = context =>
+            {
+                var backendUrl = configuration["Authentication:BackendUrl"]?.TrimEnd('/');
+                var callbackPath = context.Options.CallbackPath.Value;
+                if (!string.IsNullOrWhiteSpace(backendUrl) && !string.IsNullOrWhiteSpace(callbackPath))
+                {
+                    var publicCallbackUrl = $"{backendUrl}{callbackPath}";
+                    context.RedirectUri = ReplaceQueryValue(context.RedirectUri, "redirect_uri", publicCallbackUrl);
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
             OnTicketReceived = async context =>
             {
                 var mediator = context.HttpContext.RequestServices.GetRequiredService<IMediator>();
@@ -65,6 +78,35 @@ internal static class ExternalAuthHelpers
         return $"{url}?{queryString}";
     }
 
+    private static string ReplaceQueryValue(string url, string key, string value)
+    {
+        var uriBuilder = new UriBuilder(url);
+        var query = uriBuilder.Query.TrimStart('?');
+        var parts = string.IsNullOrWhiteSpace(query)
+            ? new List<string>()
+            : query.Split('&', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        var replacement = $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}";
+        var replaced = false;
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var separatorIndex = parts[i].IndexOf('=', StringComparison.Ordinal);
+            var currentKey = separatorIndex >= 0 ? parts[i][..separatorIndex] : parts[i];
+            if (!string.Equals(Uri.UnescapeDataString(currentKey), key, StringComparison.Ordinal))
+                continue;
+
+            parts[i] = replacement;
+            replaced = true;
+            break;
+        }
+
+        if (!replaced)
+            parts.Add(replacement);
+
+        uriBuilder.Query = string.Join("&", parts);
+        return uriBuilder.Uri.AbsoluteUri;
+    }
+
     internal static void ValidateRequiredConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
     {
         if (environment.IsDevelopment())
@@ -79,6 +121,7 @@ internal static class ExternalAuthHelpers
             "Smtp:Host",
             "Smtp:Username",
             "Smtp:Password",
+            "Authentication:BackendUrl",
             "Authentication:FrontendUrl",
             "Authentication:Google:ClientId",
             "Authentication:Google:ClientSecret",

@@ -43,9 +43,9 @@ public static class SubscriptionLimits
         (PlanTier.ProIndividual, 6) => 894_000m,
         (PlanTier.ProIndividual, 12) => 1_788_000m,
         (PlanTier.ProCoach, 1) => 199_000m,
-        (PlanTier.ProCoach, 3) => 897_000m,
-        (PlanTier.ProCoach, 6) => 1_794_000m,
-        (PlanTier.ProCoach, 12) => 3_588_000m,
+        (PlanTier.ProCoach, 3) => 597_000m,
+        (PlanTier.ProCoach, 6) => 1_194_000m,
+        (PlanTier.ProCoach, 12) => 2_388_000m,
         _ => throw new InvalidOperationException($"No price defined for tier {tier} / {durationMonths} months.")
     };
 
@@ -55,10 +55,10 @@ public static class SubscriptionLimits
         (PlanTier.ProIndividual, 3) => 447_000m,
         (PlanTier.ProIndividual, 6) => 894_000m,
         (PlanTier.ProIndividual, 12) => 1_788_000m,
-        (PlanTier.ProCoach, 1) => 299_000m,
-        (PlanTier.ProCoach, 3) => 897_000m,
-        (PlanTier.ProCoach, 6) => 1_794_000m,
-        (PlanTier.ProCoach, 12) => 3_588_000m,
+        (PlanTier.ProCoach, 1) => 199_000m,
+        (PlanTier.ProCoach, 3) => 597_000m,
+        (PlanTier.ProCoach, 6) => 1_194_000m,
+        (PlanTier.ProCoach, 12) => 2_388_000m,
         _ => throw new InvalidOperationException($"No list price defined for tier {tier} / {durationMonths} months.")
     };
 }
