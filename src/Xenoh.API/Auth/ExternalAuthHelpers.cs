@@ -14,17 +14,28 @@ internal static class ExternalAuthHelpers
         {
             OnRedirectToAuthorizationEndpoint = context =>
             {
-                // The redirect_uri MUST point back to the same origin the browser used to
-                // start the flow, otherwise the OAuth correlation cookie (set on that origin)
-                // is not sent on the callback and the handshake fails. Prefer the live request
-                // origin (already normalized by UseForwardedHeaders to the public scheme/host),
-                // and fall back to the configured BackendUrl only if it is unavailable.
+                // The redirect_uri must satisfy two constraints:
+                //   1. Its HOST must match the origin the browser used to start the flow,
+                //      otherwise the OAuth correlation cookie (set on that origin) is not
+                //      sent on the callback and the handshake fails.
+                //   2. Its SCHEME must be the public https scheme registered with the
+                //      provider. Behind a reverse proxy, request.Scheme arrives as http
+                //      whenever X-Forwarded-Proto is not trusted (e.g. the proxy IP is not
+                //      in ForwardedHeaders:KnownProxies). That previously produced an
+                //      http:// redirect_uri which Google and Facebook reject outright
+                //      ("Access blocked" / "URL Blocked").
+                // So we take the host from the live request but pin the scheme to the
+                // configured public BackendUrl, which is the value registered with the
+                // providers. We fall back to BackendUrl entirely if the request host is
+                // unavailable.
                 var request = context.HttpContext.Request;
-                var originFromRequest = request.Host.HasValue
-                    ? $"{request.Scheme}://{request.Host.Value}"
-                    : null;
-                var callbackOrigin = originFromRequest
-                    ?? configuration["Authentication:BackendUrl"]?.TrimEnd('/');
+                var backendUrl = configuration["Authentication:BackendUrl"]?.TrimEnd('/');
+                var publicScheme = Uri.TryCreate(backendUrl, UriKind.Absolute, out var backendUri)
+                    ? backendUri.Scheme
+                    : request.Scheme;
+                var callbackOrigin = request.Host.HasValue
+                    ? $"{publicScheme}://{request.Host.Value}"
+                    : backendUrl;
                 var callbackPath = context.Options.CallbackPath.Value;
                 if (!string.IsNullOrWhiteSpace(callbackOrigin) && !string.IsNullOrWhiteSpace(callbackPath))
                 {
