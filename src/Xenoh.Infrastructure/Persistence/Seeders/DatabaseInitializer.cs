@@ -29,17 +29,10 @@ public static class DatabaseInitializer
 
             await SeedRolesAsync(services);
 
-            if (isDevelopment)
-            {
-                await SeedDevelopmentAdminAsync(services, db, ct);
-                await SeedDevelopmentLinhAsync(services);
-            }
-
+            // Reference data only. The demo/admin/coach accounts and their sample data
+            // are seeded out-of-band via docs/seeds/clean-seed.sql, not from app startup.
             await SeedExerciseTemplatesAsync(db, ct);
             await SeedFoodItemsAsync(db, ct);
-
-            if (isDevelopment && !await db.Plans.AnyAsync(ct))
-                await DemoUserSeeder.SeedAsync(services);
         }
         catch (Exception ex)
         {
@@ -56,79 +49,6 @@ public static class DatabaseInitializer
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
-    }
-
-    private static async Task SeedDevelopmentAdminAsync(
-        IServiceProvider services,
-        ApplicationDbContext db,
-        CancellationToken ct)
-    {
-        const string adminEmail = "admin@xenoh.app";
-        const string adminPassword = "Admin@Xenoh123!";
-
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-        if (adminUser is null)
-        {
-            adminUser = new ApplicationUser
-            {
-                Email = adminEmail,
-                UserName = adminEmail,
-                FirstName = "Admin",
-                LastName = "Xenoh",
-            };
-            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-            if (createResult.Succeeded)
-                await userManager.AddToRolesAsync(adminUser, [UserRole.Admin, UserRole.Individual, UserRole.Coach]);
-        }
-
-        var existingSub = await db.UserSubscriptions.FirstOrDefaultAsync(s => s.UserId == adminUser.Id, ct);
-        var maxExpiry = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
-        if (existingSub is null)
-        {
-            db.UserSubscriptions.Add(new UserSubscription
-            {
-                UserId = adminUser.Id,
-                Tier = PlanTier.ProCoach,
-                ExpiresAt = maxExpiry,
-            });
-            await db.SaveChangesAsync(ct);
-        }
-        else if (existingSub.Tier != PlanTier.ProCoach)
-        {
-            existingSub.Tier = PlanTier.ProCoach;
-            existingSub.ExpiresAt = maxExpiry;
-            await db.SaveChangesAsync(ct);
-        }
-    }
-
-    private static async Task SeedDevelopmentLinhAsync(IServiceProvider services)
-    {
-        const string email = "linhnguyen@xenoh.app";
-        const string password = "LinhNguyen123!";
-
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is null)
-        {
-            user = new ApplicationUser
-            {
-                Email = email,
-                UserName = email,
-                FirstName = "Linh",
-                LastName = "Nguyen",
-            };
-
-            var createResult = await userManager.CreateAsync(user, password);
-            if (!createResult.Succeeded)
-            {
-                var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Failed to create Linh Nguyen seed user: {errors}");
-            }
-        }
-
-        if (!await userManager.IsInRoleAsync(user, UserRole.Individual))
-            await userManager.AddToRoleAsync(user, UserRole.Individual);
     }
 
     private static async Task SeedExerciseTemplatesAsync(ApplicationDbContext db, CancellationToken ct)
