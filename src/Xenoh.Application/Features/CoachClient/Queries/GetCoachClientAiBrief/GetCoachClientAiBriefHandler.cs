@@ -17,6 +17,7 @@ public sealed class GetCoachClientAiBriefHandler(
 ) : IRequestHandler<GetCoachClientAiBriefQuery, CoachClientAiBriefResponse>
 {
     private const string FeatureName = "coach-client-ai-brief";
+    private const int PromptVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -296,7 +297,7 @@ public sealed class GetCoachClientAiBriefHandler(
 
     private static string ComputeFingerprint(string snapshotJson, string language)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{language}:{snapshotJson}"));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{FeatureName}:v{PromptVersion}:{language}:{snapshotJson}"));
         return Convert.ToHexString(hash);
     }
 

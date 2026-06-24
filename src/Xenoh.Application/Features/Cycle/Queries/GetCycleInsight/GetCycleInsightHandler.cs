@@ -17,7 +17,7 @@ public sealed class GetCycleInsightHandler(
     ICycleInsightAi ai
 ) : IRequestHandler<GetCycleInsightQuery, CycleInsightResponse>
 {
-    private const int PromptVersion = 1;
+    private const int PromptVersion = 3;
     private const string Feature = "cycle-insight";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
