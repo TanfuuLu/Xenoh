@@ -242,24 +242,27 @@ Plan snapshot:
 {{XenohCoachPrompt.Core}}
 
 # Feature goal
-Review ONE specific training plan's RECENT training, week over week.
-You are given a trend snapshot for a single plan. IMPORTANT: it only covers the recent weeks the user has
-actually trained — weeks not trained yet are already excluded. recentWeeks holds the window aggregates,
-and weeklyCompletion / weeklyVolume hold the per-week recent trend. Judge whether the user's recent training
-on this plan is moving them forward.
+Review ONE specific training plan from week one through today. Judge how the complete plan-to-date has developed,
+what changed between its early, middle, and latest reached weeks, and whether it is moving the athlete toward their goal.
 
-This is NOT an account-wide review and NOT a review of the whole plan duration. Do not comment on weeks the user
-has not reached yet, and do not call the plan "behind" just because future weeks exist. Focus only on the recent
-trained weeks: is training progressing week over week, stalling, or sliding back, and what should change next.
+The snapshot excludes future weeks and future days in the current week. weeklyProgress contains every reached week,
+including missed or inactive weeks. A current partial week is explicitly marked isCurrentWeek and must not be compared
+as though it were complete. This is a whole-plan-to-date review, not an account-wide review and not a forecast of
+unreached weeks.
 
 Rules:
-- Center everything on the recent week-over-week trend in weeklyCompletion and weeklyVolume. Compare the latest weeks to the earlier weeks in the window (completion %, volume, score).
+- Start with the plan-level verdict using planToDate completion, total volume, and weeksWithTraining.
+- Analyze the full weeklyProgress sequence. Compare the beginning, middle, and latest completed weeks to identify progression, stalls, interruptions, recoveries, and sustained decline.
+- Treat zero-activity reached weeks as part of the plan history. Distinguish a missed week from a planned low-volume week and do not hide it by looking only at active weeks.
+- Do not penalize the current partial week for days that have not happened yet. Use only scheduledDaysToDate for its completion rate.
 - Be specific with numbers from the snapshot (week numbers, %, volume, RPE, sets).
 - Treat profileContext.developmentDirection and profileContext.trainingDiscipline as the user's goal and judge progress against it.
-- Decide a clear trajectory verdict, then give tips to keep or restore upward progress. Do not just describe the charts.
-- whatsWorking = what the recent trend shows the user should deliberately preserve. focusAreas = the highest-leverage constraint now. nextBlock = ordered prescriptions for the coming weeks; include dosage, a success signal, and an adjustment rule where evidence allows.
-- If there is too little recent training for a trend (recentWeeks.weeksTrained is 0 or 1, or little data), set trajectory to "TooEarly" and tell the user what to train/log to unlock a real trend read.
-- If cycleContext is present, check whether weaker recent weeks overlap menstrualSpans or preMenstrualSpans before judging the trend: a dip that lines up with period or late-luteal days is expected, say so, and do not call the trajectory "Declining" on that evidence alone. Place the next block's hardest week in the follicular window when possible.
+- Decide a clear overall trajectory verdict from the full plan-to-date, then explain whether the latest weeks confirm or differ from that longer pattern.
+- whatsWorking = the behaviors or programming choices across the plan that the athlete should preserve. focusAreas = the highest-leverage constraint across the plan. nextBlock = ordered prescriptions for the remaining plan; if plan.status is Completed, prescribe the next plan instead.
+- Include dosage, a success check, and an adjustment rule in nextBlock where evidence allows.
+- If planToDate.weeksWithTraining is 0 or 1, set trajectory to "TooEarly" and give a safe next-session action plus the exact data needed for a real whole-plan read.
+- If cycleContext is present, check whether weaker weeks overlap menstrualSpans or preMenstrualSpans before judging them. Use the athlete's actual logged energy and symptoms over calendar assumptions.
+- Use powerlifting lift series and PR timelines when present to judge whether main-lift performance progressed across the plan, rather than treating volume alone as progress.
 - No medical claims or diagnoses. No invented data.
 {{CycleGuidance}}
 {{languageInstruction}}
@@ -268,15 +271,15 @@ Return JSON ONLY matching this exact shape (no markdown, no commentary):
 {
   "headline": "string (<= 90 chars, the trajectory verdict as a next step)",
   "trajectory": "Improving|Flat|Declining|TooEarly",
-  "summary": "string (2-4 sentences on how this plan is trending and why)",
+  "summary": "string (2-4 sentences on the whole plan-to-date trajectory and why)",
   "whatsWorking": ["string (1-3 items, each <= 160 chars)"],
   "focusAreas": ["string (1-3 items, each <= 160 chars)"],
-  "nextBlock": ["string (1-3 items, each <= 160 chars, an action for the coming weeks)"]
+  "nextBlock": ["string (1-3 items, each <= 160 chars, an action for the remaining plan or next plan)"]
 }
 """;
 
         var userPrompt = $"""
-Plan trend snapshot:
+Whole plan-to-date snapshot:
 ```json
 {request.TrendSnapshotJson}
 ```

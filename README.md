@@ -1,203 +1,202 @@
-# Xenoh
+# Xenoh API
 
-Training journal for lifters. Coaching workspace for coaches. AI-assisted insight for both.
+<div align="center">
 
-Xenoh helps athletes follow plans, log workouts, track progress, manage nutrition, and work with coaches in one shared system.
+**Training management for lifters and coaches.**
 
-![Xenoh dashboard](docs/images/app/screen1.png)
+Plan workouts, log every set, track progress, manage nutrition, collaborate with a coach, and turn training history into useful insight.
 
-## MVP Features
+[Website](https://www.xenoh.online) · [API](https://api.xenoh.online)
 
-| Area | Features |
+![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-EF_Core-4169E1?logo=postgresql&logoColor=white)
+![Architecture](https://img.shields.io/badge/architecture-Clean-6E4F3A)
+![License](https://img.shields.io/badge/license-not_specified-lightgrey)
+
+</div>
+
+![Xenoh marketing website](docs/images/app/marketing-page.png)
+
+## What Xenoh does
+
+Xenoh keeps the complete training workflow in one system. Athletes can follow structured programs and record results while coaches can manage clients, review progress, and communicate without relying on separate spreadsheets or messaging tools.
+
+| Area | Capabilities |
 | --- | --- |
-| Athlete dashboard | Daily workout, active plan, nutrition, next actions, streak, bodyweight, BMI, DOTS, XP |
-| Training plans | Weekly timeline, current week, completion status, below-target warnings, coach-client comments |
-| Workout logging | Exercises, sets, reps, weight, RPE, PR badges, volume, total time, AI suggestions |
-| Progress analytics | Training score, sessions, total volume, compliance, recommendations, muscle heatmaps |
-| Coach connection | Invite-code based coach connection, contract status, report, block, disconnect |
-| Coach workspace | Client roster, active/inactive status, attention flags, missing plans, schedule timeline |
-| Client management | Client stats, plan progress, custom exercises, nutrition access, AI analysis |
-| AI insight | Client summary, risks, opportunities, plan balance, mistakes to fix, programming suggestions |
-| Billing | Subscription and coach billing support |
+| Training | Multi-week plans, daily workouts, exercise ordering, set logging, timers, RPE, volume, personal records, and completion tracking |
+| Progress | Bodyweight history, BMI, DOTS, streaks, training time, accumulated volume, lift progression, and training insights |
+| Coaching | Invite-code connections, contracts, client schedules, plan assignment, comments, attention flags, and client analysis |
+| Community | Friend discovery, shared training days, reactions, public profiles, reporting, and blocking |
+| Nutrition | Food diary, macro targets, meal tracking, food search, and AI-assisted food analysis |
+| Intelligence | Plan analysis, athlete summaries, risks, opportunities, recommendations, and quota-controlled AI features |
+| Communication | Real-time coach/client messaging and notifications through SignalR |
+| Accounts | ASP.NET Core Identity, JWT access and refresh tokens, Google/Facebook login, roles, and subscription policies |
+| Billing | Free, Pro Individual, and Pro Coach tiers with SePay payment integration |
 
-## Product Screens
+## Product tour
 
-### 1. Athlete Dashboard
+### Athlete dashboard
 
-Daily overview for the athlete: today's workout, plan progress, nutrition, next actions, streak, bodyweight, BMI, DOTS, and XP.
+The dashboard combines the current plan, today's workout, XP, streak, bodyweight, DOTS, next actions, and recent bodyweight history.
 
-![Athlete dashboard](docs/images/app/screen1.png)
+![Xenoh athlete dashboard](docs/images/app/dashboard-page.png)
 
-### 2. Training Plan Timeline
+### Workout logging
 
-The active plan is displayed as weekly cards with current-week status, completion percentage, warnings, and shared comments.
+Training days provide set-by-set logging for reps, weight, and RPE, plus exercise timers, progress, volume, duration, personal records, and completion controls.
 
-![Training plan timeline](docs/images/app/screen2.png)
+![Xenoh workout logging](docs/images/app/workouday-page.png)
 
-### 3. Workout Logging
+### Coach profile and chat
 
-Athletes log each exercise set by set, including reps, weight, RPE, total volume, total time, PR context, and completion state.
+Athletes can review the active coaching relationship, see coach details, and communicate through a real-time conversation alongside the coaching context.
 
-![Workout logging](docs/images/app/screen3.png)
+![Xenoh coach profile and chat](docs/images/app/coach-page.png)
 
-### 4. Progress Analytics
+### Client management
 
-Progress view turns training history into scores, compliance, recommendations, weekly muscle-group heatmaps, and body heatmaps.
+The coach workspace shows active clients, capacity, attention states, assigned-plan progress, and a schedule covering the coaching period.
 
-![Progress analytics](docs/images/app/screen4.png)
+![Xenoh coach client management](docs/images/app/client-page.png)
 
-### 5. Coach Connection
+### Community profiles
 
-Athletes can connect with a coach by invite code, view relationship state, and use report, block, or disconnect actions.
+Community profiles summarize training metrics, competition lifts, friendship state, and shared training days.
 
-![Coach connection](docs/images/app/screen5.png)
+![Xenoh community athlete profile](docs/images/app/profile-view-page.png)
 
-### 6. Coach Client Roster
+### Subscription management
 
-Coaches manage active clients, inactive clients, attention flags, missing plans, schedule timeline, and client performance cards.
+Subscriptions separate the core training experience from advanced individual analytics and the complete coach workspace.
 
-![Coach client roster](docs/images/app/screen6.png)
+![Xenoh subscription plans](docs/images/app/subscription-page.png)
 
-### 7. AI Plan Analysis
+## Backend stack
 
-AI reviews the structure of a training plan, highlights mistakes, suggests improvements, and summarizes completion, workload, time, and RPE.
+- .NET 10 and ASP.NET Core Web API
+- PostgreSQL with Entity Framework Core 10 and Npgsql
+- ASP.NET Core Identity with JWT access and refresh tokens
+- CQRS with source-generated mediator handlers
+- Mapster for object mapping
+- SignalR for messages and notifications
+- Scalar and OpenAPI for development API documentation
+- Prometheus HTTP and runtime metrics
+- AWS S3-compatible storage for avatars and generated share images
+- MailKit for transactional email
+- Google and Facebook external authentication
+- SePay payment integration
+- xUnit and FluentAssertions
 
-![AI plan analysis](docs/images/app/screen7.png)
+## Architecture
 
-### 8. AI Client Insight
-
-AI summarizes a client's recent progress, risks, opportunities, PRs, consistency, and training direction.
-
-![AI client insight](docs/images/app/screen8.png)
-
-### 9. Coach Client Detail
-
-Coaches can inspect client stats, plan progress, assigned plans, custom exercises, nutrition, and AI analysis from one page.
-
-![Coach client detail](docs/images/app/screen9.png)
-
-## Public Website
-
-![Xenoh home page](docs/images/real/home.png)
-
-### About
-
-![Xenoh about page](docs/images/real/about.png)
-
-### Login
-
-![Xenoh login page](docs/images/real/login.png)
-
-### Register
-
-![Xenoh register page](docs/images/real/register.png)
-
-## Backend Stack
-
-- ASP.NET Core
-- PostgreSQL
-- Entity Framework Core
-- ASP.NET Core Identity + JWT
-- CQRS with Mediator
-- Mapster
-- Clean Architecture
-
-## Project Structure
+The solution follows Clean Architecture. Inner layers do not depend on the web host or infrastructure implementations.
 
 ```text
 src/
-  Xenoh.API
-  Xenoh.Application
-  Xenoh.Domain
-  Xenoh.Infrastructure
+├── Xenoh.Domain/          Entities, value objects, enums, and domain rules
+├── Xenoh.Application/     Commands, queries, handlers, DTOs, and interfaces
+├── Xenoh.Infrastructure/  EF Core, Identity, repositories, storage, email, AI, and SignalR
+└── Xenoh.API/             Controllers, authentication, middleware, policies, and composition root
+
 tests/
-  Xenoh.Application.Tests
+└── Xenoh.Application.Tests/
 ```
 
-<details>
-<summary>Run the backend locally</summary>
+Dependency direction:
+
+```text
+API ───────────────► Application ───────────────► Domain
+ │                         ▲
+ └────► Infrastructure ────┘
+              │
+              └───────────────────────────────► Domain
+```
+
+Controllers remain thin. Application handlers own use-case logic, while Infrastructure implements persistence and external-service concerns.
+
+## Run locally
 
 ### Prerequisites
 
-- .NET SDK compatible with the solution target framework
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - PostgreSQL
-- EF Core CLI
+- Optional: EF Core CLI for explicit migration commands
 
 ```powershell
 dotnet tool install --global dotnet-ef
 ```
 
-### Configure
+### 1. Configure development settings
 
-Create a private local config:
-
-```powershell
-Copy-Item src/Xenoh.API/appsettings.Development.example.json src/Xenoh.API/appsettings.Development.json
-```
-
-Update:
-
-- PostgreSQL connection string
-- JWT settings
-- SMTP settings
-- OAuth settings
-- Payment settings
-- AI provider settings, if used
-
-Do not commit real secrets.
-
-### Database
+From the repository root:
 
 ```powershell
-dotnet restore
-dotnet ef database update --project src/Xenoh.Infrastructure --startup-project src/Xenoh.API
+Copy-Item `
+  src/Xenoh.API/appsettings.Development.example.json `
+  src/Xenoh.API/appsettings.Development.json
 ```
 
-### Start API
+At minimum, replace the local PostgreSQL password and JWT signing key. Configure SMTP, OAuth, SePay, OpenAI, and object storage when testing those integrations.
+
+The JWT key must contain at least 32 characters. Never commit real credentials.
+
+### 2. Restore and build
 
 ```powershell
-dotnet run --project src/Xenoh.API
+dotnet restore Xenoh.slnx
+dotnet build Xenoh.slnx
 ```
 
-Local URLs may include:
+### 3. Start the API
 
-```text
-http://localhost:5293
-https://localhost:7017
+```powershell
+dotnet run --project src/Xenoh.API --launch-profile http
 ```
 
-</details>
+The application initializes the database, applies pending migrations, and seeds baseline data during startup.
 
-## Production Social Login
+Development endpoints:
 
-The API already exposes provider starts at:
+| Resource | URL |
+| --- | --- |
+| API | `http://localhost:5293` |
+| Scalar API reference | `http://localhost:5293/scalar/v1` |
+| OpenAPI document | `http://localhost:5293/openapi/v1.json` |
+| Prometheus metrics | `http://localhost:5293/metrics` |
+
+To apply migrations explicitly:
+
+```powershell
+dotnet ef database update `
+  --project src/Xenoh.Infrastructure `
+  --startup-project src/Xenoh.API
+```
+
+## Tests
+
+```powershell
+dotnet test Xenoh.slnx
+```
+
+## Authentication
+
+The API supports email/password authentication, JWT refresh-token rotation, password recovery, and external login.
+
+Production OAuth entry points:
 
 ```text
 https://api.xenoh.online/api/auth/external/google
 https://api.xenoh.online/api/auth/external/facebook
 ```
 
-Configure these callback URLs in the provider consoles:
+Provider callback URLs:
 
 ```text
 https://api.xenoh.online/api/auth/external/google/callback
 https://api.xenoh.online/api/auth/external/facebook/callback
 ```
 
-Production environment variables:
-
-```bash
-ASPNETCORE_ENVIRONMENT=Production
-Authentication__BackendUrl=https://api.xenoh.online
-Authentication__FrontendUrl=https://xenoh.online
-Authentication__Google__ClientId=<google-client-id>
-Authentication__Google__ClientSecret=<google-client-secret>
-Authentication__Facebook__AppId=<facebook-app-id>
-Authentication__Facebook__AppSecret=<facebook-app-secret>
-ForwardedHeaders__KnownProxies__0=127.0.0.1
-```
-
-If the app is behind Nginx on EC2, the reverse proxy must forward the public scheme and host:
+When deployed behind a reverse proxy, forward the original host, scheme, and client address. Incorrect forwarded-header configuration causes OAuth providers to receive an internal HTTP callback URL.
 
 ```nginx
 proxy_set_header Host $host;
@@ -206,21 +205,35 @@ proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 ```
 
-Without these headers, Google/Facebook can receive an internal `http://localhost` redirect URI and reject the login.
+## Production deployment
 
-## Security
+The repository includes a production Dockerfile. The workspace-level `deploy/aws-ec2` directory contains the Docker Compose service, Nginx configuration, environment template, and systemd unit used for AWS EC2 deployment.
 
-Public config files contain placeholders only. Local secrets are ignored by Git.
+Production configuration is supplied through environment variables using ASP.NET Core's double-underscore convention:
 
-```powershell
-git status --short
-git grep -n "password" -- .
-git grep -n "secret" -- .
-git grep -n "sk-" -- .
+```text
+ConnectionStrings__DefaultConnection
+Jwt__Key
+Authentication__FrontendUrl
+OpenAi__ApiKey
+R2Avatar__AccessKeyId
+R2Share__AccessKeyId
 ```
 
-Rotate any credential that was ever exposed.
+The API validates required production settings at startup and rejects missing values, placeholders, or JWT keys shorter than 32 characters.
+
+## Security and operations
+
+- Role- and subscription-policy authorization
+- Token revocation through refresh-token blacklisting
+- Configurable global, authentication, AI, and webhook rate limits
+- Strict forwarded-header trust configuration
+- Security response headers and production HSTS
+- CORS allowlists with a separate public-share policy
+- Prometheus metrics that can be disabled outside private monitoring paths
+- Containers bound to loopback behind Nginx with dropped Linux capabilities
+- Secrets excluded from source control through private development settings and production environment files
 
 ## License
 
-No license has been specified yet.
+No license has been specified for this repository.
