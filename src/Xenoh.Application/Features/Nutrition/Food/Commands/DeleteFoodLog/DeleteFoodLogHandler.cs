@@ -7,7 +7,7 @@ namespace Xenoh.Application.Features.Nutrition.Food.Commands.DeleteFoodLog;
 
 public sealed class DeleteFoodLogHandler(
     IApplicationDbContext db,
-    INutritionRepository nutritionRepo,
+    IFoodLogService foodLogService,
     ICoachClientRepository coachClientRepo,
     ICurrentUserService currentUser
 ) : IRequestHandler<DeleteFoodLogCommand>
@@ -24,49 +24,22 @@ public sealed class DeleteFoodLogHandler(
             await EnsureAccessAsync(callerId, log.UserId, cancellationToken);
 
         var date = log.Date;
+        var linkedMealPlanItem = await db.MealPlanItems.FirstOrDefaultAsync(i => i.FoodLogId == log.Id, cancellationToken);
+        if (linkedMealPlanItem is not null)
+        {
+            linkedMealPlanItem.IsChecked = false;
+            linkedMealPlanItem.CheckedAt = null;
+            linkedMealPlanItem.CheckedByUserId = null;
+            linkedMealPlanItem.FoodLogId = null;
+            linkedMealPlanItem.UpdatedAt = DateTime.UtcNow;
+        }
+
         db.FoodLogs.Remove(log);
         await db.SaveChangesAsync(cancellationToken);
 
-        await RecomputeDailyLogAsync(log.UserId, date, cancellationToken);
+        await foodLogService.RecomputeDailyLogAsync(log.UserId, date, cancellationToken);
 
         return Unit.Value;
-    }
-
-    private async Task RecomputeDailyLogAsync(Guid userId, DateOnly date, CancellationToken ct)
-    {
-        var totals = await db.FoodLogs
-            .Where(l => l.UserId == userId && l.Date == date)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Calories = g.Sum(l => l.ComputedCalories),
-                ProteinG = g.Sum(l => l.ComputedProteinG),
-                CarbsG = g.Sum(l => l.ComputedCarbsG),
-                FatG = g.Sum(l => l.ComputedFatG)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        var dailyLog = await nutritionRepo.GetDailyLogAsync(userId, date, ct);
-
-        if (dailyLog is null) return;
-
-        if (totals is null)
-        {
-            dailyLog.Calories = 0;
-            dailyLog.ProteinG = 0;
-            dailyLog.CarbsG = 0;
-            dailyLog.FatG = 0;
-        }
-        else
-        {
-            dailyLog.Calories = totals.Calories;
-            dailyLog.ProteinG = totals.ProteinG;
-            dailyLog.CarbsG = totals.CarbsG;
-            dailyLog.FatG = totals.FatG;
-        }
-
-        dailyLog.UpdatedAt = DateTime.UtcNow;
-        await nutritionRepo.SaveChangesAsync(ct);
     }
 
     private async Task EnsureAccessAsync(Guid callerId, Guid userId, CancellationToken ct)

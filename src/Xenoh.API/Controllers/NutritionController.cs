@@ -12,6 +12,7 @@ using Xenoh.Application.Features.Nutrition.Food.Commands.DeleteFoodLog;
 using Xenoh.Application.Features.Nutrition.Food.Queries.GetFoodLogsForDate;
 using Xenoh.Application.Features.Nutrition.Food.Queries.ResolveFood;
 using Xenoh.Application.Features.Nutrition.Food.Queries.SearchFood;
+using Xenoh.Application.Features.Nutrition.MealPlans;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionDailyLog;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionHistory;
 using Xenoh.Application.Features.Nutrition.Queries.GetNutritionSummary;
@@ -97,6 +98,75 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
         }
     }
 
+    // Meal plan endpoints
+
+    [HttpGet("meal-plans/{date}")]
+    public async Task<IActionResult> GetMealPlan(DateOnly date, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetMealPlanForDateQuery(date), ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPut("meal-plans/{date}")]
+    public async Task<IActionResult> UpsertMealPlan(
+        DateOnly date,
+        [FromBody] UpsertMealPlanForDateCommand command,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(command with { Date = date, UserId = null }, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("meal-plans/items/{itemId:guid}/check")]
+    public async Task<IActionResult> CheckMealPlanItem(Guid itemId, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new CheckMealPlanItemCommand(itemId), ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("meal-plans/items/{itemId:guid}/uncheck")]
+    public async Task<IActionResult> UncheckMealPlanItem(Guid itemId, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new UncheckMealPlanItemCommand(itemId), ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     [HttpGet("clients/{clientId:guid}/summary")]
     [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
     public async Task<IActionResult> GetClientSummary(Guid clientId, CancellationToken ct)
@@ -149,6 +219,42 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("clients/{clientId:guid}/meal-plans/{date}")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> GetClientMealPlan(Guid clientId, DateOnly date, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetMealPlanForDateQuery(date, clientId), ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPut("clients/{clientId:guid}/meal-plans/{date}")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> UpsertClientMealPlan(
+        Guid clientId,
+        DateOnly date,
+        [FromBody] UpsertMealPlanForDateCommand command,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(command with { Date = date, UserId = clientId }, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
     }
 

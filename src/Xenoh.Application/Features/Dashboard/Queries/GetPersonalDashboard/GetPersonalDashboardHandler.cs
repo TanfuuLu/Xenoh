@@ -184,6 +184,23 @@ public sealed class GetPersonalDashboardHandler(
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.UserId == userId && l.Date == today, ct);
 
+        var mealPlan = await db.MealPlanDays
+            .AsNoTracking()
+            .Where(d => d.UserId == userId && d.Date == today)
+            .Select(d => new PersonalDashboardMealPlanResponse(
+                d.Meals.SelectMany(m => m.Items).Sum(i => (int?)i.PlannedCalories) ?? 0,
+                d.Meals.SelectMany(m => m.Items).Sum(i => (decimal?)i.PlannedProteinG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Sum(i => (decimal?)i.PlannedCarbsG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Sum(i => (decimal?)i.PlannedFatG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Where(i => i.IsChecked).Sum(i => (int?)i.PlannedCalories) ?? 0,
+                d.Meals.SelectMany(m => m.Items).Where(i => i.IsChecked).Sum(i => (decimal?)i.PlannedProteinG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Where(i => i.IsChecked).Sum(i => (decimal?)i.PlannedCarbsG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Where(i => i.IsChecked).Sum(i => (decimal?)i.PlannedFatG) ?? 0m,
+                d.Meals.SelectMany(m => m.Items).Count(),
+                d.Meals.SelectMany(m => m.Items).Count(i => i.IsChecked),
+                "/nutrition"))
+            .FirstOrDefaultAsync(ct);
+
         var calc = NutritionCalculator.Calculate(user, latestBodyweight, profile, today);
 
         return new PersonalDashboardNutritionResponse(
@@ -199,7 +216,8 @@ public sealed class GetPersonalDashboardHandler(
             calc.ProteinG is null ? null : calc.ProteinG.Value - (log?.ProteinG ?? 0m),
             calc.CarbsG is null ? null : calc.CarbsG.Value - (log?.CarbsG ?? 0m),
             calc.FatG is null ? null : calc.FatG.Value - (log?.FatG ?? 0m),
-            calc.MissingFields.ToList());
+            calc.MissingFields.ToList(),
+            mealPlan);
     }
 
     private static List<PersonalDashboardActionResponse> BuildNextActions(

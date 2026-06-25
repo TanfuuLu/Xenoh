@@ -42,6 +42,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FoodItem> FoodItems => Set<FoodItem>();
     public DbSet<FoodServing> FoodServings => Set<FoodServing>();
     public DbSet<FoodLog> FoodLogs => Set<FoodLog>();
+    public DbSet<MealPlanDay> MealPlanDays => Set<MealPlanDay>();
+    public DbSet<MealPlanMeal> MealPlanMeals => Set<MealPlanMeal>();
+    public DbSet<MealPlanItem> MealPlanItems => Set<MealPlanItem>();
     public DbSet<UserAnalysis> UserAnalyses => Set<UserAnalysis>();
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
     public DbSet<AiFeatureUsage> AiFeatureUsages => Set<AiFeatureUsage>();

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Nutrition;
 using Xenoh.Domain.Entities;
 using Xenoh.Infrastructure.Identity;
 using Xenoh.Infrastructure.Persistence;
@@ -64,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenBlacklist, DatabaseTokenBlacklist>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IFoodLogService, FoodLogService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
         services.AddScoped<IChatRealtimeService, ChatRealtimeService>();

@@ -43,6 +43,9 @@ public interface IApplicationDbContext
     DbSet<FoodItem> FoodItems { get; }
     DbSet<FoodServing> FoodServings { get; }
     DbSet<FoodLog> FoodLogs { get; }
+    DbSet<MealPlanDay> MealPlanDays { get; }
+    DbSet<MealPlanMeal> MealPlanMeals { get; }
+    DbSet<MealPlanItem> MealPlanItems { get; }
     DbSet<UserAnalysis> UserAnalyses { get; }
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
     DbSet<AiFeatureUsage> AiFeatureUsages { get; }

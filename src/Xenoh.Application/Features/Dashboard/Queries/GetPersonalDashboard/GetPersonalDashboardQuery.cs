@@ -77,7 +77,22 @@ public sealed record PersonalDashboardNutritionResponse(
     decimal? RemainingProteinG,
     decimal? RemainingCarbsG,
     decimal? RemainingFatG,
-    List<string> MissingProfileFields
+    List<string> MissingProfileFields,
+    PersonalDashboardMealPlanResponse? MealPlanToday
+);
+
+public sealed record PersonalDashboardMealPlanResponse(
+    int PlannedCalories,
+    decimal PlannedProteinG,
+    decimal PlannedCarbsG,
+    decimal PlannedFatG,
+    int CheckedCalories,
+    decimal CheckedProteinG,
+    decimal CheckedCarbsG,
+    decimal CheckedFatG,
+    int TotalItemCount,
+    int CheckedItemCount,
+    string Route
 );
 
 public sealed record PersonalDashboardActionResponse(
