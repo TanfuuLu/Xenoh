@@ -1,10 +1,15 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Admin;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Reports.Commands.SetUserSuspension;
 
-public sealed class SetUserSuspensionHandler(UserManager<ApplicationUser> userManager)
+public sealed class SetUserSuspensionHandler(
+    UserManager<ApplicationUser> userManager,
+    ICurrentUserService currentUser,
+    IApplicationDbContext db)
     : IRequestHandler<SetUserSuspensionCommand>
 {
     public async ValueTask<Unit> Handle(SetUserSuspensionCommand request, CancellationToken cancellationToken)
@@ -12,6 +17,7 @@ public sealed class SetUserSuspensionHandler(UserManager<ApplicationUser> userMa
         var user = await userManager.FindByIdAsync(request.UserId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
+        var beforeSuspended = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
         await userManager.SetLockoutEnabledAsync(user, true);
         var result = await userManager.SetLockoutEndDateAsync(
             user,
@@ -19,6 +25,18 @@ public sealed class SetUserSuspensionHandler(UserManager<ApplicationUser> userMa
 
         if (!result.Succeeded)
             throw new InvalidOperationException("Could not update user suspension.");
+
+        AdminAudit.Add(
+            db,
+            currentUser.UserId,
+            request.Suspended ? AdminAudit.SuspendUser : AdminAudit.UnsuspendUser,
+            nameof(ApplicationUser),
+            user.Id,
+            user.Id,
+            request.Suspended ? "Admin suspended user." : "Admin unsuspended user.",
+            $"Suspended={beforeSuspended}",
+            $"Suspended={request.Suspended}");
+        await db.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }

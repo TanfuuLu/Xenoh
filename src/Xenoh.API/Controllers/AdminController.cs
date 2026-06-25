@@ -5,6 +5,7 @@ using Xenoh.Application.Features.Admin;
 using Xenoh.Application.Features.Reports.Commands.ReviewReport;
 using Xenoh.Application.Features.Reports.Commands.SetUserSuspension;
 using Xenoh.Application.Features.Reports.Queries.GetReports;
+using Xenoh.Application.Features.WebsiteBugReports;
 using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
@@ -21,11 +22,71 @@ public sealed class AdminController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("insights")]
+    public async Task<IActionResult> GetInsights(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        [FromQuery] AdminInsightGranularity? granularity,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetAdminInsightsQuery(from, to, granularity), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("marketing")]
+    public async Task<IActionResult> GetMarketing(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        [FromQuery] AdminInsightGranularity? granularity,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetAdminMarketingQuery(from, to, granularity), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("reports")]
     public async Task<IActionResult> GetReports([FromQuery] ReportStatus? status, [FromQuery] ReportReason? reason, CancellationToken ct)
     {
         var result = await mediator.Send(new GetReportsQuery(status, reason), ct);
         return Ok(result);
+    }
+
+    [HttpGet("bug-reports")]
+    public async Task<IActionResult> GetBugReports(
+        [FromQuery] WebsiteBugReportStatus? status,
+        [FromQuery] WebsiteBugReportSeverity? severity,
+        CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetWebsiteBugReportsQuery(status, severity), ct);
+        return Ok(result);
+    }
+
+    [HttpPatch("bug-reports/{bugReportId:guid}")]
+    public async Task<IActionResult> ReviewBugReport(Guid bugReportId, [FromBody] ReviewWebsiteBugReportCommand command, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(command with { BugReportId = bugReportId }, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("reports/summary")]
@@ -89,6 +150,22 @@ public sealed class AdminController(IMediator mediator) : ControllerBase
         }
     }
 
+    [HttpPatch("users/{userId:guid}/subscription")]
+    public async Task<IActionResult> AdjustUserSubscription(Guid userId, [FromBody] AdminSubscriptionAdjustmentRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(
+                new AdjustAdminUserSubscriptionCommand(userId, request.Tier, request.DurationMonths, request.Reason),
+                ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("plans")]
     public async Task<IActionResult> GetPlans(
         [FromQuery] PlanType? planType,
@@ -147,6 +224,13 @@ public sealed class AdminController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetAiUsageSummary([FromQuery] DateOnly? periodStart, CancellationToken ct)
     {
         var result = await mediator.Send(new GetAdminAiUsageSummaryQuery(periodStart), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("audit-logs")]
+    public async Task<IActionResult> GetAuditLogs([FromQuery] int limit, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetAdminAuditLogsQuery(limit <= 0 ? 100 : limit), ct);
         return Ok(result);
     }
 

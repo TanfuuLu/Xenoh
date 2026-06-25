@@ -54,6 +54,9 @@ public interface IApplicationDbContext
     DbSet<Message> Messages { get; }
     DbSet<CycleDailyLog> CycleDailyLogs { get; }
     DbSet<CycleSettings> CycleSettings { get; }
+    DbSet<AdminAuditLog> AdminAuditLogs { get; }
+    DbSet<WebsiteActivityEvent> WebsiteActivityEvents { get; }
+    DbSet<WebsiteBugReport> WebsiteBugReports { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

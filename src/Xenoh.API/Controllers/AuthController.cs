@@ -13,6 +13,8 @@ using Xenoh.Application.Features.Auth.Commands.Login;
 using Xenoh.Application.Features.Auth.Commands.Logout;
 using Xenoh.Application.Features.Auth.Commands.RefreshToken;
 using Xenoh.Application.Features.Auth.Commands.Register;
+using Xenoh.Application.Features.WebsiteAnalytics;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
 
@@ -30,6 +32,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
+            await TrackAuthEventAsync(WebsiteActivityEventType.Register, result.UserId, ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -45,6 +48,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         try
         {
             var result = await mediator.Send(command, ct);
+            await TrackAuthEventAsync(WebsiteActivityEventType.Login, result.UserId, ct);
             SetRefreshTokenCookie(result.RefreshToken);
             return Ok(ToAuthResponseBody(result));
         }
@@ -239,4 +243,30 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         result.AvatarUrl,
         result.Roles
     };
+
+    private async Task TrackAuthEventAsync(WebsiteActivityEventType eventType, Guid userId, CancellationToken ct)
+    {
+        var sessionId = Header("X-Xenoh-Session-Id");
+        if (string.IsNullOrWhiteSpace(sessionId))
+            sessionId = $"auth-{userId:N}";
+
+        await mediator.Send(new TrackWebsiteActivityCommand(
+            eventType,
+            sessionId,
+            Header("X-Xenoh-Path") ?? Request.Path.Value ?? "/",
+            Header("X-Xenoh-Previous-Path"),
+            Header("X-Xenoh-Referrer"),
+            Header("X-Xenoh-Utm-Source"),
+            Header("X-Xenoh-Utm-Medium"),
+            Header("X-Xenoh-Utm-Campaign"),
+            null,
+            Request.Headers.UserAgent.ToString(),
+            userId), ct);
+    }
+
+    private string? Header(string name)
+    {
+        var value = Request.Headers[name].ToString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 }

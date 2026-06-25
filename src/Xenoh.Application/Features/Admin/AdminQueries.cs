@@ -1,4 +1,5 @@
 using Mediator;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Domain.Entities;
@@ -17,6 +18,536 @@ public sealed record GetAdminPaymentsQuery(PaymentStatus? Status, PlanTier? Tier
 public sealed record GetAdminPaymentsSummaryQuery : IRequest<AdminPaymentSummaryResponse>;
 public sealed record GetAdminSubscriptionsQuery(PlanTier? Tier, bool? Active) : IRequest<List<AdminSubscriptionResponse>>;
 public sealed record GetAdminAiUsageSummaryQuery(DateOnly? PeriodStart) : IRequest<AdminAiUsageSummaryResponse>;
+public sealed record GetAdminInsightsQuery(DateOnly? From, DateOnly? To, AdminInsightGranularity? Granularity) : IRequest<AdminInsightsResponse>;
+public sealed record AdjustAdminUserSubscriptionCommand(Guid UserId, PlanTier Tier, int? DurationMonths, string Reason) : IRequest<AdminSubscriptionAdjustmentResponse>;
+public sealed record GetAdminAuditLogsQuery(int Limit = 100) : IRequest<List<AdminAuditLogResponse>>;
+public sealed record GetAdminMarketingQuery(DateOnly? From, DateOnly? To, AdminInsightGranularity? Granularity) : IRequest<AdminMarketingResponse>;
+
+public sealed class GetAdminInsightsHandler(IApplicationDbContext db)
+    : IRequestHandler<GetAdminInsightsQuery, AdminInsightsResponse>
+{
+    public async ValueTask<AdminInsightsResponse> Handle(GetAdminInsightsQuery request, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = request.From ?? new DateOnly(today.Year, today.Month, 1).AddMonths(-5);
+        var to = request.To ?? today;
+        var granularity = request.Granularity ?? AdminInsightGranularity.Month;
+
+        if (from > to)
+            throw new InvalidOperationException("Insight start date must be before or equal to end date.");
+
+        if (granularity == AdminInsightGranularity.Day && to.DayNumber - from.DayNumber > 90)
+            throw new InvalidOperationException("Daily admin insights are limited to 90 days.");
+
+        var fromUtc = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toExclusiveUtc = to.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var now = DateTime.UtcNow;
+        var buckets = BuildBuckets(from, to, granularity);
+
+        var userRegistrations = await db.ApplicationUsers.AsNoTracking()
+            .Where(u => u.CreatedAt >= fromUtc && u.CreatedAt < toExclusiveUtc)
+            .Select(u => u.CreatedAt)
+            .ToListAsync(ct);
+
+        var paidSubscriptions = await db.UserSubscriptions.AsNoTracking()
+            .Where(s => s.Tier != PlanTier.Free && s.ExpiresAt.HasValue)
+            .Select(s => new SubscriptionInsightRow(s.CreatedAt, s.ExpiresAt!.Value))
+            .ToListAsync(ct);
+
+        var revenueRows = await db.PaymentOrders.AsNoTracking()
+            .Where(p => p.Status == PaymentStatus.Completed && p.PaidAt.HasValue && p.PaidAt.Value >= fromUtc && p.PaidAt.Value < toExclusiveUtc)
+            .Select(p => new AmountInsightRow(p.PaidAt!.Value, p.Amount))
+            .ToListAsync(ct);
+
+        var planRows = await db.Plans.AsNoTracking()
+            .Where(p => p.CreatedAt >= fromUtc && p.CreatedAt < toExclusiveUtc)
+            .Select(p => new UserDateTimeInsightRow(p.OwnerId, p.CreatedAt))
+            .ToListAsync(ct);
+
+        var completedWorkoutDays = await db.DailyWorkouts.AsNoTracking()
+            .Where(d =>
+                d.Date >= from &&
+                d.Date <= to &&
+                d.Exercises.Any() &&
+                !d.Exercises.Any(e => !e.Sets.Any() || e.Sets.Any(s => !s.IsCompleted)))
+            .Select(d => d.Date)
+            .ToListAsync(ct);
+
+        var reports = await db.UserReports.AsNoTracking()
+            .Where(r => r.CreatedAt >= fromUtc && r.CreatedAt < toExclusiveUtc)
+            .Select(r => r.CreatedAt)
+            .ToListAsync(ct);
+
+        var aiFrom = new DateOnly(from.Year, from.Month, 1);
+        var aiRowsRaw = await db.AiFeatureUsages.AsNoTracking()
+            .Where(u => u.PeriodStart >= aiFrom && u.PeriodStart <= to)
+            .Select(u => new UserDateOnlyAmountInsightRow(u.UserId, u.PeriodStart, u.UsedRequests))
+            .ToListAsync(ct);
+        var aiRows = aiRowsRaw
+            .Select(row => row with { Date = row.Date < from ? from : row.Date })
+            .ToList();
+
+        var workoutUsers = await db.WorkoutHistories.AsNoTracking()
+            .Where(w => w.Date >= from && w.Date <= to)
+            .Select(w => new UserDateOnlyInsightRow(w.UserId, w.Date))
+            .ToListAsync(ct);
+
+        var foodUsers = await db.FoodLogs.AsNoTracking()
+            .Where(f => f.Date >= from && f.Date <= to)
+            .Select(f => new UserDateOnlyInsightRow(f.UserId, f.Date))
+            .ToListAsync(ct);
+
+        var shareRows = await db.TrainingDayShares.AsNoTracking()
+            .Where(s => s.CreatedAt >= fromUtc && s.CreatedAt < toExclusiveUtc)
+            .Select(s => new UserDateTimeInsightRow(s.UserId, s.CreatedAt))
+            .ToListAsync(ct);
+
+        var loveRows = await db.TrainingDayShareLoves.AsNoTracking()
+            .Where(l => l.CreatedAt >= fromUtc && l.CreatedAt < toExclusiveUtc)
+            .Select(l => l.CreatedAt)
+            .ToListAsync(ct);
+
+        var friendshipRows = await db.Friendships.AsNoTracking()
+            .Where(f => f.Status == FriendshipStatus.Accepted && f.RespondedAt.HasValue && f.RespondedAt.Value >= fromUtc && f.RespondedAt.Value < toExclusiveUtc)
+            .Select(f => f.RespondedAt!.Value)
+            .ToListAsync(ct);
+
+        var activeUserIds = workoutUsers.Select(r => r.UserId)
+            .Concat(foodUsers.Select(r => r.UserId))
+            .Concat(planRows.Select(r => r.UserId))
+            .Concat(aiRows.Select(r => r.UserId))
+            .Concat(shareRows.Select(r => r.UserId))
+            .Distinct()
+            .Count();
+
+        var totals = new AdminInsightTotalsResponse(
+            TotalUsers: await db.ApplicationUsers.AsNoTracking().CountAsync(ct),
+            NewUsers: userRegistrations.Count,
+            ActiveUsers: activeUserIds,
+            ActivePaidSubscriptions: paidSubscriptions.Count(s => s.ExpiresAt > now),
+            Revenue: revenueRows.Sum(r => r.Amount),
+            PlansCreated: planRows.Count,
+            CompletedWorkoutDays: completedWorkoutDays.Count,
+            ReportsCreated: reports.Count,
+            AiRequests: aiRows.Sum(r => r.Value),
+            CommunityShares: shareRows.Count,
+            CommunityLoves: loveRows.Count,
+            AcceptedFriendships: friendshipRows.Count);
+
+        return new AdminInsightsResponse(
+            from,
+            to,
+            granularity,
+            totals,
+            CountDateTimes(buckets, userRegistrations),
+            CountActiveUsers(buckets, workoutUsers, foodUsers, planRows, aiRows, shareRows),
+            CountActiveSubscriptions(buckets, paidSubscriptions),
+            SumAmounts(buckets, revenueRows),
+            CountDateTimes(buckets, planRows.Select(p => p.Date).ToList()),
+            CountDateOnlys(buckets, completedWorkoutDays),
+            CountDateTimes(buckets, reports),
+            SumDateOnlyAmounts(buckets, aiRows),
+            SumCommunityActivity(buckets, shareRows, loveRows, friendshipRows));
+    }
+
+    private static List<InsightBucket> BuildBuckets(DateOnly from, DateOnly to, AdminInsightGranularity granularity)
+    {
+        if (granularity == AdminInsightGranularity.Day)
+        {
+            return Enumerable.Range(0, to.DayNumber - from.DayNumber + 1)
+                .Select(i =>
+                {
+                    var day = from.AddDays(i);
+                    return new InsightBucket(day, day, day.ToString("yyyy-MM-dd"));
+                })
+                .ToList();
+        }
+
+        var start = new DateOnly(from.Year, from.Month, 1);
+        var buckets = new List<InsightBucket>();
+        for (var month = start; month <= to; month = month.AddMonths(1))
+        {
+            var monthEnd = month.AddMonths(1).AddDays(-1);
+            buckets.Add(new InsightBucket(
+                month < from ? from : month,
+                monthEnd > to ? to : monthEnd,
+                month.ToString("MMM yyyy")));
+        }
+
+        return buckets;
+    }
+
+    private static List<AdminMetricPointResponse> CountDateTimes(List<InsightBucket> buckets, List<DateTime> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Count(row => bucket.Contains(row))))
+        .ToList();
+
+    private static List<AdminMetricPointResponse> CountDateOnlys(List<InsightBucket> buckets, List<DateOnly> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Count(bucket.Contains)))
+        .ToList();
+
+    private static List<AdminMetricPointResponse> SumAmounts(List<InsightBucket> buckets, List<AmountInsightRow> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Where(row => bucket.Contains(row.Date)).Sum(row => row.Amount)))
+        .ToList();
+
+    private static List<AdminMetricPointResponse> SumDateOnlyAmounts(List<InsightBucket> buckets, List<UserDateOnlyAmountInsightRow> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Where(row => bucket.Contains(row.Date)).Sum(row => row.Value)))
+        .ToList();
+
+    private static List<AdminMetricPointResponse> CountActiveSubscriptions(List<InsightBucket> buckets, List<SubscriptionInsightRow> rows) =>
+        buckets.Select(bucket =>
+        {
+            var endExclusive = bucket.To.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            return new AdminMetricPointResponse(
+                bucket.Label,
+                rows.Count(row => row.CreatedAt < endExclusive && row.ExpiresAt >= endExclusive));
+        })
+        .ToList();
+
+    private static List<AdminMetricPointResponse> CountActiveUsers(
+        List<InsightBucket> buckets,
+        List<UserDateOnlyInsightRow> workouts,
+        List<UserDateOnlyInsightRow> foods,
+        List<UserDateTimeInsightRow> plans,
+        List<UserDateOnlyAmountInsightRow> ai,
+        List<UserDateTimeInsightRow> shares) =>
+        buckets.Select(bucket =>
+        {
+            var count = workouts.Where(row => bucket.Contains(row.Date)).Select(row => row.UserId)
+                .Concat(foods.Where(row => bucket.Contains(row.Date)).Select(row => row.UserId))
+                .Concat(plans.Where(row => bucket.Contains(row.Date)).Select(row => row.UserId))
+                .Concat(ai.Where(row => bucket.Contains(row.Date)).Select(row => row.UserId))
+                .Concat(shares.Where(row => bucket.Contains(row.Date)).Select(row => row.UserId))
+                .Distinct()
+                .Count();
+
+            return new AdminMetricPointResponse(bucket.Label, count);
+        })
+        .ToList();
+
+    private static List<AdminMetricPointResponse> SumCommunityActivity(
+        List<InsightBucket> buckets,
+        List<UserDateTimeInsightRow> shares,
+        List<DateTime> loves,
+        List<DateTime> friendships) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            shares.Count(row => bucket.Contains(row.Date)) +
+            loves.Count(bucket.Contains) +
+            friendships.Count(bucket.Contains)))
+        .ToList();
+
+    private sealed record InsightBucket(DateOnly From, DateOnly To, string Label)
+    {
+        public bool Contains(DateOnly date) => date >= From && date <= To;
+        public bool Contains(DateTime dateTime) => Contains(DateOnly.FromDateTime(dateTime));
+    }
+
+    private sealed record SubscriptionInsightRow(DateTime CreatedAt, DateTime ExpiresAt);
+    private sealed record AmountInsightRow(DateTime Date, decimal Amount);
+    private sealed record UserDateTimeInsightRow(Guid UserId, DateTime Date);
+    private sealed record UserDateOnlyInsightRow(Guid UserId, DateOnly Date);
+    private sealed record UserDateOnlyAmountInsightRow(Guid UserId, DateOnly Date, int Value);
+}
+
+public sealed class AdjustAdminUserSubscriptionHandler(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser,
+    UserManager<ApplicationUser> userManager)
+    : IRequestHandler<AdjustAdminUserSubscriptionCommand, AdminSubscriptionAdjustmentResponse>
+{
+    private static readonly int[] AllowedDurations = [1, 3, 6, 12];
+
+    public async ValueTask<AdminSubscriptionAdjustmentResponse> Handle(AdjustAdminUserSubscriptionCommand request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            throw new InvalidOperationException("Adjustment reason is required.");
+
+        if (request.Tier != PlanTier.Free && (!request.DurationMonths.HasValue || !AllowedDurations.Contains(request.DurationMonths.Value)))
+            throw new InvalidOperationException("Paid subscription adjustments require a duration of 1, 3, 6, or 12 months.");
+
+        var user = await userManager.FindByIdAsync(request.UserId.ToString())
+            ?? throw new InvalidOperationException("User not found.");
+
+        var now = DateTime.UtcNow;
+        var subscription = await db.UserSubscriptions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.UserId == request.UserId, ct);
+
+        if (subscription is null)
+        {
+            subscription = new UserSubscription
+            {
+                UserId = request.UserId,
+                Tier = PlanTier.Free
+            };
+            db.UserSubscriptions.Add(subscription);
+        }
+
+        var before = DescribeSubscription(subscription, now);
+
+        if (request.Tier == PlanTier.Free)
+        {
+            subscription.Tier = PlanTier.Free;
+            subscription.ExpiresAt = null;
+        }
+        else
+        {
+            var sameActiveTier = subscription.Tier == request.Tier &&
+                subscription.ExpiresAt.HasValue &&
+                subscription.ExpiresAt.Value > now;
+            var baseDate = sameActiveTier ? subscription.ExpiresAt!.Value : now;
+            subscription.Tier = request.Tier;
+            subscription.ExpiresAt = baseDate.AddMonths(request.DurationMonths!.Value);
+        }
+
+        subscription.UpdatedAt = now;
+        await SyncCoachRoleAsync(user, request.Tier, ct);
+
+        var after = DescribeSubscription(subscription, now);
+        var audit = AdminAudit.Add(
+            db,
+            currentUser.UserId,
+            AdminAudit.AdjustSubscription,
+            nameof(UserSubscription),
+            subscription.Id,
+            user.Id,
+            request.Reason,
+            before,
+            after);
+
+        await db.SaveChangesAsync(ct);
+
+        return new AdminSubscriptionAdjustmentResponse(
+            user.Id,
+            FullName(user),
+            user.Email ?? string.Empty,
+            subscription.Tier,
+            IsSubscriptionActive(subscription, now),
+            subscription.ExpiresAt,
+            audit.Id);
+    }
+
+    private async Task SyncCoachRoleAsync(ApplicationUser user, PlanTier tier, CancellationToken ct)
+    {
+        if (tier == PlanTier.ProCoach)
+        {
+            if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
+            {
+                var result = await userManager.AddToRoleAsync(user, UserRole.Coach);
+                if (!result.Succeeded)
+                    throw new InvalidOperationException($"Could not grant Coach role: {string.Join("; ", result.Errors.Select(e => e.Description))}");
+            }
+
+            return;
+        }
+
+        if (await userManager.IsInRoleAsync(user, UserRole.Coach))
+        {
+            var result = await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
+            if (!result.Succeeded)
+                throw new InvalidOperationException($"Could not remove Coach role: {string.Join("; ", result.Errors.Select(e => e.Description))}");
+        }
+    }
+
+    private static string DescribeSubscription(UserSubscription subscription, DateTime now)
+    {
+        var active = IsSubscriptionActive(subscription, now) ? "active" : "inactive";
+        var expiry = subscription.ExpiresAt?.ToString("O") ?? "none";
+        return $"Tier={subscription.Tier}; Active={active}; ExpiresAt={expiry}";
+    }
+}
+
+public sealed class GetAdminAuditLogsHandler(IApplicationDbContext db)
+    : IRequestHandler<GetAdminAuditLogsQuery, List<AdminAuditLogResponse>>
+{
+    public async ValueTask<List<AdminAuditLogResponse>> Handle(GetAdminAuditLogsQuery request, CancellationToken ct)
+    {
+        var limit = Math.Clamp(request.Limit, 1, 200);
+        return await db.AdminAuditLogs
+            .AsNoTracking()
+            .Include(log => log.AdminUser)
+            .OrderByDescending(log => log.CreatedAt)
+            .Take(limit)
+            .Select(log => new AdminAuditLogResponse(
+                log.Id,
+                log.AdminUserId,
+                FullName(log.AdminUser),
+                log.Action,
+                log.TargetType,
+                log.TargetId,
+                log.TargetUserId,
+                log.Reason,
+                log.BeforeSummary,
+                log.AfterSummary,
+                log.CreatedAt))
+            .ToListAsync(ct);
+    }
+}
+
+public sealed class GetAdminMarketingHandler(IApplicationDbContext db)
+    : IRequestHandler<GetAdminMarketingQuery, AdminMarketingResponse>
+{
+    public async ValueTask<AdminMarketingResponse> Handle(GetAdminMarketingQuery request, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = request.From ?? new DateOnly(today.Year, today.Month, 1).AddMonths(-5);
+        var to = request.To ?? today;
+        var granularity = request.Granularity ?? AdminInsightGranularity.Month;
+
+        if (from > to)
+            throw new InvalidOperationException("Marketing start date must be before or equal to end date.");
+
+        if (granularity == AdminInsightGranularity.Day && to.DayNumber - from.DayNumber > 90)
+            throw new InvalidOperationException("Daily admin marketing insights are limited to 90 days.");
+
+        var fromUtc = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var toExclusiveUtc = to.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var buckets = BuildMarketingBuckets(from, to, granularity);
+
+        var events = await db.WebsiteActivityEvents
+            .AsNoTracking()
+            .Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc < toExclusiveUtc)
+            .Select(e => new MarketingEventRow(
+                e.UserId,
+                e.EventType,
+                e.SessionId,
+                e.Path,
+                e.PreviousPath,
+                e.Referrer,
+                e.UtmSource,
+                e.UtmCampaign,
+                e.DurationSeconds,
+                e.OccurredAtUtc))
+            .ToListAsync(ct);
+
+        var pageViews = events.Where(e => e.EventType == WebsiteActivityEventType.PageView).ToList();
+        var usage = events.Where(e => e.EventType == WebsiteActivityEventType.SessionUsage).ToList();
+        var logins = events.Where(e => e.EventType == WebsiteActivityEventType.Login).ToList();
+        var registrations = events.Where(e => e.EventType == WebsiteActivityEventType.Register).ToList();
+        var usageSeconds = usage.Sum(e => e.DurationSeconds ?? 0);
+        var uniqueSessions = events.Select(e => e.SessionId).Where(s => s.Length > 0).Distinct().Count();
+        var bugReportsOpen = await db.WebsiteBugReports
+            .AsNoTracking()
+            .CountAsync(r => r.Status == WebsiteBugReportStatus.Open, ct);
+
+        return new AdminMarketingResponse(
+            from,
+            to,
+            granularity,
+            new AdminMarketingTotalsResponse(
+                pageViews.Count,
+                uniqueSessions,
+                events.Where(e => e.UserId.HasValue).Select(e => e.UserId!.Value).Distinct().Count(),
+                logins.Count,
+                registrations.Count,
+                usageSeconds,
+                uniqueSessions == 0 ? 0m : Math.Round(usageSeconds / (decimal)uniqueSessions, 2),
+                bugReportsOpen),
+            CountMarketingEvents(buckets, pageViews),
+            CountMarketingEvents(buckets, logins),
+            CountMarketingEvents(buckets, registrations),
+            SumUsageSeconds(buckets, usage),
+            TopMetric(pageViews.Select(e => e.UtmSource), 8),
+            TopMetric(pageViews.Select(e => e.UtmCampaign), 8),
+            TopMetric(pageViews.Select(e => e.Referrer), 8),
+            TopMetric(GetEntryPages(pageViews), 8),
+            TopFlows(pageViews, 10));
+    }
+
+    private static List<MarketingBucket> BuildMarketingBuckets(DateOnly from, DateOnly to, AdminInsightGranularity granularity)
+    {
+        if (granularity == AdminInsightGranularity.Day)
+        {
+            return Enumerable.Range(0, to.DayNumber - from.DayNumber + 1)
+                .Select(i =>
+                {
+                    var day = from.AddDays(i);
+                    return new MarketingBucket(day, day, day.ToString("yyyy-MM-dd"));
+                })
+                .ToList();
+        }
+
+        var start = new DateOnly(from.Year, from.Month, 1);
+        var buckets = new List<MarketingBucket>();
+        for (var month = start; month <= to; month = month.AddMonths(1))
+        {
+            var monthEnd = month.AddMonths(1).AddDays(-1);
+            buckets.Add(new MarketingBucket(
+                month < from ? from : month,
+                monthEnd > to ? to : monthEnd,
+                month.ToString("MMM yyyy")));
+        }
+
+        return buckets;
+    }
+
+    private static List<AdminMetricPointResponse> CountMarketingEvents(List<MarketingBucket> buckets, List<MarketingEventRow> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Count(row => bucket.Contains(row.OccurredAtUtc))))
+        .ToList();
+
+    private static List<AdminMetricPointResponse> SumUsageSeconds(List<MarketingBucket> buckets, List<MarketingEventRow> rows) =>
+        buckets.Select(bucket => new AdminMetricPointResponse(
+            bucket.Label,
+            rows.Where(row => bucket.Contains(row.OccurredAtUtc)).Sum(row => row.DurationSeconds ?? 0)))
+        .ToList();
+
+    private static IEnumerable<string?> GetEntryPages(List<MarketingEventRow> pageViews) =>
+        pageViews
+            .GroupBy(e => e.SessionId)
+            .Select(g => g.OrderBy(e => e.OccurredAtUtc).FirstOrDefault()?.Path);
+
+    private static List<AdminMetricPointResponse> TopMetric(IEnumerable<string?> values, int take) =>
+        values
+            .Select(value => string.IsNullOrWhiteSpace(value) ? "(none)" : value.Trim())
+            .GroupBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new AdminMetricPointResponse(g.Key, g.Count()))
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => p.Label)
+            .Take(take)
+            .ToList();
+
+    private static List<AdminMarketingFlowResponse> TopFlows(List<MarketingEventRow> pageViews, int take) =>
+        pageViews
+            .Where(e => !string.IsNullOrWhiteSpace(e.PreviousPath) && !string.Equals(e.PreviousPath, e.Path, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(e => new { From = e.PreviousPath!, To = e.Path })
+            .Select(g => new AdminMarketingFlowResponse(g.Key.From, g.Key.To, g.Count()))
+            .OrderByDescending(f => f.Count)
+            .ThenBy(f => f.FromPath)
+            .ThenBy(f => f.ToPath)
+            .Take(take)
+            .ToList();
+
+    private sealed record MarketingBucket(DateOnly From, DateOnly To, string Label)
+    {
+        public bool Contains(DateTime dateTime)
+        {
+            var date = DateOnly.FromDateTime(dateTime);
+            return date >= From && date <= To;
+        }
+    }
+
+    private sealed record MarketingEventRow(
+        Guid? UserId,
+        WebsiteActivityEventType EventType,
+        string SessionId,
+        string Path,
+        string? PreviousPath,
+        string? Referrer,
+        string? UtmSource,
+        string? UtmCampaign,
+        int? DurationSeconds,
+        DateTime OccurredAtUtc);
+}
 
 public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
     : IRequestHandler<GetAdminDashboardQuery, AdminDashboardResponse>

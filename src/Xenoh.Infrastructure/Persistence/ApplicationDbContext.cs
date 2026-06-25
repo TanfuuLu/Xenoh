@@ -53,6 +53,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<CycleDailyLog> CycleDailyLogs => Set<CycleDailyLog>();
     public DbSet<CycleSettings> CycleSettings => Set<CycleSettings>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
+    public DbSet<WebsiteActivityEvent> WebsiteActivityEvents => Set<WebsiteActivityEvent>();
+    public DbSet<WebsiteBugReport> WebsiteBugReports => Set<WebsiteBugReport>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
