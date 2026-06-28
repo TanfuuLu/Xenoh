@@ -56,6 +56,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     public DbSet<WebsiteActivityEvent> WebsiteActivityEvents => Set<WebsiteActivityEvent>();
     public DbSet<WebsiteBugReport> WebsiteBugReports => Set<WebsiteBugReport>();
+    public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<StoredFileShare> StoredFileShares => Set<StoredFileShare>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

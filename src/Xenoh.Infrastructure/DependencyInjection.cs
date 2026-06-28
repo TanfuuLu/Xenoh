@@ -88,6 +88,8 @@ public static class DependencyInjection
         services.AddScoped<IPrShareImageService, PrShareImageService>();
         services.Configure<R2ShareOptions>(configuration.GetSection(R2ShareOptions.SectionName));
         services.AddScoped<IPrShareImageStorage, PrShareImageStorageService>();
+        services.Configure<R2DocumentOptions>(configuration.GetSection(R2DocumentOptions.SectionName));
+        services.AddScoped<IDocumentStorageService, DocumentStorageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IAiQuotaService, AiQuotaService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();

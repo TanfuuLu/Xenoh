@@ -57,6 +57,8 @@ public interface IApplicationDbContext
     DbSet<AdminAuditLog> AdminAuditLogs { get; }
     DbSet<WebsiteActivityEvent> WebsiteActivityEvents { get; }
     DbSet<WebsiteBugReport> WebsiteBugReports { get; }
+    DbSet<StoredFile> StoredFiles { get; }
+    DbSet<StoredFileShare> StoredFileShares { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

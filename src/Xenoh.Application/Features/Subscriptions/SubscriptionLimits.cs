@@ -36,6 +36,21 @@ public static class SubscriptionLimits
         _ => 0
     };
 
+    /// <summary>Largest single document a user may upload (0 = feature unavailable).</summary>
+    public static long MaxFileSizeBytes(PlanTier tier) => tier switch
+    {
+        PlanTier.ProIndividual or PlanTier.ProCoach => 25L * 1024 * 1024, // 25 MB
+        _ => 0
+    };
+
+    /// <summary>Total bytes a user may keep stored across all their documents.</summary>
+    public static long MaxStorageBytes(PlanTier tier) => tier switch
+    {
+        PlanTier.ProIndividual => 1L * 1024 * 1024 * 1024, // 1 GB
+        PlanTier.ProCoach => 5L * 1024 * 1024 * 1024,      // 5 GB
+        _ => 0
+    };
+
     public static decimal GetPrice(PlanTier tier, int durationMonths) => (tier, durationMonths) switch
     {
         (PlanTier.ProIndividual, 1) => 149_000m,
