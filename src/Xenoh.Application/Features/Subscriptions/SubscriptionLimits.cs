@@ -46,8 +46,8 @@ public static class SubscriptionLimits
     /// <summary>Total bytes a user may keep stored across all their documents.</summary>
     public static long MaxStorageBytes(PlanTier tier) => tier switch
     {
-        PlanTier.ProIndividual => 1L * 1024 * 1024 * 1024, // 1 GB
-        PlanTier.ProCoach => 5L * 1024 * 1024 * 1024,      // 5 GB
+        PlanTier.ProIndividual => 500L * 1024 * 1024,      // 500 MB
+        PlanTier.ProCoach => 1L * 1024 * 1024 * 1024,      // 1 GB
         _ => 0
     };
 
