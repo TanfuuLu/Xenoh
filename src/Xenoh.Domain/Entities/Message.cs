@@ -14,4 +14,6 @@ public class Message : BaseEntity
     public string Content { get; set; } = string.Empty;
     public MessageKind Kind { get; set; } = MessageKind.User;
     public bool IsRead { get; set; } = false;
+
+    public ICollection<ChatMessageAttachment> Attachments { get; set; } = [];
 }

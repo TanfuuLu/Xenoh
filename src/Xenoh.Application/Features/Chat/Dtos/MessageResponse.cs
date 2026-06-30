@@ -1,5 +1,12 @@
 namespace Xenoh.Application.Features.Chat.Dtos;
 
+public sealed record ChatAttachmentResponse(
+    Guid Id,
+    string FileName,
+    string ContentType,
+    long SizeBytes,
+    bool IsImage);
+
 public sealed record MessageResponse(
     Guid Id,
     Guid RelationshipId,
@@ -8,4 +15,5 @@ public sealed record MessageResponse(
     string Content,
     string Kind,
     bool IsRead,
+    IReadOnlyList<ChatAttachmentResponse> Attachments,
     DateTime CreatedAt);

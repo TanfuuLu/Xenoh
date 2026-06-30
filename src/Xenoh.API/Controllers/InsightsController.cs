@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Security;
 using Xenoh.API.Auth;
+using Xenoh.Application.Features.Insights.Commands.AiChat;
 using Xenoh.Application.Features.Insights.Commands.CoachChat;
+using Xenoh.Application.Features.Insights.Queries.AiChat;
 using Xenoh.Application.Features.Insights.Queries.GetPlanProgressInsight;
 using Xenoh.Application.Features.Insights.Queries.GetTrainingCoachTip;
 using Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
@@ -79,18 +81,93 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Conversational AI coach. Stateless: the client sends the recent message
-    /// history and receives a single text reply grounded in the user's training data.
-    /// </summary>
-    [HttpPost("me/coach-chat")]
+    [HttpGet("me/coach-chat/conversations")]
     [Authorize(Policy = SubscriptionPolicies.RequirePro)]
-    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
-    public async Task<IActionResult> CoachChat([FromBody] CoachChatCommand command, CancellationToken ct)
+    public async Task<IActionResult> ListCoachChatConversations(
+        [FromQuery] DateTime? cursor,
+        [FromQuery] int take = 20,
+        CancellationToken ct = default)
     {
         try
         {
-            var result = await mediator.Send(command, ct);
+            var result = await mediator.Send(new ListAiChatConversationsQuery(cursor, take), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("me/coach-chat/conversations")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    public async Task<IActionResult> CreateCoachChatConversation(
+        [FromBody] CreateCoachChatConversationRequest? request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new CreateAiChatConversationCommand(request?.Title), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("me/coach-chat/conversations/{conversationId:guid}")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    public async Task<IActionResult> UpdateCoachChatConversation(
+        Guid conversationId,
+        [FromBody] UpdateCoachChatConversationRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(
+                new UpdateAiChatConversationCommand(conversationId, request.Title, request.IsArchived),
+                ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("me/coach-chat/conversations/{conversationId:guid}/messages")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    public async Task<IActionResult> GetCoachChatMessages(
+        Guid conversationId,
+        [FromQuery] DateTime? before,
+        [FromQuery] int take = 30,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetAiChatMessagesQuery(conversationId, before, take), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("me/coach-chat/conversations/{conversationId:guid}/messages")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    [EnableRateLimiting(RateLimitPolicyNames.Ai)]
+    public async Task<IActionResult> SendCoachChatMessage(
+        Guid conversationId,
+        [FromBody] SendCoachChatMessageRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(
+                new SendAiChatMessageCommand(conversationId, request.Content, request.Language),
+                ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -99,3 +176,9 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
     }
 }
+
+public sealed record CreateCoachChatConversationRequest(string? Title);
+
+public sealed record UpdateCoachChatConversationRequest(string? Title, bool? IsArchived);
+
+public sealed record SendCoachChatMessageRequest(string Content, string? Language);

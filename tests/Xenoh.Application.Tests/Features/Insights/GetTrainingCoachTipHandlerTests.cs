@@ -231,5 +231,10 @@ public sealed class GetTrainingCoachTipHandlerTests : HandlerTestBase
 
         public Task<CoachChatAiResult> ChatAsync(CoachChatAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
+
+        public Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+            CoachChatSummaryAiRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
     }
 }

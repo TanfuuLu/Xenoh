@@ -50,8 +50,11 @@ public interface IApplicationDbContext
     DbSet<AiFeatureCache> AiFeatureCaches { get; }
     DbSet<AiFeatureUsage> AiFeatureUsages { get; }
     DbSet<AiUsageQuota> AiUsageQuotas { get; }
+    DbSet<AiChatConversation> AiChatConversations { get; }
+    DbSet<AiChatMessage> AiChatMessages { get; }
     DbSet<RevokedToken> RevokedTokens { get; }
     DbSet<Message> Messages { get; }
+    DbSet<ChatMessageAttachment> ChatMessageAttachments { get; }
     DbSet<CycleDailyLog> CycleDailyLogs { get; }
     DbSet<CycleSettings> CycleSettings { get; }
     DbSet<AdminAuditLog> AdminAuditLogs { get; }

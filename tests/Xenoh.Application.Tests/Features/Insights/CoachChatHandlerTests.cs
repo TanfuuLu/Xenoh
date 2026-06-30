@@ -76,5 +76,10 @@ public sealed class CoachChatHandlerTests : HandlerTestBase
             ChatCalls++;
             return Task.FromResult(new CoachChatAiResult(reply));
         }
+
+        public Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+            CoachChatSummaryAiRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }

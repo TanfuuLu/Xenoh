@@ -29,16 +29,42 @@ public sealed class DocumentStorageService : IDocumentStorageService
         await using var buffered = new MemoryStream();
         await content.CopyToAsync(buffered, cancellationToken);
 
-        var extension = ValidateAndGetExtension(buffered.ToArray(), fileName);
+        var extension = ValidateAndGetExtension(buffered.ToArray(), fileName, allowImages: false);
 
         buffered.Position = 0;
 
         var key = $"user-files/{ownerId:N}/{Guid.NewGuid():N}{extension}";
+        return await PutAsync(key, extension, buffered, cancellationToken);
+    }
+
+    public async Task<string> SaveChatAttachmentAsync(
+        Guid senderId,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+
+        await using var buffered = new MemoryStream();
+        await content.CopyToAsync(buffered, cancellationToken);
+
+        var extension = ValidateAndGetExtension(buffered.ToArray(), fileName, allowImages: true);
+
+        buffered.Position = 0;
+
+        var key = $"chat-files/{senderId:N}/{Guid.NewGuid():N}{extension}";
+        return await PutAsync(key, extension, buffered, cancellationToken);
+    }
+
+    private async Task<string> PutAsync(
+        string key, string extension, Stream content, CancellationToken cancellationToken)
+    {
         var request = new PutObjectRequest
         {
             BucketName = _options.BucketName,
             Key = key,
-            InputStream = buffered,
+            InputStream = content,
             // Use a canonical content type for the extension; browser-supplied types
             // are unreliable (Windows often sends octet-stream for Office files).
             ContentType = CanonicalContentType(extension),
@@ -54,7 +80,8 @@ public sealed class DocumentStorageService : IDocumentStorageService
     public async Task<string> GetPresignedDownloadUrlAsync(
         string storageKey,
         string downloadFileName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool inline = false)
     {
         EnsureConfigured();
 
@@ -65,9 +92,11 @@ public sealed class DocumentStorageService : IDocumentStorageService
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.AddMinutes(Math.Max(1, _options.DownloadUrlExpiryMinutes))
         };
-        // Force a browser download with the original file name.
+        // Inline lets browsers render images in place; otherwise force a download
+        // with the original file name.
+        var disposition = inline ? "inline" : "attachment";
         request.ResponseHeaderOverrides.ContentDisposition =
-            $"attachment; filename=\"{SanitizeFileName(downloadFileName)}\"";
+            $"{disposition}; filename=\"{SanitizeFileName(downloadFileName)}\"";
 
         return await _client.Value.GetPreSignedURLAsync(request);
     }
@@ -120,7 +149,7 @@ public sealed class DocumentStorageService : IDocumentStorageService
     /// the expected container — PDF (%PDF), OOXML docx/xlsx (ZIP), legacy doc/xls (OLE2).
     /// Throws with a specific reason so the client can show actionable feedback.
     /// </summary>
-    private static string ValidateAndGetExtension(byte[] bytes, string fileName)
+    private static string ValidateAndGetExtension(byte[] bytes, string fileName, bool allowImages)
     {
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
 
@@ -131,16 +160,24 @@ public sealed class DocumentStorageService : IDocumentStorageService
             ".xlsx" => (IsZip(bytes), "Excel (.xlsx)"),
             ".doc" => (IsOle2(bytes), "Word (.doc)"),
             ".xls" => (IsOle2(bytes), "Excel (.xls)"),
+            ".png" when allowImages => (IsPng(bytes), "PNG image"),
+            ".jpg" or ".jpeg" when allowImages => (IsJpeg(bytes), "JPEG image"),
+            ".gif" when allowImages => (IsGif(bytes), "GIF image"),
+            ".webp" when allowImages => (IsWebp(bytes), "WebP image"),
             _ => (false, null as string)
         };
 
         if (expectedKind is null)
-            throw new InvalidOperationException(
-                $"Unsupported file type '{ext}'. Only PDF, Word, and Excel documents are allowed.");
+        {
+            var allowed = allowImages
+                ? "Only images, PDF, Word, and Excel files are allowed."
+                : "Only PDF, Word, and Excel documents are allowed.";
+            throw new InvalidOperationException($"Unsupported file type '{ext}'. {allowed}");
+        }
 
         if (!signatureOk)
             throw new InvalidOperationException(
-                $"The file does not look like a valid {expectedKind} document (got {bytes.Length} bytes).");
+                $"The file does not look like a valid {expectedKind} (got {bytes.Length} bytes).");
 
         return ext;
     }
@@ -152,6 +189,10 @@ public sealed class DocumentStorageService : IDocumentStorageService
         ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ".xls" => "application/vnd.ms-excel",
         ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".png" => "image/png",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".gif" => "image/gif",
+        ".webp" => "image/webp",
         _ => "application/octet-stream"
     };
 
@@ -167,4 +208,23 @@ public sealed class DocumentStorageService : IDocumentStorageService
         bytes.Length >= 8 &&
         bytes[0] == 0xD0 && bytes[1] == 0xCF && bytes[2] == 0x11 && bytes[3] == 0xE0 &&
         bytes[4] == 0xA1 && bytes[5] == 0xB1 && bytes[6] == 0x1A && bytes[7] == 0xE1;
+
+    private static bool IsPng(byte[] bytes) =>
+        bytes.Length >= 8 &&
+        bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
+        bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A;
+
+    private static bool IsJpeg(byte[] bytes) =>
+        bytes.Length >= 3 &&
+        bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
+
+    private static bool IsGif(byte[] bytes) =>
+        bytes.Length >= 4 &&
+        bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38;
+
+    // RIFF....WEBP — "RIFF" at 0, "WEBP" at offset 8.
+    private static bool IsWebp(byte[] bytes) =>
+        bytes.Length >= 12 &&
+        bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+        bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50;
 }

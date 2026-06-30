@@ -224,6 +224,7 @@ public sealed class MarkSetCompleteHandler(
             message.Content,
             message.Kind.ToString(),
             message.IsRead,
+            [],
             message.CreatedAt);
 
         await chatRealtimeService.MessageSentAsync(

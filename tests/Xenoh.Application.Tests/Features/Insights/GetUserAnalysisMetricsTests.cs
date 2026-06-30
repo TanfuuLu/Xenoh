@@ -212,6 +212,11 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
 
         public Task<CoachChatAiResult> ChatAsync(CoachChatAiRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
+
+        public Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+            CoachChatSummaryAiRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
     }
 
     private sealed class StubUserStore(ApplicationUser user) : IUserStore<ApplicationUser>

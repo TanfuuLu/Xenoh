@@ -43,6 +43,15 @@ public sealed class GetMessagesHandler(
                 m.Content,
                 m.Kind.ToString(),
                 m.IsRead,
+                m.Attachments
+                    .OrderBy(a => a.CreatedAt)
+                    .Select(a => new ChatAttachmentResponse(
+                        a.Id,
+                        a.FileName,
+                        a.ContentType,
+                        a.SizeBytes,
+                        a.ContentType.StartsWith("image/")))
+                    .ToList(),
                 m.CreatedAt))
             .ToListAsync(cancellationToken);
 

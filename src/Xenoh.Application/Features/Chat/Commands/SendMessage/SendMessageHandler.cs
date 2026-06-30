@@ -53,6 +53,7 @@ public sealed class SendMessageHandler(
             message.Content,
             message.Kind.ToString(),
             message.IsRead,
+            [],
             message.CreatedAt);
 
         var recipientId = senderId == relationship.ClientId

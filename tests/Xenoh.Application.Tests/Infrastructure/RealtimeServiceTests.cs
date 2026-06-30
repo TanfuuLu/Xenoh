@@ -25,6 +25,7 @@ public sealed class RealtimeServiceTests : HandlerTestBase
             "Check your top set.",
             "User",
             false,
+            [],
             DateTime.UtcNow);
 
         await service.MessageSentAsync(

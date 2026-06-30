@@ -62,4 +62,11 @@ public sealed class QuotaEnforcedUserAnalysisAi(
         await quotaService.ConsumeAsync("coach-chat", cancellationToken);
         return await inner.ChatAsync(request, cancellationToken);
     }
+
+    public async Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+        CoachChatSummaryAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        return await inner.SummarizeCoachChatAsync(request, cancellationToken);
+    }
 }

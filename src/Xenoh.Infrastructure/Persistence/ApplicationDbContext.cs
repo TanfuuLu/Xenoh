@@ -49,8 +49,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<AiFeatureCache> AiFeatureCaches => Set<AiFeatureCache>();
     public DbSet<AiFeatureUsage> AiFeatureUsages => Set<AiFeatureUsage>();
     public DbSet<AiUsageQuota> AiUsageQuotas => Set<AiUsageQuota>();
+    public DbSet<AiChatConversation> AiChatConversations => Set<AiChatConversation>();
+    public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<ChatMessageAttachment> ChatMessageAttachments => Set<ChatMessageAttachment>();
     public DbSet<CycleDailyLog> CycleDailyLogs => Set<CycleDailyLog>();
     public DbSet<CycleSettings> CycleSettings => Set<CycleSettings>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();

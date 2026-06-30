@@ -426,6 +426,11 @@ trainingContext:
 ```json
 {{request.SnapshotJson}}
 ```
+
+{{(string.IsNullOrWhiteSpace(request.ConversationSummary) ? "" : $"""
+conversationSummary:
+{request.ConversationSummary}
+""")}}
 """;
 
         var messages = new JsonArray
@@ -439,6 +444,48 @@ trainingContext:
         }
 
         return new CoachChatAiResult(await SendChatAsync(messages, 0.5, cancellationToken));
+    }
+
+    public async Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+        CoachChatSummaryAiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var languageInstruction = request.Language == "vi"
+            ? "Write the summary in Vietnamese."
+            : "Write the summary in English.";
+
+        var prior = string.IsNullOrWhiteSpace(request.ExistingSummary)
+            ? "No prior summary."
+            : request.ExistingSummary;
+
+        var lines = request.Messages
+            .Select(m => $"{(m.Role == "assistant" ? "Assistant" : "User")}: {m.Content}")
+            .ToArray();
+
+        var systemPrompt = $"""
+You compact a Xenoh AI Coach conversation for future context.
+Keep durable facts, user goals, constraints, decisions, preferences, and advice already given.
+Do not invent information. Keep it concise and useful for a future coach response.
+{languageInstruction}
+Return plain text only, maximum 700 words.
+""";
+
+        var userPrompt = $"""
+Existing summary:
+{prior}
+
+New messages to merge:
+{string.Join("\n\n", lines)}
+""";
+
+        var messages = new JsonArray
+        {
+            new JsonObject { ["role"] = "system", ["content"] = systemPrompt },
+            new JsonObject { ["role"] = "user", ["content"] = userPrompt }
+        };
+
+        var summary = await SendChatAsync(messages, 0.2, cancellationToken);
+        return new CoachChatSummaryAiResult(summary.Trim());
     }
 
     private async Task<string> SendChatAsync(

@@ -63,11 +63,22 @@ public sealed record CoachChatAiMessage(
 public sealed record CoachChatAiRequest(
     string Language,
     string SnapshotJson,
-    IReadOnlyList<CoachChatAiMessage> Messages
+    IReadOnlyList<CoachChatAiMessage> Messages,
+    string? ConversationSummary = null
 );
 
 public sealed record CoachChatAiResult(
     string Reply
+);
+
+public sealed record CoachChatSummaryAiRequest(
+    string Language,
+    string? ExistingSummary,
+    IReadOnlyList<CoachChatAiMessage> Messages
+);
+
+public sealed record CoachChatSummaryAiResult(
+    string Summary
 );
 
 public interface IUserAnalysisAi
@@ -96,5 +107,9 @@ public interface IUserAnalysisAi
 
     Task<CoachChatAiResult> ChatAsync(
         CoachChatAiRequest request,
+        CancellationToken cancellationToken);
+
+    Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+        CoachChatSummaryAiRequest request,
         CancellationToken cancellationToken);
 }
