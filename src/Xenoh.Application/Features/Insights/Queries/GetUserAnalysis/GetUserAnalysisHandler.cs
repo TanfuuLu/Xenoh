@@ -18,6 +18,7 @@ public sealed class GetUserAnalysisHandler(
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
     private const int AnalysisPromptVersion = 7;
+    private const int MaxAiAttempts = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,16 +44,28 @@ public sealed class GetUserAnalysisHandler(
 
         if (existing is not null && existing.DataFingerprint == fingerprint)
         {
-            var cachedContent = JsonSerializer.Deserialize<AnalysisContent>(existing.ContentJson, JsonOptions)
-                ?? throw new InvalidOperationException("Cached analysis is corrupted.");
-            return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent, BuildMetrics(snapshot));
+            var cachedContent = JsonSerializer.Deserialize<AnalysisContent>(existing.ContentJson, JsonOptions);
+            // A cache row saved before the completeness check below existed (or written by a
+            // buggy generation) may hold null sections. Treat that as a miss and regenerate
+            // instead of returning it forever, since the fingerprint alone won't change again
+            // until the user's training data does.
+            if (cachedContent is not null && IsComplete(cachedContent))
+                return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent, BuildMetrics(snapshot));
         }
 
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
-        var aiResult = await ai.GenerateAsync(new UserAnalysisAiRequest(language, snapshotJson), cancellationToken);
 
-        var content = JsonSerializer.Deserialize<AnalysisContent>(aiResult.Json, JsonOptions)
-            ?? throw new InvalidOperationException("AI returned malformed JSON.");
+        AnalysisContent? content = null;
+        for (var attempt = 1; attempt <= MaxAiAttempts && content is null; attempt++)
+        {
+            var aiResult = await ai.GenerateAsync(new UserAnalysisAiRequest(language, snapshotJson), cancellationToken);
+            var candidate = JsonSerializer.Deserialize<AnalysisContent>(aiResult.Json, JsonOptions);
+            if (candidate is not null && IsComplete(candidate))
+                content = candidate;
+        }
+
+        if (content is null)
+            throw new InvalidOperationException("AI returned an incomplete analysis after multiple attempts. Please try again.");
 
         var contentJson = JsonSerializer.Serialize(content, JsonOptions);
         var now = DateTime.UtcNow;
@@ -80,6 +93,21 @@ public sealed class GetUserAnalysisHandler(
 
         return new UserAnalysisResponse(language, now, Cached: false, content, BuildMetrics(snapshot));
     }
+
+    /// <summary>
+    /// The model occasionally returns syntactically valid JSON that still leaves required
+    /// sections null (e.g. only trainingAdherence filled in). That deserializes fine but is
+    /// unusable, so treat it as a failed attempt rather than caching a sparse analysis.
+    /// planReview is intentionally excluded: it's optional by design (null when the plan has
+    /// no notable mistakes).
+    /// </summary>
+    private static bool IsComplete(AnalysisContent content) =>
+        content.TrainingAdherence is not null &&
+        content.BodyMetrics is not null &&
+        content.VolumeStrength is not null &&
+        content.MuscleBalance is not null &&
+        content.EffortGap is not null &&
+        content.Recommendation is not null;
 
     private static AnalysisMetrics BuildMetrics(Snapshot snapshot)
     {

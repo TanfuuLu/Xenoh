@@ -31,6 +31,44 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
     }
 
     [Fact]
+    public async Task Handle_WhenAiReturnsIncompleteContentThenComplete_RetriesUntilComplete()
+    {
+        await using var db = CreateContext();
+        var ai = new SequencedUserAnalysisAi(IncompleteAnalysisJson, IncompleteAnalysisJson, StubUserAnalysisAi.AnalysisJson);
+        var handler = CreateHandler(db, ai);
+
+        var result = await handler.Handle(new GetUserAnalysisQuery("en"), CancellationToken.None);
+
+        ai.CallCount.Should().Be(3);
+        result.Content.BodyMetrics.Should().NotBeNull();
+        result.Content.Recommendation.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenAiAlwaysReturnsIncompleteContent_ThrowsInsteadOfCaching()
+    {
+        await using var db = CreateContext();
+        var ai = new SequencedUserAnalysisAi(IncompleteAnalysisJson, IncompleteAnalysisJson, IncompleteAnalysisJson);
+        var handler = CreateHandler(db, ai);
+
+        var act = () => handler.Handle(new GetUserAnalysisQuery("en"), CancellationToken.None).AsTask();
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        db.UserAnalyses.Should().BeEmpty();
+    }
+
+    private const string IncompleteAnalysisJson = """
+    {
+      "trainingAdherence": { "headline": "Adherence", "detail": "Training detail." },
+      "bodyMetrics": null,
+      "volumeStrength": null,
+      "muscleBalance": null,
+      "effortGap": null,
+      "recommendation": null
+    }
+    """;
+
+    [Fact]
     public async Task Handle_WithTrainingData_ReturnsChartReadyMetrics()
     {
         await using var db = CreateContext();
@@ -93,12 +131,14 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         result.Metrics.RecentPrs.Should().ContainSingle(p => p.Exercise == "Deadlift" && p.Weight == 150m);
     }
 
-    private GetUserAnalysisHandler CreateHandler(Xenoh.Infrastructure.Persistence.ApplicationDbContext db) =>
+    private GetUserAnalysisHandler CreateHandler(
+        Xenoh.Infrastructure.Persistence.ApplicationDbContext db,
+        IUserAnalysisAi? ai = null) =>
         new(
             db,
             CurrentUser(),
             CreateUserManager(new ApplicationUser { Id = UserId, UserName = "test@xenoh.app", Email = "test@xenoh.app" }),
-            new StubUserAnalysisAi());
+            ai ?? new StubUserAnalysisAi());
 
     private static WeeklyWorkout CreateWeek(Plan plan, int weekNumber, DateOnly start, DateOnly end, int completedDays)
     {
@@ -179,9 +219,41 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
             new ServiceCollection().BuildServiceProvider(),
             NullLogger<UserManager<ApplicationUser>>.Instance);
 
+    /// <summary>Returns a fixed JSON string from <paramref name="responses"/> per call, in order.</summary>
+    private sealed class SequencedUserAnalysisAi(params string[] responses) : IUserAnalysisAi
+    {
+        public int CallCount { get; private set; }
+
+        public Task<UserAnalysisAiResult> GenerateAsync(UserAnalysisAiRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new UserAnalysisAiResult(responses[CallCount++]));
+
+        public Task<PlanProgressInsightAiResult> GeneratePlanProgressInsightAsync(PlanProgressInsightAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<StarterPlanAiResult> GenerateStarterPlanAsync(StarterPlanAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<PlanBalanceAiResult> ReviewPlanBalanceAsync(PlanBalanceAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<CoachClientBriefAiResult> GenerateCoachClientBriefAsync(CoachClientBriefAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<TrainingCoachTipAiResult> GenerateTrainingCoachTipAsync(TrainingCoachTipAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<CoachChatAiResult> ChatAsync(CoachChatAiRequest request, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<CoachChatSummaryAiResult> SummarizeCoachChatAsync(
+            CoachChatSummaryAiRequest request,
+            CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+    }
+
     private sealed class StubUserAnalysisAi : IUserAnalysisAi
     {
-        private const string AnalysisJson = """
+        public const string AnalysisJson = """
         {
           "trainingAdherence": { "headline": "Adherence", "detail": "Training detail." },
           "bodyMetrics": { "headline": "Body", "detail": "Body detail." },
