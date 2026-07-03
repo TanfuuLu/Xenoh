@@ -22,8 +22,9 @@ appsettings.*.local.json
 logs/
 .codex-logs/
 
-## Uploaded files
-src/Xenoh.API/wwwroot/uploads/users-avatar/
+## Uploaded files / static exercise assets
+src/Xenoh.API/wwwroot/uploads/
+src/Xenoh.API/wwwroot/ExerciseImages/
 
 ## OS
 .DS_Store
