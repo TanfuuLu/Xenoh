@@ -12,9 +12,10 @@ namespace Xenoh.Application.Tests.Features.Chat;
 public sealed class SendMessageHandlerTests : HandlerTestBase
 {
     private readonly FakeChatRealtimeService _fakeChatService = new();
+    private readonly FakeNotificationService _fakeNotificationService = new();
 
     private SendMessageHandler CreateHandler(ApplicationDbContext ctx) =>
-        new(ctx, CurrentUser(), _fakeChatService);
+        new(ctx, CurrentUser(), _fakeNotificationService, _fakeChatService);
 
     [Fact]
     public async Task Handle_WhenValidRelationship_CreatesMessageAndBroadcasts()

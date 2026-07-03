@@ -20,7 +20,7 @@ namespace Xenoh.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IMediator mediator) : ControllerBase
+public sealed class AuthController(IMediator mediator, ILogger<AuthController> logger) : ControllerBase
 {
     private const string RefreshTokenCookieName = "xenoh.refresh";
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
@@ -250,18 +250,29 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
         if (string.IsNullOrWhiteSpace(sessionId))
             sessionId = $"auth-{userId:N}";
 
-        await mediator.Send(new TrackWebsiteActivityCommand(
-            eventType,
-            sessionId,
-            Header("X-Xenoh-Path") ?? Request.Path.Value ?? "/",
-            Header("X-Xenoh-Previous-Path"),
-            Header("X-Xenoh-Referrer"),
-            Header("X-Xenoh-Utm-Source"),
-            Header("X-Xenoh-Utm-Medium"),
-            Header("X-Xenoh-Utm-Campaign"),
-            null,
-            Request.Headers.UserAgent.ToString(),
-            userId), ct);
+        try
+        {
+            await mediator.Send(new TrackWebsiteActivityCommand(
+                eventType,
+                sessionId,
+                Header("X-Xenoh-Path") ?? Request.Path.Value ?? "/",
+                Header("X-Xenoh-Previous-Path"),
+                Header("X-Xenoh-Referrer"),
+                Header("X-Xenoh-Utm-Source"),
+                Header("X-Xenoh-Utm-Medium"),
+                Header("X-Xenoh-Utm-Campaign"),
+                null,
+                Request.Headers.UserAgent.ToString(),
+                userId), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to track auth event {EventType} for user {UserId}.",
+                eventType,
+                userId);
+        }
     }
 
     private string? Header(string name)

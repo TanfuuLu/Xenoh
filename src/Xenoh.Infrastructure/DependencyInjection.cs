@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Nutrition;
@@ -23,8 +24,9 @@ public static class DependencyInjection
         // Allow selecting which connection string to use (e.g. the IPv4 Supabase
         // pooler when running inside Docker). Defaults to DefaultConnection.
         var connectionName = configuration["ConnectionStringName"] ?? "DefaultConnection";
+        var connectionString = BuildConnectionString(configuration, connectionName);
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString(connectionName)));
+            options.UseNpgsql(connectionString));
 
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
@@ -126,4 +128,39 @@ public static class DependencyInjection
 
         return services;
     }
+
+    private static string BuildConnectionString(IConfiguration configuration, string connectionName)
+    {
+        var connectionString = configuration.GetConnectionString(connectionName);
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException($"Connection string '{connectionName}' is not configured.");
+
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        if (configuration.GetValue<int?>("Database:MaxPoolSize") is { } maxPoolSize && maxPoolSize > 0)
+        {
+            builder.MaxPoolSize = maxPoolSize;
+        }
+        else if (!HasConnectionStringKey(connectionString, "Maximum Pool Size") &&
+                 !HasConnectionStringKey(connectionString, "MaxPoolSize"))
+        {
+            builder.MaxPoolSize = 10;
+        }
+
+        if (configuration.GetValue<int?>("Database:TimeoutSeconds") is { } timeoutSeconds && timeoutSeconds > 0)
+            builder.Timeout = timeoutSeconds;
+
+        if (configuration.GetValue<int?>("Database:CommandTimeoutSeconds") is { } commandTimeoutSeconds && commandTimeoutSeconds > 0)
+            builder.CommandTimeout = commandTimeoutSeconds;
+
+        if (configuration.GetValue<int?>("Database:KeepAliveSeconds") is { } keepAliveSeconds && keepAliveSeconds > 0)
+            builder.KeepAlive = keepAliveSeconds;
+
+        return builder.ConnectionString;
+    }
+
+    private static bool HasConnectionStringKey(string connectionString, string key) =>
+        connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(part => part.StartsWith($"{key}=", StringComparison.OrdinalIgnoreCase));
 }

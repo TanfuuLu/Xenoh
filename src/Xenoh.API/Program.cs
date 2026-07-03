@@ -112,6 +112,7 @@ builder.Services.AddScoped<IAuthorizationHandler, ActiveSubscriptionAuthorizatio
 builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<ContractExpiryService>();
+builder.Services.AddHostedService<SubscriptionExpiryService>();
 
 builder.Services.AddXenohRateLimiting(builder.Configuration);
 

@@ -11,11 +11,13 @@ public sealed class SendMessageWithAttachmentsHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
     IDocumentStorageService documentStorage,
+    INotificationService notificationService,
     IChatRealtimeService chatRealtimeService
 ) : IRequestHandler<SendMessageWithAttachmentsCommand, MessageResponse>
 {
     private const long MaxFileBytes = 25 * 1024 * 1024;
     private const int MaxContentLength = 2000;
+    private const int PreviewLength = 60;
 
     public async ValueTask<MessageResponse> Handle(
         SendMessageWithAttachmentsCommand request, CancellationToken cancellationToken)
@@ -103,6 +105,18 @@ public sealed class SendMessageWithAttachmentsHandler(
         var recipientId = senderId == relationship.ClientId
             ? relationship.CoachId
             : relationship.ClientId;
+
+        var notificationMessage = content.Length == 0
+            ? $"{senderName} đã gửi một tệp đính kèm."
+            : $"{senderName}: {(content.Length > PreviewLength ? content[..PreviewLength] + "…" : content)}";
+
+        await notificationService.NotifyAsync(
+            recipientId,
+            "NewMessage",
+            notificationMessage,
+            request.RelationshipId,
+            "Relationship",
+            cancellationToken);
 
         await chatRealtimeService.MessageSentAsync(
             request.RelationshipId,

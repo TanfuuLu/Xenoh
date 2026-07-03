@@ -12,6 +12,10 @@ public class UserSubscription : BaseEntity
 
     public DateTime? ExpiresAt { get; set; }
 
+    // Set when the "expiring soon" reminder has been sent for the current term;
+    // cleared on every renewal/activation so a new term can be reminded again.
+    public DateTime? ExpiryReminderSentAt { get; set; }
+
     // Free tier never expires; paid tiers check expiry lazily
     public bool IsActive => Tier == PlanTier.Free || (ExpiresAt.HasValue && ExpiresAt.Value > DateTime.UtcNow);
 

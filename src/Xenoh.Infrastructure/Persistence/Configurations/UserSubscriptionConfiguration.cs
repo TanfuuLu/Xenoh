@@ -17,6 +17,8 @@ public class UserSubscriptionConfiguration : IEntityTypeConfiguration<UserSubscr
 
         builder.Property(s => s.ExpiresAt).IsRequired(false);
 
+        builder.Property(s => s.ExpiryReminderSentAt).IsRequired(false);
+
         builder.HasOne(s => s.User)
             .WithOne(u => u.Subscription)
             .HasForeignKey<UserSubscription>(s => s.UserId)

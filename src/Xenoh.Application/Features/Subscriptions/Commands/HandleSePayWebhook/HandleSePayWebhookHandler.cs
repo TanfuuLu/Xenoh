@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Mediator;
 using Microsoft.AspNetCore.Identity;
+using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
 using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
@@ -10,7 +11,8 @@ namespace Xenoh.Application.Features.Subscriptions.Commands.HandleSePayWebhook;
 public sealed class HandleSePayWebhookHandler(
     IPaymentOrderRepository paymentOrderRepo,
     ISubscriptionRepository subscriptionRepo,
-    UserManager<ApplicationUser> userManager
+    UserManager<ApplicationUser> userManager,
+    INotificationService notificationService
 ) : IRequestHandler<HandleSePayWebhookCommand, WebhookResult>
 {
     private static readonly Regex TransferCodePattern =
@@ -75,6 +77,7 @@ public sealed class HandleSePayWebhookHandler(
 
         subscription.Tier = order.RequestedTier;
         subscription.ExpiresAt = baseDate.AddMonths(order.DurationMonths);
+        subscription.ExpiryReminderSentAt = null;
         subscription.UpdatedAt = DateTime.UtcNow;
 
         await subscriptionRepo.SaveChangesAsync(cancellationToken);
@@ -94,6 +97,14 @@ public sealed class HandleSePayWebhookHandler(
                     await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
             }
         }
+
+        await notificationService.NotifyAsync(
+            order.UserId,
+            "SubscriptionActivated",
+            $"Đăng ký gói {order.RequestedTier} đã được kích hoạt thành công. Hết hạn vào {subscription.ExpiresAt:dd/MM/yyyy}.",
+            subscription.Id,
+            "Subscription",
+            cancellationToken);
 
         return new WebhookResult(true, "Subscription activated.");
     }

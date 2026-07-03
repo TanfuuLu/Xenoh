@@ -11,7 +11,8 @@ public sealed class DevActivateSubscriptionHandler(
     IPaymentOrderRepository paymentOrderRepo,
     ISubscriptionRepository subscriptionRepo,
     ICurrentUserService currentUser,
-    UserManager<ApplicationUser> userManager
+    UserManager<ApplicationUser> userManager,
+    INotificationService notificationService
 ) : IRequestHandler<DevActivateSubscriptionCommand, DevActivateResult>
 {
     public async ValueTask<DevActivateResult> Handle(
@@ -44,6 +45,7 @@ public sealed class DevActivateSubscriptionHandler(
 
         subscription.Tier = order.RequestedTier;
         subscription.ExpiresAt = currentExpiry.AddMonths(order.DurationMonths);
+        subscription.ExpiryReminderSentAt = null;
         subscription.UpdatedAt = DateTime.UtcNow;
 
         await subscriptionRepo.SaveChangesAsync(cancellationToken);
@@ -63,6 +65,14 @@ public sealed class DevActivateSubscriptionHandler(
                     await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
             }
         }
+
+        await notificationService.NotifyAsync(
+            userId,
+            "SubscriptionActivated",
+            $"Đăng ký gói {order.RequestedTier} đã được kích hoạt thành công. Hết hạn vào {subscription.ExpiresAt:dd/MM/yyyy}.",
+            subscription.Id,
+            "Subscription",
+            cancellationToken);
 
         return new DevActivateResult(
             true,

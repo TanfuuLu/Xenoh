@@ -10,9 +10,12 @@ namespace Xenoh.Application.Features.Chat.Commands.SendMessage;
 public sealed class SendMessageHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    INotificationService notificationService,
     IChatRealtimeService chatRealtimeService
 ) : IRequestHandler<SendMessageCommand, MessageResponse>
 {
+    private const int PreviewLength = 60;
+
     public async ValueTask<MessageResponse> Handle(
         SendMessageCommand request, CancellationToken cancellationToken)
     {
@@ -59,6 +62,18 @@ public sealed class SendMessageHandler(
         var recipientId = senderId == relationship.ClientId
             ? relationship.CoachId
             : relationship.ClientId;
+
+        var preview = message.Content.Length > PreviewLength
+            ? message.Content[..PreviewLength] + "…"
+            : message.Content;
+
+        await notificationService.NotifyAsync(
+            recipientId,
+            "NewMessage",
+            $"{senderName}: {preview}",
+            request.RelationshipId,
+            "Relationship",
+            cancellationToken);
 
         await chatRealtimeService.MessageSentAsync(
             request.RelationshipId,

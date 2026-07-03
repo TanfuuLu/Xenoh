@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Features.Subscriptions.Commands.HandleSePayWebhook;
+using Xenoh.Application.Tests.Common;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xunit;
@@ -84,7 +85,8 @@ public sealed class SePayRenewalTests
         new(
             new StubPaymentOrderRepository(order),
             new StubSubscriptionRepository(subscription),
-            CreateUserManager());
+            CreateUserManager(),
+            new FakeNotificationService());
 
     private static PaymentOrder CreateOrder(Guid userId, Guid subscriptionId, int durationMonths) =>
         new()
