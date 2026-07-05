@@ -62,6 +62,7 @@ public interface IApplicationDbContext
     DbSet<WebsiteBugReport> WebsiteBugReports { get; }
     DbSet<StoredFile> StoredFiles { get; }
     DbSet<StoredFileShare> StoredFileShares { get; }
+    DbSet<PromotionCode> PromotionCodes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

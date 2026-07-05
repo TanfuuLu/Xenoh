@@ -9,6 +9,9 @@ public static class AdminAudit
     public const string SuspendUser = "SuspendUser";
     public const string UnsuspendUser = "UnsuspendUser";
     public const string AdjustSubscription = "AdjustSubscription";
+    public const string CreatePromotionCode = "CreatePromotionCode";
+    public const string UpdatePromotionCode = "UpdatePromotionCode";
+    public const string DeletePromotionCode = "DeletePromotionCode";
 
     public static AdminAuditLog Add(
         IApplicationDbContext db,

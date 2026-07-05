@@ -7,6 +7,8 @@ namespace Xenoh.Application.Tests.Features.Subscriptions;
 
 public sealed class SubscriptionLimitsTests
 {
+    private const long Mb = 1024L * 1024;
+
     [Fact]
     public void ProCoachPricing_UsesWebsiteMonthlyPrice()
     {
@@ -16,5 +18,23 @@ public sealed class SubscriptionLimitsTests
         SubscriptionLimits.GetPrice(PlanTier.ProCoach, 6).Should().Be(1_194_000m);
         SubscriptionLimits.GetPrice(PlanTier.ProCoach, 12).Should().Be(2_388_000m);
         SubscriptionLimits.MaxAiRequestsPerMonth(PlanTier.ProCoach).Should().Be(500);
+    }
+
+    [Theory]
+    [InlineData(PlanTier.Free, 250)]
+    [InlineData(PlanTier.ProIndividual, 1024)]
+    [InlineData(PlanTier.ProCoach, 5120)]
+    public void MaxStorageBytes_UsesPlanStorageLimits(PlanTier tier, long expectedMegabytes)
+    {
+        SubscriptionLimits.MaxStorageBytes(tier).Should().Be(expectedMegabytes * Mb);
+    }
+
+    [Theory]
+    [InlineData(PlanTier.Free)]
+    [InlineData(PlanTier.ProIndividual)]
+    [InlineData(PlanTier.ProCoach)]
+    public void MaxFileSizeBytes_AllowsDocumentsForEachPlan(PlanTier tier)
+    {
+        SubscriptionLimits.MaxFileSizeBytes(tier).Should().Be(25L * Mb);
     }
 }

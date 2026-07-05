@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Features.Admin;
+using Xenoh.Application.Features.Promotions.Admin;
 using Xenoh.Application.Features.Reports.Commands.ReviewReport;
 using Xenoh.Application.Features.Reports.Commands.SetUserSuspension;
 using Xenoh.Application.Features.Reports.Queries.GetReports;
@@ -232,6 +233,55 @@ public sealed class AdminController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(new GetAdminAuditLogsQuery(limit <= 0 ? 100 : limit), ct);
         return Ok(result);
+    }
+
+    [HttpGet("promotion-codes")]
+    public async Task<IActionResult> GetPromotionCodes(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetAdminPromotionCodesQuery(), ct);
+        return Ok(result);
+    }
+
+    [HttpPost("promotion-codes")]
+    public async Task<IActionResult> CreatePromotionCode([FromBody] PromotionCodePayload payload, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new CreatePromotionCodeCommand(payload), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("promotion-codes/{promotionCodeId:guid}")]
+    public async Task<IActionResult> UpdatePromotionCode(Guid promotionCodeId, [FromBody] PromotionCodePayload payload, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new UpdatePromotionCodeCommand(promotionCodeId, payload), ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("promotion-codes/{promotionCodeId:guid}")]
+    public async Task<IActionResult> DeletePromotionCode(Guid promotionCodeId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new DeletePromotionCodeCommand(promotionCodeId), ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("users/{userId:guid}/unsuspend")]

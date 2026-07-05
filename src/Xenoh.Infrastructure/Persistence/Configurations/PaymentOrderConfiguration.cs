@@ -12,6 +12,7 @@ public class PaymentOrderConfiguration : IEntityTypeConfiguration<PaymentOrder>
 
         builder.Property(o => o.TransferCode).IsRequired().HasMaxLength(50);
         builder.Property(o => o.Amount).IsRequired().HasPrecision(18, 2);
+        builder.Property(o => o.DiscountAmount).IsRequired().HasPrecision(18, 2);
         builder.Property(o => o.RequestedTier).HasConversion<string>().HasMaxLength(30);
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(o => o.SePayTransactionId).HasMaxLength(50);

@@ -3,7 +3,7 @@ using Xenoh.Domain.Common;
 namespace Xenoh.Domain.Entities;
 
 /// <summary>
-/// A document (PDF / Word) uploaded by a Pro user and kept in R2 object storage.
+/// A document (PDF / Word) uploaded by a user and kept in R2 object storage.
 /// The owner counts its <see cref="SizeBytes"/> against their per-tier storage quota.
 /// </summary>
 public class StoredFile : BaseEntity

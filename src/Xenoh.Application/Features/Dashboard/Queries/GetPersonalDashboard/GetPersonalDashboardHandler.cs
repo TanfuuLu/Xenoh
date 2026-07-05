@@ -21,12 +21,14 @@ public sealed class GetPersonalDashboardHandler(
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<GetPersonalDashboardQuery, PersonalDashboardResponse>
 {
+    private static readonly TimeSpan VietnamUtcOffset = TimeSpan.FromHours(7);
+
     public async ValueTask<PersonalDashboardResponse> Handle(
         GetPersonalDashboardQuery request,
         CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = GetVietnamToday();
 
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
@@ -314,6 +316,9 @@ public sealed class GetPersonalDashboardHandler(
 
     private static int Percent(int completed, int total) =>
         total <= 0 ? 0 : (int)Math.Round(completed * 100.0 / total);
+
+    private static DateOnly GetVietnamToday() =>
+        DateOnly.FromDateTime(DateTime.UtcNow.Add(VietnamUtcOffset));
 
     private static PersonalDashboardActionResponse Action(
         string type,

@@ -61,6 +61,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<WebsiteBugReport> WebsiteBugReports => Set<WebsiteBugReport>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<StoredFileShare> StoredFileShares => Set<StoredFileShare>();
+    public DbSet<PromotionCode> PromotionCodes => Set<PromotionCode>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

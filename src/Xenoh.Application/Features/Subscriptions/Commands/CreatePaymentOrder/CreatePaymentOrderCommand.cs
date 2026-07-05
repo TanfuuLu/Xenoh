@@ -12,12 +12,18 @@ public sealed record CreatePaymentOrderCommand : IRequest<PaymentOrderResponse>
     [Required]
     [Range(1, 12)]
     public required int DurationMonths { get; init; }
+
+    [MaxLength(40)]
+    public string? PromotionCode { get; init; }
 }
 
 public sealed record PaymentOrderResponse(
     Guid OrderId,
     string TransferCode,
     decimal Amount,
+    decimal OriginalAmount,
+    decimal DiscountAmount,
+    string? PromotionCode,
     int DurationMonths,
     string RequestedTier,
     DateTime ExpiresAt,

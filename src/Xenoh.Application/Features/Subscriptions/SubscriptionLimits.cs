@@ -4,6 +4,9 @@ namespace Xenoh.Application.Features.Subscriptions;
 
 public static class SubscriptionLimits
 {
+    private const long Megabyte = 1024L * 1024;
+    private const long Gigabyte = 1024L * Megabyte;
+
     public static int MaxPlans(PlanTier tier) => tier switch
     {
         PlanTier.Free => 3,
@@ -39,15 +42,16 @@ public static class SubscriptionLimits
     /// <summary>Largest single document a user may upload (0 = feature unavailable).</summary>
     public static long MaxFileSizeBytes(PlanTier tier) => tier switch
     {
-        PlanTier.ProIndividual or PlanTier.ProCoach => 25L * 1024 * 1024, // 25 MB
+        PlanTier.Free or PlanTier.ProIndividual or PlanTier.ProCoach => 25L * Megabyte,
         _ => 0
     };
 
     /// <summary>Total bytes a user may keep stored across all their documents.</summary>
     public static long MaxStorageBytes(PlanTier tier) => tier switch
     {
-        PlanTier.ProIndividual => 500L * 1024 * 1024,      // 500 MB
-        PlanTier.ProCoach => 1L * 1024 * 1024 * 1024,      // 1 GB
+        PlanTier.Free => 250L * Megabyte,
+        PlanTier.ProIndividual => 1L * Gigabyte,
+        PlanTier.ProCoach => 5L * Gigabyte,
         _ => 0
     };
 

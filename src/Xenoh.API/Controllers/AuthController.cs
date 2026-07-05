@@ -148,6 +148,21 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
     }
 
+    [HttpPost("forgot-password/verify-code")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
+    public async Task<IActionResult> VerifyForgotPasswordCode([FromBody] VerifyForgotPasswordCodeCommand command, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(command, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("external/{provider}")]
     [EnableRateLimiting(RateLimitPolicyNames.ExternalAuth)]
     public IActionResult ExternalLogin([FromRoute] string provider)

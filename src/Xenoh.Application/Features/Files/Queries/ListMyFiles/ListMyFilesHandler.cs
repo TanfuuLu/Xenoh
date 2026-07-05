@@ -18,6 +18,7 @@ public sealed class ListMyFilesHandler(
         var tier = await subscriptionService.GetActiveTierAsync(userId, cancellationToken);
 
         var files = await db.StoredFiles
+            .AsNoTracking()
             .Where(f => f.OwnerId == userId)
             .OrderByDescending(f => f.CreatedAt)
             .Select(f => new StoredFileDto(

@@ -1,7 +1,9 @@
 using Mediator;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Exceptions;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Features.Promotions;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -10,6 +12,7 @@ namespace Xenoh.Application.Features.Subscriptions.Commands.CreatePaymentOrder;
 public sealed class CreatePaymentOrderHandler(
     ISubscriptionRepository subscriptionRepo,
     IPaymentOrderRepository paymentOrderRepo,
+    IApplicationDbContext db,
     ICurrentUserService currentUser,
     ISePayBankInfo bankInfo,
     IPaymentPreflightService preflight
@@ -36,6 +39,26 @@ public sealed class CreatePaymentOrderHandler(
 
         var userId = currentUser.UserId;
 
+        // Resolve promotion code (validated with the same rules as the preview endpoint)
+        var originalAmount = amount;
+        var discountAmount = 0m;
+        PromotionCode? promo = null;
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            var code = PromotionEvaluation.NormalizeCode(request.PromotionCode);
+            promo = await db.PromotionCodes
+                .FirstOrDefaultAsync(p => p.Code == code, cancellationToken)
+                ?? throw new InvalidOperationException("Invalid promotion code.");
+
+            var promoError = await PromotionEvaluation.CheckEligibilityAsync(
+                db, promo, userId, request.RequestedTier, cancellationToken);
+            if (promoError is not null)
+                throw new InvalidOperationException(promoError);
+
+            discountAmount = PromotionEvaluation.ComputeDiscount(promo, amount);
+            amount -= discountAmount;
+        }
+
         // Expire any existing pending order for the same tier
         var existing = await paymentOrderRepo.FindPendingByUserAndTierAsync(
             userId, request.RequestedTier, cancellationToken);
@@ -60,6 +83,8 @@ public sealed class CreatePaymentOrderHandler(
             SubscriptionId = subscription.Id,
             RequestedTier = request.RequestedTier,
             Amount = amount,
+            DiscountAmount = discountAmount,
+            PromotionCodeId = promo?.Id,
             DurationMonths = request.DurationMonths,
             Status = PaymentStatus.Pending,
             ExpiresAt = DateTime.UtcNow.AddHours(24)
@@ -77,6 +102,9 @@ public sealed class CreatePaymentOrderHandler(
             order.Id,
             transferCode,
             amount,
+            originalAmount,
+            discountAmount,
+            promo?.Code,
             request.DurationMonths,
             request.RequestedTier.ToString(),
             order.ExpiresAt,

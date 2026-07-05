@@ -24,7 +24,7 @@ public sealed class UploadFileHandler(
 
         var maxFileSize = SubscriptionLimits.MaxFileSizeBytes(tier);
         if (maxFileSize <= 0)
-            throw new InvalidOperationException("File storage requires a Pro subscription.");
+            throw new InvalidOperationException("File storage is unavailable for this subscription plan.");
 
         if (request.Length > maxFileSize)
             throw new InvalidOperationException($"File must be {maxFileSize / (1024 * 1024)} MB or smaller.");
@@ -36,7 +36,7 @@ public sealed class UploadFileHandler(
 
         if (usedBytes + request.Length > quota)
             throw new InvalidOperationException(
-                $"Storage quota exceeded. You have {FormatBytes(quota - usedBytes)} of {FormatBytes(quota)} remaining.");
+                $"Storage quota exceeded. You have {FormatBytes(Math.Max(0, quota - usedBytes))} of {FormatBytes(quota)} remaining.");
 
         // SaveAsync also validates the document type by magic bytes.
         var storageKey = await documentStorage.SaveAsync(

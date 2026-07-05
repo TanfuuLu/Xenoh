@@ -16,7 +16,14 @@ public class PaymentOrder : BaseEntity
     /// Format: XENOH_{8hexUserId}_{8hexOrderId} — matched by SePay via bank transfer description
     public string TransferCode { get; set; } = string.Empty;
 
+    /// <summary>Final amount the user must transfer (after any promotion discount).</summary>
     public decimal Amount { get; set; }
+
+    /// <summary>VND knocked off the list price by a promotion code; 0 when none applied.</summary>
+    public decimal DiscountAmount { get; set; }
+
+    public Guid? PromotionCodeId { get; set; }
+    public PromotionCode? PromotionCode { get; set; }
 
     public int DurationMonths { get; set; }
 

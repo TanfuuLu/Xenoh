@@ -1,7 +1,6 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Xenoh.API.Auth;
 using Xenoh.Application.Features.Files.Commands.DeleteFile;
 using Xenoh.Application.Features.Files.Commands.ShareFileWithClient;
 using Xenoh.Application.Features.Files.Commands.UnshareFile;
@@ -14,7 +13,7 @@ namespace Xenoh.API.Controllers;
 
 [ApiController]
 [Route("api/files")]
-[Authorize(Policy = SubscriptionPolicies.RequirePro)]
+[Authorize]
 public sealed class FilesController(IMediator mediator) : ControllerBase
 {
     private const long MaxUploadBytes = 25 * 1024 * 1024;

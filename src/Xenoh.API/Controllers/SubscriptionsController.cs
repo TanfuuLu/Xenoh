@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.Application.Common.Exceptions;
+using Xenoh.Application.Features.Promotions.Queries.ValidatePromotionCode;
 using Xenoh.Application.Features.Subscriptions.Commands.CreatePaymentOrder;
 using Xenoh.Application.Features.Subscriptions.Commands.DevActivateSubscription;
 using Xenoh.Application.Features.Subscriptions.Queries.GetMySubscription;
@@ -39,6 +40,19 @@ public sealed class SubscriptionsController(IMediator mediator, IWebHostEnvironm
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Checks a promotion code for the current user. Always returns 200 — the body
+    /// carries valid/invalid plus a user-readable message, so the UI can show it inline.
+    /// POST (not GET) keeps codes out of URLs and access logs.
+    /// </summary>
+    [HttpPost("promotions/validate")]
+    public async Task<IActionResult> ValidatePromotionCode(
+        [FromBody] ValidatePromotionCodeQuery query, CancellationToken ct)
+    {
+        var result = await mediator.Send(query, ct);
+        return Ok(result);
     }
 
     /// <summary>
