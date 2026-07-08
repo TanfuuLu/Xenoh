@@ -60,6 +60,11 @@ deploy_production:
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
+    # Clean deploy: reclaim dangling images + build cache BEFORE building (so a
+    # nearly-full disk has room), rebuild with no cache, then reclaim again to
+    # drop the image the rebuild just orphaned. This is what prevents the
+    # recurring "no space left on device" — a plain `up -d --build` leaves the
+    # old image dangling and never clears the .NET build cache.
     - >
       ssh "$EC2_USER@$EC2_HOST"
       "set -e;
@@ -68,6 +73,12 @@ deploy_production:
       git checkout '$CI_COMMIT_BRANCH';
       git reset --hard 'origin/$CI_COMMIT_BRANCH';
       cd '$EC2_COMPOSE_PATH';
-      docker compose up -d --build;
+      echo '== disk before =='; df -h / | tail -1;
       docker image prune -f;
+      docker builder prune -af;
+      docker compose build --pull --no-cache;
+      docker compose up -d --force-recreate --remove-orphans;
+      docker image prune -f;
+      docker builder prune -af;
+      echo '== disk after =='; df -h / | tail -1;
       docker ps --filter name=xenoh-api"
