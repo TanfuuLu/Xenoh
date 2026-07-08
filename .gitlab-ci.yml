@@ -52,9 +52,17 @@ build_image:
   stage: package
   image: docker:27
   services:
-    - docker:27-dind
+    # Lower the dind bridge MTU. GitLab.com's runner network uses a smaller MTU
+    # than dind's 1500 default; large packets (e.g. NuGet restore over TLS) get
+    # silently dropped and hang until timeout (NU1301). 1400 stays under it.
+    - name: docker:27-dind
+      command: ["--mtu=1400"]
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    # Use the legacy builder, which runs the build on the daemon's bridge and so
+    # honors the --mtu above. BuildKit uses its own network that ignores --mtu,
+    # which is why the restore hangs with the default (BuildKit) builder.
+    DOCKER_BUILDKIT: "0"
   needs:
     - test
   rules:
