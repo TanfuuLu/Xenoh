@@ -1,6 +1,7 @@
 stages:
   - build
   - test
+  - package
   - deploy
 
 variables:
@@ -9,7 +10,6 @@ variables:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
   CONFIGURATION: "Release"
   EC2_USER: "ubuntu"
-  EC2_BACKEND_PATH: "/opt/xenoh/Xenoh_be"
   EC2_COMPOSE_PATH: "/opt/xenoh/deploy/aws-ec2"
 
 workflow:
@@ -43,11 +43,36 @@ test:
     paths:
       - tests/**/TestResults/*.trx
 
+# Build the production Docker image on a GitLab shared runner (docker-in-docker)
+# and push it to this project's GitLab Container Registry. Moving the heavy .NET
+# image build OFF the EC2 box is what fixes the recurring "no space left on
+# device": EC2 no longer needs the SDK image, build cache, or publish output —
+# it only pulls a ~400 MB runtime image.
+build_image:
+  stage: package
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  needs:
+    - test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    # $CI_REGISTRY_IMAGE = registry.gitlab.com/lutanfuu/xenoh
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+
 deploy_production:
   stage: deploy
   image: alpine:3.20
   needs:
-    - test
+    - build_image
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
@@ -60,25 +85,17 @@ deploy_production:
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    # Clean deploy: reclaim dangling images + build cache BEFORE building (so a
-    # nearly-full disk has room), rebuild with no cache, then reclaim again to
-    # drop the image the rebuild just orphaned. This is what prevents the
-    # recurring "no space left on device" — a plain `up -d --build` leaves the
-    # old image dangling and never clears the .NET build cache.
+    # EC2 no longer builds. It pulls the image just pushed by build_image and
+    # recreates the container; a single image prune drops the previous tag so
+    # old images do not pile up. EC2 authenticates to the registry via a
+    # persistent Deploy Token login set up once on the host (see
+    # docs/aws-ec2-deployment.md, Section 7) — so this job carries no registry
+    # credentials and never touches the host's docker login.
     - >
       ssh "$EC2_USER@$EC2_HOST"
       "set -e;
-      cd '$EC2_BACKEND_PATH';
-      git fetch origin;
-      git checkout '$CI_COMMIT_BRANCH';
-      git reset --hard 'origin/$CI_COMMIT_BRANCH';
       cd '$EC2_COMPOSE_PATH';
-      echo '== disk before =='; df -h / | tail -1;
+      docker compose pull;
+      docker compose up -d --remove-orphans;
       docker image prune -f;
-      docker builder prune -af;
-      docker compose build --pull --no-cache;
-      docker compose up -d --force-recreate --remove-orphans;
-      docker image prune -f;
-      docker builder prune -af;
-      echo '== disk after =='; df -h / | tail -1;
       docker ps --filter name=xenoh-api"
