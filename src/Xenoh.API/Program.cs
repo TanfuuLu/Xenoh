@@ -217,7 +217,6 @@ app.Use(async (context, next) =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("FrontendPolicy");
 app.UseResponseCaching();

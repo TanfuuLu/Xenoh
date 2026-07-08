@@ -57,10 +57,10 @@ public static class SubscriptionLimits
 
     public static decimal GetPrice(PlanTier tier, int durationMonths) => (tier, durationMonths) switch
     {
-        (PlanTier.ProIndividual, 1) => 149_000m,
-        (PlanTier.ProIndividual, 3) => 447_000m,
-        (PlanTier.ProIndividual, 6) => 894_000m,
-        (PlanTier.ProIndividual, 12) => 1_788_000m,
+        (PlanTier.ProIndividual, 1) => 100_000m,
+        (PlanTier.ProIndividual, 3) => 300_000m,
+        (PlanTier.ProIndividual, 6) => 600_000m,
+        (PlanTier.ProIndividual, 12) => 1_200_000m,
         (PlanTier.ProCoach, 1) => 199_000m,
         (PlanTier.ProCoach, 3) => 597_000m,
         (PlanTier.ProCoach, 6) => 1_194_000m,
@@ -70,10 +70,10 @@ public static class SubscriptionLimits
 
     public static decimal GetListPrice(PlanTier tier, int durationMonths) => (tier, durationMonths) switch
     {
-        (PlanTier.ProIndividual, 1) => 149_000m,
-        (PlanTier.ProIndividual, 3) => 447_000m,
-        (PlanTier.ProIndividual, 6) => 894_000m,
-        (PlanTier.ProIndividual, 12) => 1_788_000m,
+        (PlanTier.ProIndividual, 1) => 100_000m,
+        (PlanTier.ProIndividual, 3) => 300_000m,
+        (PlanTier.ProIndividual, 6) => 600_000m,
+        (PlanTier.ProIndividual, 12) => 1_200_000m,
         (PlanTier.ProCoach, 1) => 199_000m,
         (PlanTier.ProCoach, 3) => 597_000m,
         (PlanTier.ProCoach, 6) => 1_194_000m,
