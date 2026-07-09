@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces;
 
@@ -12,7 +14,15 @@ public sealed class SePayWebhookVerifier(IOptions<SePayOptions> options) : ISePa
         const string prefix = "Apikey ";
         if (!authorizationHeader.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return false;
 
+        var expectedKey = options.Value.ApiKey;
+        if (string.IsNullOrEmpty(expectedKey)) return false;
+
         var providedKey = authorizationHeader[prefix.Length..].Trim();
-        return string.Equals(providedKey, options.Value.ApiKey, StringComparison.Ordinal);
+
+        // Constant-time comparison so the response time cannot leak how many leading
+        // bytes of the API key were guessed correctly.
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedKey),
+            Encoding.UTF8.GetBytes(expectedKey));
     }
 }

@@ -83,18 +83,11 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
     [Authorize]
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
-        var authHeader = Request.Headers.Authorization.ToString();
-        var accessToken = "";
-        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-        {
-            accessToken = authHeader.Substring("Bearer ".Length).Trim();
-        }
-
         Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken);
 
         var command = new LogoutCommand
         {
-            AccessToken = accessToken,
+            AccessToken = ExtractBearerToken(),
             RefreshToken = refreshToken
         };
         await mediator.Send(command, ct);
@@ -109,7 +102,9 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
     {
         try
         {
-            await mediator.Send(command, ct);
+            // Bind the caller's access token from the header, discarding any body-supplied
+            // value, so the handler can blacklist exactly this session on success.
+            await mediator.Send(command with { AccessToken = ExtractBearerToken() }, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -294,5 +289,14 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
     {
         var value = Request.Headers[name].ToString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private string? ExtractBearerToken()
+    {
+        const string prefix = "Bearer ";
+        var authHeader = Request.Headers.Authorization.ToString();
+        return !string.IsNullOrEmpty(authHeader) && authHeader.StartsWith(prefix)
+            ? authHeader[prefix.Length..].Trim()
+            : null;
     }
 }

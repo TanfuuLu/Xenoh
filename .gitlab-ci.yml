@@ -54,9 +54,10 @@ build_image:
   services:
     # Lower the dind bridge MTU. GitLab.com's runner network uses a smaller MTU
     # than dind's 1500 default; large packets (e.g. NuGet restore over TLS) get
-    # silently dropped and hang until timeout (NU1301). 1400 stays under it.
+    # silently dropped and hang until timeout (NU1301). 1400 was still too high on
+    # some shared runners (restore hung ~50 min -> job canceled), so pin lower.
     - name: docker:27-dind
-      command: ["--mtu=1400"]
+      command: ["--mtu=1300"]
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     # Use the legacy builder, which runs the build on the daemon's bridge and so

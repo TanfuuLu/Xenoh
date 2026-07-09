@@ -20,7 +20,8 @@ public sealed class AdminAuditHandlerTests : IdentityHandlerTestBase
         var targetId = Guid.NewGuid();
         await SeedUserAsync(targetId, "target@test.com", "password");
         await using var ctx = CreateContext();
-        var handler = new SetUserSuspensionHandler(CreateUserManager(), CurrentUser(), ctx);
+        var handler = new SetUserSuspensionHandler(
+            CreateUserManager(), CurrentUser(), new RefreshTokenRepository(ctx), ctx);
 
         await handler.Handle(new SetUserSuspensionCommand(targetId, true), CancellationToken.None);
 

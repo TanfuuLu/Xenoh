@@ -1,13 +1,15 @@
 using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 
 namespace Xenoh.Application.Features.Auth.Commands.ForgotPassword;
 
 public sealed class ResetPasswordWithCodeHandler(
     UserManager<ApplicationUser> userManager,
-    IApplicationDbContext db
+    IApplicationDbContext db,
+    IRefreshTokenRepository refreshTokenRepo
 ) : IRequestHandler<ResetPasswordWithCodeCommand>
 {
     public async ValueTask<Unit> Handle(ResetPasswordWithCodeCommand request, CancellationToken cancellationToken)
@@ -29,6 +31,16 @@ public sealed class ResetPasswordWithCodeHandler(
 
         resetCode.UsedAt = now;
         await db.SaveChangesAsync(cancellationToken);
+
+        // A password reset is a recovery action — evict any sessions an attacker may hold
+        // by revoking every active refresh token for this user.
+        var activeTokens = await refreshTokenRepo.GetActiveByUserAsync(user.Id, cancellationToken);
+        if (activeTokens.Count > 0)
+        {
+            foreach (var token in activeTokens)
+                token.IsRevoked = true;
+            await refreshTokenRepo.SaveChangesAsync(cancellationToken);
+        }
 
         return Unit.Value;
     }
