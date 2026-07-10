@@ -185,6 +185,9 @@ internal static class ExternalAuthHelpers
 
         if ((configuration["Jwt:Key"]?.Length ?? 0) < 32)
             throw new InvalidOperationException("Production JWT signing key must be at least 32 characters.");
+
+        if (configuration.GetValue("Redis:Enabled", false) && IsPlaceholder(configuration["Redis:ConnectionString"]))
+            throw new InvalidOperationException("Redis:ConnectionString is required when Redis is enabled.");
     }
 
     private static bool IsPlaceholder(string? value) =>

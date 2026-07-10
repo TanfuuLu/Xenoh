@@ -8,7 +8,8 @@ namespace Xenoh.Application.Features.ExerciseTemplates.Queries.GetClientExercise
 public sealed class GetClientExerciseTemplatesHandler(
     IExerciseTemplateRepository exerciseTemplateRepo,
     ICoachClientRepository coachClientRepo,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IApplicationCache? cache = null)
     : IRequestHandler<GetClientExerciseTemplatesQuery, IReadOnlyList<ExerciseTemplateResponse>>
 {
     public async ValueTask<IReadOnlyList<ExerciseTemplateResponse>> Handle(
@@ -27,9 +28,14 @@ public sealed class GetClientExerciseTemplatesHandler(
         if (relationship is null)
             throw new InvalidOperationException("Client not found or no active coaching relationship.");
 
-        return await exerciseTemplateRepo.GetAvailableForUserAsync(
-            request.ClientId,
-            request.MuscleGroup,
+        if (cache is null)
+            return await exerciseTemplateRepo.GetAvailableForUserAsync(request.ClientId, request.MuscleGroup, cancellationToken);
+
+        return await cache.GetOrCreateAsync(
+            CacheTags.Templates,
+            $"user:{request.ClientId:N}:muscle:{request.MuscleGroup?.ToString() ?? "all"}",
+            TimeSpan.FromMinutes(30),
+            ct => exerciseTemplateRepo.GetAvailableForUserAsync(request.ClientId, request.MuscleGroup, ct),
             cancellationToken);
     }
 }

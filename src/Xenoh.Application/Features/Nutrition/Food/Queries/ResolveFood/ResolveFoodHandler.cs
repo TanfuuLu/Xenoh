@@ -9,13 +9,32 @@ namespace Xenoh.Application.Features.Nutrition.Food.Queries.ResolveFood;
 
 public sealed class ResolveFoodHandler(
     IApplicationDbContext db,
-    IFoodMacroAi foodMacroAi
+    IFoodMacroAi foodMacroAi,
+    ICurrentUserService? currentUser = null,
+    IApplicationCache? cache = null,
+    IDistributedLock? distributedLock = null
 ) : IRequestHandler<ResolveFoodQuery, FoodItemResponse>
 {
-    public async ValueTask<FoodItemResponse> Handle(ResolveFoodQuery request, CancellationToken cancellationToken)
+    public ValueTask<FoodItemResponse> Handle(ResolveFoodQuery request, CancellationToken cancellationToken)
+    {
+        var normalizedName = request.Name.Trim().ToLowerInvariant();
+        var userId = currentUser?.UserId ?? Guid.Empty;
+        return new(cache is null
+            ? ResolveAsync(request, normalizedName, cancellationToken)
+            : cache.GetOrCreateAsync(
+                CacheTags.Foods,
+                $"user:{userId:N}:resolve:{normalizedName}",
+                TimeSpan.FromMinutes(5),
+                ct => ResolveAsync(request, normalizedName, ct),
+                cancellationToken));
+    }
+
+    private async Task<FoodItemResponse> ResolveAsync(
+        ResolveFoodQuery request,
+        string nameLower,
+        CancellationToken cancellationToken)
     {
         // Check if we already have it in DB (case-insensitive)
-        var nameLower = request.Name.Trim().ToLower();
         var existing = await db.FoodItems
             .AsNoTracking()
             .Where(f =>
@@ -27,7 +46,24 @@ public sealed class ResolveFoodHandler(
         if (existing is not null)
             return ToResponse(existing);
 
-        // Call AI to resolve macros
+        // The lock suppresses duplicate external AI calls from concurrent API nodes.
+        await using var lease = distributedLock is null
+            ? null
+            : await distributedLock.TryAcquireAsync($"food:{nameLower}", TimeSpan.FromSeconds(30), cancellationToken);
+
+        if (distributedLock is not null && lease is null)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+            var concurrentResult = await db.FoodItems
+                .AsNoTracking()
+                .Where(f => f.NameVi.ToLower() == nameLower || f.NameEn.ToLower() == nameLower)
+                .Include(f => f.Servings)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (concurrentResult is not null)
+                return ToResponse(concurrentResult);
+        }
+
+        // Call AI to resolve macros.
         var result = await foodMacroAi.ResolveAsync(new(request.Name), cancellationToken);
 
         var food = new FoodItem

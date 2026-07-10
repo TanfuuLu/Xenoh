@@ -13,12 +13,21 @@ public sealed class GetMyProfileHandler(
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
     UserManager<ApplicationUser> userManager,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    IApplicationCache? cache = null
 ) : IRequestHandler<GetMyProfileQuery, UserProfileResponse>
 {
-    public async ValueTask<UserProfileResponse> Handle(GetMyProfileQuery request, CancellationToken cancellationToken)
+    public ValueTask<UserProfileResponse> Handle(GetMyProfileQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
+        return new(cache is null
+            ? BuildAsync(userId, cancellationToken)
+            : cache.GetOrCreateAsync(CacheTags.User(userId), "profile", TimeSpan.FromMinutes(1),
+                ct => BuildAsync(userId, ct), cancellationToken));
+    }
+
+    private async Task<UserProfileResponse> BuildAsync(Guid userId, CancellationToken cancellationToken)
+    {
 
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");

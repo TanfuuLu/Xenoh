@@ -11,6 +11,7 @@ using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Nutrition;
 using Xenoh.Domain.Entities;
 using Xenoh.Infrastructure.Identity;
+using Xenoh.Infrastructure.Caching;
 using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Repositories;
 using Xenoh.Infrastructure.Services;
@@ -21,6 +22,16 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
+        services.AddSingleton<IRedisConnectionProvider, RedisConnectionProvider>();
+        services.AddSingleton<RedisApplicationCache>();
+        services.AddSingleton<Microsoft.Extensions.Hosting.IHostedService, RedisRevocationWarmupService>();
+        services.AddSingleton<Xenoh.Application.Common.Interfaces.IApplicationCache>(provider =>
+            provider.GetRequiredService<RedisApplicationCache>());
+        services.AddSingleton<Xenoh.Application.Common.Interfaces.ICacheInvalidator, RedisCacheInvalidator>();
+        services.AddSingleton<Xenoh.Application.Common.Interfaces.IDistributedLock, RedisDistributedLock>();
+        services.AddSingleton<Xenoh.Application.Common.Interfaces.IRedisRateLimiter, RedisRateLimiter>();
+
         // Allow selecting which connection string to use (e.g. the IPv4 Supabase
         // pooler when running inside Docker). Defaults to DefaultConnection.
         var connectionName = configuration["ConnectionStringName"] ?? "DefaultConnection";
@@ -64,7 +75,7 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
         services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<ITokenBlacklist, DatabaseTokenBlacklist>();
+        services.AddScoped<ITokenBlacklist, RedisTokenBlacklist>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFoodLogService, FoodLogService>();

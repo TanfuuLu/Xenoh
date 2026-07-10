@@ -4,14 +4,27 @@ using Xenoh.Application.Common.Interfaces;
 
 namespace Xenoh.Application.Features.Nutrition.Food.Queries.SearchFood;
 
-public sealed class SearchFoodHandler(IApplicationDbContext db)
+public sealed class SearchFoodHandler(
+    IApplicationDbContext db,
+    ICurrentUserService? currentUser = null,
+    IApplicationCache? cache = null)
     : IRequestHandler<SearchFoodQuery, List<FoodItemResponse>>
 {
-    public async ValueTask<List<FoodItemResponse>> Handle(SearchFoodQuery request, CancellationToken cancellationToken)
+    public ValueTask<List<FoodItemResponse>> Handle(SearchFoodQuery request, CancellationToken cancellationToken)
     {
         var q = request.Query.Trim().ToLower();
+        return new ValueTask<List<FoodItemResponse>>(cache is null
+            ? SearchAsync(q, cancellationToken)
+            : cache.GetOrCreateAsync(
+                CacheTags.Foods,
+                $"user:{(currentUser?.UserId ?? Guid.Empty):N}:query:{q}",
+                TimeSpan.FromMinutes(5),
+                ct => SearchAsync(q, ct),
+                cancellationToken));
+    }
 
-        return await db.FoodItems
+    private Task<List<FoodItemResponse>> SearchAsync(string q, CancellationToken cancellationToken) =>
+        db.FoodItems
             .AsNoTracking()
             .Where(f =>
                 f.NameVi.ToLower().Contains(q) ||
@@ -29,5 +42,4 @@ public sealed class SearchFoodHandler(IApplicationDbContext db)
                 f.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList()
             ))
             .ToListAsync(cancellationToken);
-    }
 }

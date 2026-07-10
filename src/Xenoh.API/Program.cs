@@ -13,6 +13,7 @@ using Xenoh.Infrastructure.Hubs;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure;
 using Xenoh.Infrastructure.BackgroundServices;
+using Xenoh.Infrastructure.Caching;
 using Xenoh.Infrastructure.Middleware;
 using Xenoh.Infrastructure.Persistence.Seeders;
 using Xenoh.API.Security;
@@ -109,7 +110,13 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new ActiveSubscriptionRequirement(PlanTier.ProCoach)));
 });
 builder.Services.AddScoped<IAuthorizationHandler, ActiveSubscriptionAuthorizationHandler>();
-builder.Services.AddSignalR();
+var signalR = builder.Services.AddSignalR();
+if (builder.Configuration.GetValue("Redis:Enabled", false) &&
+    !string.IsNullOrWhiteSpace(builder.Configuration["Redis:ConnectionString"]))
+{
+    signalR.AddStackExchangeRedis(
+        RedisConnectionString.Normalize(builder.Configuration["Redis:ConnectionString"]!));
+}
 
 builder.Services.AddHostedService<ContractExpiryService>();
 builder.Services.AddHostedService<SubscriptionExpiryService>();
@@ -221,9 +228,13 @@ app.UseRouting();
 app.UseCors("FrontendPolicy");
 app.UseResponseCaching();
 app.UseAuthentication();
-app.UseRateLimiter();
+if (builder.Configuration.GetValue("Redis:Enabled", false))
+    app.UseRedisRateLimiting();
+else
+    app.UseRateLimiter();
 app.UseTokenBlacklistMiddleware();
 app.UseAuthorization();
+app.UseCacheInvalidation();
 
 // Prometheus: collect HTTP request metrics and expose the scrape endpoint at /metrics.
 // .NET runtime metrics (GC, threadpool, exceptions) are collected automatically.

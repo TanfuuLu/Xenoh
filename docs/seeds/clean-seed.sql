@@ -1,19 +1,21 @@
 -- ============================================================================
--- Xenoh clean seed — exactly three accounts with full website data.
+-- Xenoh clean seed — four accounts that cover every role and subscription tier.
 --
 --   admin@xenoh.app      / Admin@Xenoh123!   (Admin + Coach + Individual)
 --   demo@xenoh.app       / Demo@Xenoh123!    (Individual, FEMALE, cycle data)
 --   democoach@xenoh.app  / Coach@Xenoh123!   (Coach + Individual)
+--   free@xenoh.app       / Demo@Xenoh123!    (Individual, Free tier)
 --
 -- Demo is a client of DemoCoach. DemoCoach has personal training data AND
 -- coaching data (active relationship, a coach-authored plan for Demo, chat).
--- Both have community shares and are friends.
+-- Both have community shares and are friends. The Free account has a self plan
+-- so every subscription tier and both workout-plan types are available to test.
 --
 -- PRECONDITIONS: schema is migrated and the app has seeded roles, system
 -- ExerciseTemplates (OwnerId IS NULL) and seed FoodItems. This script only
 -- creates the users and their data; it relies on those reference rows existing.
 --
--- Re-runnable: it deletes the three seed emails (and their data) first.
+-- Re-runnable: it deletes the four seed emails (and their data) first.
 -- Password hashes are ASP.NET Core Identity v3 (PBKDF2-HMACSHA256, 100k iters);
 -- the verifier reads the parameters from the blob, so they validate as-is.
 -- ============================================================================
@@ -72,7 +74,7 @@ DECLARE
   uids uuid[];
 BEGIN
   SELECT array_agg("Id") INTO uids FROM "AspNetUsers"
-   WHERE "Email" IN ('admin@xenoh.app','demo@xenoh.app','democoach@xenoh.app');
+   WHERE "Email" IN ('admin@xenoh.app','demo@xenoh.app','democoach@xenoh.app','free@xenoh.app');
   IF uids IS NULL THEN RETURN; END IF;
 
   DELETE FROM "TrainingDayShareSets" s USING "TrainingDayShareExercises" e, "TrainingDayShares" sh
@@ -83,11 +85,17 @@ BEGIN
     WHERE l."TrainingDayShareId"=sh."Id" AND (sh."UserId"=ANY(uids) OR l."UserId"=ANY(uids));
   DELETE FROM "TrainingDayShares" WHERE "UserId"=ANY(uids);
 
+  DELETE FROM "AdminAuditLogs" WHERE "AdminUserId"=ANY(uids) OR "TargetUserId"=ANY(uids);
+  DELETE FROM "UserReports" WHERE "ReporterId"=ANY(uids) OR "ReportedUserId"=ANY(uids) OR "ReviewedById"=ANY(uids);
+  DELETE FROM "UserBlocks" WHERE "BlockerId"=ANY(uids) OR "BlockedId"=ANY(uids);
   DELETE FROM "Messages" m USING "CoachClientRelationships" r
     WHERE m."RelationshipId"=r."Id" AND (r."ClientId"=ANY(uids) OR r."CoachId"=ANY(uids));
   DELETE FROM "CoachClientRelationships" WHERE "ClientId"=ANY(uids) OR "CoachId"=ANY(uids);
+  DELETE FROM "CoachInviteCodes" WHERE "CoachId"=ANY(uids);
   DELETE FROM "Friendships" WHERE "UserAId"=ANY(uids) OR "UserBId"=ANY(uids);
 
+  DELETE FROM "PlanComments" WHERE "AuthorId"=ANY(uids);
+  DELETE FROM "WeeklyWorkoutComments" WHERE "AuthorId"=ANY(uids);
   DELETE FROM "ExerciseSets" s USING "Exercises" e, "DailyWorkouts" d, "WeeklyWorkouts" w, "Plans" p
     WHERE s."ExerciseId"=e."Id" AND e."DailyWorkoutId"=d."Id" AND d."WeeklyWorkoutId"=w."Id"
       AND w."PlanId"=p."Id" AND p."OwnerId"=ANY(uids);
@@ -103,10 +111,18 @@ BEGIN
   DELETE FROM "UserExercisePRs" WHERE "UserId"=ANY(uids);
   DELETE FROM "UserExercisePRHistories" WHERE "UserId"=ANY(uids);
   DELETE FROM "NutritionDailyLogs" WHERE "UserId"=ANY(uids);
+  DELETE FROM "MealPlanItems" i USING "MealPlanMeals" m, "MealPlanDays" d
+    WHERE i."MealPlanMealId"=m."Id" AND m."MealPlanDayId"=d."Id" AND d."UserId"=ANY(uids);
+  DELETE FROM "MealPlanMeals" m USING "MealPlanDays" d
+    WHERE m."MealPlanDayId"=d."Id" AND d."UserId"=ANY(uids);
+  DELETE FROM "MealPlanDays" WHERE "UserId"=ANY(uids);
   DELETE FROM "FoodLogs" WHERE "UserId"=ANY(uids);
   DELETE FROM "CycleDailyLogs" WHERE "UserId"=ANY(uids);
   DELETE FROM "CycleSettings" WHERE "UserId"=ANY(uids);
   DELETE FROM "NutritionProfiles" WHERE "UserId"=ANY(uids);
+  DELETE FROM "PaymentOrders"
+    WHERE "UserId"=ANY(uids)
+       OR "SubscriptionId" IN (SELECT "Id" FROM "UserSubscriptions" WHERE "UserId"=ANY(uids));
   DELETE FROM "UserSubscriptions" WHERE "UserId"=ANY(uids);
   DELETE FROM "AspNetUserRoles" WHERE "UserId"=ANY(uids);
   DELETE FROM "AspNetUsers" WHERE "Id"=ANY(uids);
@@ -272,6 +288,7 @@ DECLARE
   admin_id uuid := gen_random_uuid();
   demo_id  uuid := gen_random_uuid();
   coach_id uuid := gen_random_uuid();
+  free_id  uuid := gen_random_uuid();
   rel_id uuid := gen_random_uuid();
   i int; d date; ps date; v_flow int; v_sym int; v_mood int; v_en int;
 BEGIN
@@ -301,22 +318,30 @@ BEGIN
     (coach_id,'Demo','Coach', now()-interval '220 days', 178, 0, DATE '1992-03-10', 'Strength coach. Powerlifting + general strength programming.', 22000, 22,
      'democoach@xenoh.app','DEMOCOACH@XENOH.APP','democoach@xenoh.app','DEMOCOACH@XENOH.APP', true,
      'AQAAAAEAAYagAAAAEE46oWvYcVePA2s36LZ3WUdB/+trKMXG8SPROy64kXQUhBgYWwV8M1Mu3eMEjjAevA==',
-     gen_random_uuid()::text, gen_random_uuid()::text, false,false,true,0,'en','dark','kg', 0, 0);
+     gen_random_uuid()::text, gen_random_uuid()::text, false,false,true,0,'en','dark','kg', 0, 0),
+
+    (free_id,'Free','Explorer', now()-interval '45 days', 172, 0, DATE '2000-11-15', 'Free-tier account for validating plan limits and upgrade flows.', 450, 3,
+     'free@xenoh.app','FREE@XENOH.APP','free@xenoh.app','FREE@XENOH.APP', true,
+     'AQAAAAEAAYagAAAAEKyfXo5Tyza0170lK7wMG/u0ewa/Y5NDTi/S6EiXbhaRUVi4dkxz5HH61q4UkPeYUQ==',
+     gen_random_uuid()::text, gen_random_uuid()::text, false,false,true,0,'en','light','kg', 2, 1);
 
   INSERT INTO "AspNetUserRoles"("UserId","RoleId") VALUES
     (admin_id, role_admin),(admin_id, role_coach),(admin_id, role_indiv),
     (demo_id, role_indiv),
-    (coach_id, role_coach),(coach_id, role_indiv);
+    (coach_id, role_coach),(coach_id, role_indiv),
+    (free_id, role_indiv);
 
   -- ----- Subscriptions -----
   INSERT INTO "UserSubscriptions"("Id","UserId","Tier","ExpiresAt","CreatedAt","UpdatedAt") VALUES
     (gen_random_uuid(), admin_id,'ProCoach', TIMESTAMPTZ '9999-12-31 23:59:59+00', now(), now()),
     (gen_random_uuid(), demo_id, 'ProIndividual', now()+interval '1 year', now(), now()),
-    (gen_random_uuid(), coach_id,'ProCoach', now()+interval '1 year', now(), now());
+    (gen_random_uuid(), coach_id,'ProCoach', now()+interval '1 year', now(), now()),
+    (gen_random_uuid(), free_id, 'Free', NULL, now(), now());
 
   -- ----- Plans / workouts -----
   PERFORM pg_temp.gen_plan(demo_id, '16-Week Strength Block', 16, monday - 70, 1.00, 0, NULL, true, today);     -- Demo self (active)
   PERFORM pg_temp.gen_plan(coach_id,'12-Week Peak Block',     12, monday - 49, 1.55, 0, NULL, true, today);     -- Coach self (active)
+  PERFORM pg_temp.gen_plan(free_id, 'Free Starter Plan',       4, monday - 7, 0.85, 0, NULL, true, today);      -- Free self (active)
   PERFORM pg_temp.gen_plan(demo_id, 'Coach Plan — Squat Focus', 8, monday + 7, 1.05, 1, coach_id, false, today); -- Coach-authored for Demo (newly assigned, future)
 
   -- ----- Bodyweight (weekly) -----

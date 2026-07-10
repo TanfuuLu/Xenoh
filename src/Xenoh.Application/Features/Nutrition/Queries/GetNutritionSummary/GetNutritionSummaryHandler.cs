@@ -13,7 +13,8 @@ public sealed class GetNutritionSummaryHandler(
     ICoachClientRepository coachClientRepo,
     ISubscriptionService subscriptionService,
     UserManager<ApplicationUser> userManager,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    IApplicationCache? cache = null
 ) : IRequestHandler<GetNutritionSummaryQuery, NutritionSummaryResponse>
 {
     public async ValueTask<NutritionSummaryResponse> Handle(
@@ -22,6 +23,23 @@ public sealed class GetNutritionSummaryHandler(
         var callerId = currentUser.UserId;
         var userId = request.UserId ?? callerId;
         await EnsureAccessAsync(callerId, userId, cancellationToken);
+
+        if (cache is not null && userId == callerId)
+        {
+            return await cache.GetOrCreateAsync(
+                CacheTags.User(userId),
+                "nutrition-summary",
+                TimeSpan.FromMinutes(1),
+                ct => BuildAsync(callerId, userId, ct),
+                cancellationToken);
+        }
+
+        return await BuildAsync(callerId, userId, cancellationToken);
+    }
+
+    private async Task<NutritionSummaryResponse> BuildAsync(
+        Guid callerId, Guid userId, CancellationToken cancellationToken)
+    {
 
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");

@@ -16,13 +16,23 @@ public sealed class GetCoachDashboardHandler(
     IUserPrRepository userPrRepo,
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    UserManager<ApplicationUser> userManager
+    UserManager<ApplicationUser> userManager,
+    IApplicationCache? cache = null
 ) : IRequestHandler<GetCoachDashboardQuery, List<CoachClientDashboardResponse>>
 {
-    public async ValueTask<List<CoachClientDashboardResponse>> Handle(
+    public ValueTask<List<CoachClientDashboardResponse>> Handle(
         GetCoachDashboardQuery request, CancellationToken cancellationToken)
     {
         var coachId = currentUser.UserId;
+        return new(cache is null
+            ? BuildAsync(coachId, cancellationToken)
+            : cache.GetOrCreateAsync(CacheTags.CoachDashboards, $"coach:{coachId:N}", TimeSpan.FromSeconds(15),
+                ct => BuildAsync(coachId, ct), cancellationToken));
+    }
+
+    private async Task<List<CoachClientDashboardResponse>> BuildAsync(
+        Guid coachId, CancellationToken cancellationToken)
+    {
 
         var allClients = await coachClientRepo.GetAllByCoachAsync(coachId, cancellationToken);
         var activeClients = allClients

@@ -23,10 +23,17 @@ public sealed record AdjustAdminUserSubscriptionCommand(Guid UserId, PlanTier Ti
 public sealed record GetAdminAuditLogsQuery(int Limit = 100) : IRequest<List<AdminAuditLogResponse>>;
 public sealed record GetAdminMarketingQuery(DateOnly? From, DateOnly? To, AdminInsightGranularity? Granularity) : IRequest<AdminMarketingResponse>;
 
-public sealed class GetAdminInsightsHandler(IApplicationDbContext db)
+public sealed class GetAdminInsightsHandler(IApplicationDbContext db, IApplicationCache? cache = null)
     : IRequestHandler<GetAdminInsightsQuery, AdminInsightsResponse>
 {
-    public async ValueTask<AdminInsightsResponse> Handle(GetAdminInsightsQuery request, CancellationToken ct)
+    public ValueTask<AdminInsightsResponse> Handle(GetAdminInsightsQuery request, CancellationToken ct) =>
+        new(cache is null
+            ? BuildAsync(request, ct)
+            : cache.GetOrCreateAsync(CacheTags.Admin,
+                $"insights:{request.From}:{request.To}:{request.Granularity}", TimeSpan.FromMinutes(1),
+                token => BuildAsync(request, token), ct));
+
+    private async Task<AdminInsightsResponse> BuildAsync(GetAdminInsightsQuery request, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var from = request.From ?? new DateOnly(today.Year, today.Month, 1).AddMonths(-5);
@@ -392,10 +399,17 @@ public sealed class GetAdminAuditLogsHandler(IApplicationDbContext db)
     }
 }
 
-public sealed class GetAdminMarketingHandler(IApplicationDbContext db)
+public sealed class GetAdminMarketingHandler(IApplicationDbContext db, IApplicationCache? cache = null)
     : IRequestHandler<GetAdminMarketingQuery, AdminMarketingResponse>
 {
-    public async ValueTask<AdminMarketingResponse> Handle(GetAdminMarketingQuery request, CancellationToken ct)
+    public ValueTask<AdminMarketingResponse> Handle(GetAdminMarketingQuery request, CancellationToken ct) =>
+        new(cache is null
+            ? BuildAsync(request, ct)
+            : cache.GetOrCreateAsync(CacheTags.Admin,
+                $"marketing:{request.From}:{request.To}:{request.Granularity}", TimeSpan.FromMinutes(1),
+                token => BuildAsync(request, token), ct));
+
+    private async Task<AdminMarketingResponse> BuildAsync(GetAdminMarketingQuery request, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var from = request.From ?? new DateOnly(today.Year, today.Month, 1).AddMonths(-5);
@@ -549,10 +563,15 @@ public sealed class GetAdminMarketingHandler(IApplicationDbContext db)
         DateTime OccurredAtUtc);
 }
 
-public sealed class GetAdminDashboardHandler(IApplicationDbContext db)
+public sealed class GetAdminDashboardHandler(IApplicationDbContext db, IApplicationCache? cache = null)
     : IRequestHandler<GetAdminDashboardQuery, AdminDashboardResponse>
 {
-    public async ValueTask<AdminDashboardResponse> Handle(GetAdminDashboardQuery request, CancellationToken ct)
+    public ValueTask<AdminDashboardResponse> Handle(GetAdminDashboardQuery request, CancellationToken ct) =>
+        new(cache is null
+            ? BuildAsync(ct)
+            : cache.GetOrCreateAsync(CacheTags.Admin, "dashboard", TimeSpan.FromMinutes(1), BuildAsync, ct));
+
+    private async Task<AdminDashboardResponse> BuildAsync(CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);

@@ -155,6 +155,25 @@ dotnet run --project src/Xenoh.API --launch-profile http
 
 The application initializes the database, applies pending migrations, and seeds baseline data during startup.
 
+### 4. Seed complete demo data (development only)
+
+After the API has started once (so migrations, roles, exercise templates, and foods exist), run the re-runnable seed against your **local development database**:
+
+```powershell
+psql --dbname "<development-connection-string>" --file docs/seeds/clean-seed.sql
+```
+
+It recreates these accounts and their related training data:
+
+| Account | Password | Roles | Subscription |
+| --- | --- | --- | --- |
+| `admin@xenoh.app` | `Admin@Xenoh123!` | Admin, Coach, Individual | Pro Coach |
+| `demo@xenoh.app` | `Demo@Xenoh123!` | Individual | Pro Individual |
+| `democoach@xenoh.app` | `Coach@Xenoh123!` | Coach, Individual | Pro Coach |
+| `free@xenoh.app` | `Demo@Xenoh123!` | Individual | Free |
+
+The data covers active self plans, a coach-authored plan, completed and upcoming workouts, bodyweight and PR history, nutrition, cycle tracking, a coach-client relationship and chat, friendships, and community shares. Do not run this script against a shared or production database: it removes and recreates its demo accounts.
+
 Development endpoints:
 
 | Resource | URL |
@@ -213,6 +232,8 @@ Production configuration is supplied through environment variables using ASP.NET
 
 ```text
 ConnectionStrings__DefaultConnection
+Redis__Enabled
+Redis__ConnectionString
 Jwt__Key
 Authentication__FrontendUrl
 OpenAi__ApiKey
@@ -221,6 +242,8 @@ R2Share__AccessKeyId
 ```
 
 The API validates required production settings at startup and rejects missing values, placeholders, or JWT keys shorter than 32 characters.
+
+When Redis is enabled, configure persistence and a `noeviction` memory policy: active JWT revocations are stored there until their access token expires. Redis outages fall back to PostgreSQL for revocation checks; cache-backed reads fall back to PostgreSQL automatically.
 
 ## Security and operations
 

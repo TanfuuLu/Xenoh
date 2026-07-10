@@ -18,16 +18,27 @@ public sealed class GetPersonalDashboardHandler(
     IBodyweightRepository bodyweightRepo,
     IUserPrRepository userPrRepo,
     ISubscriptionService subscriptionService,
-    UserManager<ApplicationUser> userManager
+    UserManager<ApplicationUser> userManager,
+    IApplicationCache? cache = null
 ) : IRequestHandler<GetPersonalDashboardQuery, PersonalDashboardResponse>
 {
     private static readonly TimeSpan VietnamUtcOffset = TimeSpan.FromHours(7);
 
-    public async ValueTask<PersonalDashboardResponse> Handle(
+    public ValueTask<PersonalDashboardResponse> Handle(
         GetPersonalDashboardQuery request,
         CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
+        return new(cache is null
+            ? BuildAsync(userId, cancellationToken)
+            : cache.GetOrCreateAsync(CacheTags.User(userId), "dashboard", TimeSpan.FromSeconds(15),
+                ct => BuildAsync(userId, ct), cancellationToken));
+    }
+
+    private async Task<PersonalDashboardResponse> BuildAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
         var today = GetVietnamToday();
 
         var user = await userManager.FindByIdAsync(userId.ToString())
