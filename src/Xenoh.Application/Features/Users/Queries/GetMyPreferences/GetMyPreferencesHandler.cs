@@ -19,7 +19,8 @@ public sealed class GetMyPreferencesHandler(
         return new UserPreferencesResponse(
             UserPreferenceValidator.NormalizeLanguage(user.PreferredLanguage),
             UserPreferenceValidator.NormalizeTheme(user.PreferredTheme),
-            UserPreferenceValidator.NormalizeWeightUnit(user.PreferredWeightUnit)
+            UserPreferenceValidator.NormalizeWeightUnit(user.PreferredWeightUnit),
+            user.TrackRpe
         );
     }
 }

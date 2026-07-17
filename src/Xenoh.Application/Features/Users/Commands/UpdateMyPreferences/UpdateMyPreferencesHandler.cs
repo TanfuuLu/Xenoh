@@ -19,6 +19,8 @@ public sealed class UpdateMyPreferencesHandler(
         user.PreferredLanguage = UserPreferenceValidator.NormalizeLanguage(request.Language);
         user.PreferredTheme = UserPreferenceValidator.NormalizeTheme(request.Theme);
         user.PreferredWeightUnit = UserPreferenceValidator.NormalizeWeightUnit(request.WeightUnit);
+        if (request.TrackRpe.HasValue)
+            user.TrackRpe = request.TrackRpe.Value;
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -27,7 +29,8 @@ public sealed class UpdateMyPreferencesHandler(
         return new UserPreferencesResponse(
             user.PreferredLanguage,
             user.PreferredTheme,
-            user.PreferredWeightUnit
+            user.PreferredWeightUnit,
+            user.TrackRpe
         );
     }
 }

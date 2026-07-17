@@ -40,6 +40,8 @@ public class ApplicationUser : IdentityUser<Guid>
     [MaxLength(2)]
     public string PreferredWeightUnit { get; set; } = "kg";
 
+    public bool TrackRpe { get; set; } = true;
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<PasswordResetCode> PasswordResetCodes { get; set; } = [];
     public ICollection<ExternalAuthTicket> ExternalAuthTickets { get; set; } = [];

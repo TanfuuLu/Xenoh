@@ -19,5 +19,8 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
         builder.Property(u => u.PreferredWeightUnit)
             .HasMaxLength(2)
             .HasDefaultValue("kg");
+
+        builder.Property(u => u.TrackRpe)
+            .HasDefaultValue(true);
     }
 }
