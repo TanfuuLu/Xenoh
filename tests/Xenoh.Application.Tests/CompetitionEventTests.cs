@@ -55,11 +55,14 @@ public sealed class CompetitionEventTests : HandlerTestBase
         var e = Event(category, fee: 250000m); db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
         var handler = new RegisterForCompetitionHandler(db, CurrentUser(), new FakeLock(), new FakeNotificationService());
 
-        var result = await handler.Handle(new RegisterForCompetitionCommand(e.Id, category.Id, null, null, null, null, null), CancellationToken.None);
+        var result = await handler.Handle(new RegisterForCompetitionCommand(e.Id, category.Id, "athlete@example.com", "+84 901 234 567", "athlete.profile"), CancellationToken.None);
 
         result.ExpectedFee.Should().Be(250000m);
         result.PaymentStatus.Should().Be(CompetitionPaymentStatus.AwaitingReceipt);
         result.IsConfirmed.Should().BeFalse();
+        result.ContactEmail.Should().Be("athlete@example.com");
+        result.ContactPhone.Should().Be("+84 901 234 567");
+        result.ContactFacebook.Should().Be("athlete.profile");
         var entity = await db.CompetitionRegistrations.FindAsync(result.Id); entity!.Status = CompetitionRegistrationStatus.Approved;
         entity.IsConfirmed.Should().BeFalse(); entity.PaymentStatus = CompetitionPaymentStatus.Paid; entity.IsConfirmed.Should().BeTrue();
     }
@@ -74,7 +77,7 @@ public sealed class CompetitionEventTests : HandlerTestBase
         db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
         var handler = new RegisterForCompetitionHandler(db, CurrentUser(), new FakeLock(), new FakeNotificationService());
 
-        var result = await handler.Handle(new RegisterForCompetitionCommand(e.Id, category.Id, null, null, null, null, null), CancellationToken.None);
+        var result = await handler.Handle(new RegisterForCompetitionCommand(e.Id, category.Id, "waitlist@example.com", "+84 908 765 432", null), CancellationToken.None);
 
         result.Status.Should().Be(CompetitionRegistrationStatus.Waitlisted);
     }

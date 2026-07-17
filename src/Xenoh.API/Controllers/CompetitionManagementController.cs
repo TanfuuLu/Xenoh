@@ -45,7 +45,7 @@ public sealed class CompetitionManagementController(IMediator mediator) : Compet
         Send(() => mediator.Send(new GetCompetitionRosterQuery(eventId, status, paymentStatus, categoryId, page, pageSize)));
     [HttpPost("events/{eventId:guid}/registrations/guest")]
     public Task<IActionResult> Guest(Guid eventId, [FromBody] GuestBody body) => Send(() => mediator.Send(new AddGuestCompetitionRegistrationCommand(eventId,
-        body.CategoryId, body.AthleteName, body.ContactEmail, body.ContactPhone, body.DateOfBirth, body.Sex, body.DeclaredWeightKg, body.DeclaredHeightCm)), StatusCodes.Status201Created);
+        body.CategoryId, body.AthleteName, body.ContactEmail, body.ContactPhone, body.ContactFacebook)), StatusCodes.Status201Created);
     [HttpPost("events/{eventId:guid}/registrations/{registrationId:guid}/decision")]
     public Task<IActionResult> Decide(Guid eventId, Guid registrationId, [FromBody] DecisionBody body) => Send(() => mediator.Send(new DecideCompetitionRegistrationCommand(eventId, registrationId, body.Approve, body.Reason)));
     [HttpPost("events/{eventId:guid}/registrations/{registrationId:guid}/promote")]
@@ -69,8 +69,7 @@ public sealed class CompetitionManagementController(IMediator mediator) : Compet
     public sealed record ReasonBody(string Reason);
     public sealed record StaffBody(CompetitionStaffPermission Permissions);
     public sealed record DecisionBody(bool Approve, string? Reason);
-    public sealed record GuestBody(Guid CategoryId, string AthleteName, string ContactEmail, string? ContactPhone,
-        DateOnly? DateOfBirth, string? Sex, decimal? DeclaredWeightKg, decimal? DeclaredHeightCm);
+    public sealed record GuestBody(Guid CategoryId, string AthleteName, string ContactEmail, string ContactPhone, string? ContactFacebook);
     public sealed record PowerResultBody(decimal BodyweightKg, decimal BestSquatKg, decimal BestBenchKg, decimal BestDeadliftKg, CompetitionResultState State, string? Notes);
     public sealed record BodyResultBody(int? Place, CompetitionResultState State, string? Notes);
 }

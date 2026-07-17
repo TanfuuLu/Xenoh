@@ -102,6 +102,7 @@ public sealed class CompetitionRegistration : BaseEntity
     [MaxLength(160)] public string AthleteName { get; set; } = string.Empty;
     [MaxLength(160)] public string ContactEmail { get; set; } = string.Empty;
     [MaxLength(40)] public string? ContactPhone { get; set; }
+    [MaxLength(300)] public string? ContactFacebook { get; set; }
     public DateOnly? DateOfBirth { get; set; }
     [MaxLength(40)] public string? Sex { get; set; }
     public decimal? DeclaredWeightKg { get; set; }

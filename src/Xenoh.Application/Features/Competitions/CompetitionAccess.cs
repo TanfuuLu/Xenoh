@@ -33,7 +33,7 @@ internal static class CompetitionAccess
         x.MinHeightCm, x.MaxHeightCm, x.EquipmentDivision, x.BodybuildingDivision);
 
     public static CompetitionRegistrationDto MapRegistration(CompetitionRegistration x) => new(x.Id, x.EventId, x.Event.Title,
-        x.Event.Slug, x.CategoryId, x.Category.Name, x.UserId, x.AthleteName, x.ContactEmail, x.ContactPhone, x.DateOfBirth, x.Sex,
+        x.Event.Slug, x.CategoryId, x.Category.Name, x.UserId, x.AthleteName, x.ContactEmail, x.ContactPhone, x.ContactFacebook, x.DateOfBirth, x.Sex,
         x.DeclaredWeightKg, x.DeclaredHeightCm, x.Status, x.PaymentStatus, x.IsConfirmed, x.ExpectedFee, x.Currency, x.SubmittedAt, x.DecisionReason,
         x.Receipts.OrderByDescending(r => r.CreatedAt).Select(r => new CompetitionReceiptDto(r.Id, r.FileName, r.ContentType,
             r.SizeBytes, r.Status, r.CreatedAt, r.ReviewedAt, r.RejectionReason)).ToList());

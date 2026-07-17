@@ -22,7 +22,7 @@ public sealed record CompetitionEventDto(Guid Id, string Slug, string Title, str
     int ConfirmedCount, bool CanManage, CompetitionStaffPermission Permissions, IReadOnlyList<CompetitionCategoryDto> Categories);
 
 public sealed record CompetitionRegistrationDto(Guid Id, Guid EventId, string EventTitle, string EventSlug, Guid CategoryId,
-    string CategoryName, Guid? UserId, string AthleteName, string ContactEmail, string? ContactPhone, DateOnly? DateOfBirth,
+    string CategoryName, Guid? UserId, string AthleteName, string ContactEmail, string? ContactPhone, string? ContactFacebook, DateOnly? DateOfBirth,
     string? Sex, decimal? DeclaredWeightKg, decimal? DeclaredHeightCm, CompetitionRegistrationStatus Status, CompetitionPaymentStatus PaymentStatus, bool IsConfirmed,
     decimal ExpectedFee, string Currency, DateTime SubmittedAt, string? DecisionReason,
     IReadOnlyList<CompetitionReceiptDto> Receipts);

@@ -26,7 +26,7 @@ public sealed class CompetitionEventsController(IMediator mediator) : Competitio
 
     [Authorize, HttpPost("{eventId:guid}/registrations")]
     public Task<IActionResult> Register(Guid eventId, [FromBody] RegisterBody body) => Send(() => mediator.Send(new RegisterForCompetitionCommand(eventId,
-        body.CategoryId, body.ContactPhone, body.DateOfBirth, body.Sex, body.DeclaredWeightKg, body.DeclaredHeightCm)), StatusCodes.Status201Created);
+        body.CategoryId, body.ContactEmail, body.ContactPhone, body.ContactFacebook)), StatusCodes.Status201Created);
 
     [Authorize, HttpGet("registrations/me")]
     public Task<IActionResult> Mine() => Send(() => mediator.Send(new GetMyCompetitionRegistrationsQuery()));
@@ -48,6 +48,5 @@ public sealed class CompetitionEventsController(IMediator mediator) : Competitio
     [Authorize, HttpGet("{eventId:guid}/receipts/{receiptId:guid}/download")]
     public Task<IActionResult> Receipt(Guid eventId, Guid receiptId) => Send(() => mediator.Send(new GetCompetitionReceiptUrlQuery(eventId, receiptId)));
 
-    public sealed record RegisterBody(Guid CategoryId, string? ContactPhone, DateOnly? DateOfBirth, string? Sex,
-        decimal? DeclaredWeightKg, decimal? DeclaredHeightCm);
+    public sealed record RegisterBody(Guid CategoryId, string ContactEmail, string ContactPhone, string? ContactFacebook);
 }

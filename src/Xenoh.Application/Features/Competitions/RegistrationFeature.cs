@@ -6,10 +6,10 @@ using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Competitions;
 
-public sealed record RegisterForCompetitionCommand(Guid EventId, Guid CategoryId, string? ContactPhone, DateOnly? DateOfBirth,
-    string? Sex, decimal? DeclaredWeightKg, decimal? DeclaredHeightCm) : IRequest<CompetitionRegistrationDto>;
+public sealed record RegisterForCompetitionCommand(Guid EventId, Guid CategoryId, string ContactEmail, string ContactPhone,
+    string? ContactFacebook) : IRequest<CompetitionRegistrationDto>;
 public sealed record AddGuestCompetitionRegistrationCommand(Guid EventId, Guid CategoryId, string AthleteName, string ContactEmail,
-    string? ContactPhone, DateOnly? DateOfBirth, string? Sex, decimal? DeclaredWeightKg, decimal? DeclaredHeightCm)
+    string ContactPhone, string? ContactFacebook)
     : IRequest<CompetitionRegistrationDto>;
 public sealed record GetMyCompetitionRegistrationsQuery : IRequest<IReadOnlyList<CompetitionRegistrationDto>>;
 public sealed record GetMyCompetitionRegistrationQuery(Guid EventId) : IRequest<CompetitionRegistrationDto>;
@@ -29,24 +29,13 @@ public sealed record GetCompetitionReceiptUrlQuery(Guid EventId, Guid ReceiptId,
 
 internal static class CompetitionRegistrationRules
 {
-    public static void ValidateEligibility(CompetitionCategory category, DateOnly? dob, string? sex, decimal? weight, decimal? height)
+    public static void ValidateContact(string email, string phone, string? facebook)
     {
-        if (!string.IsNullOrWhiteSpace(category.SexDivision) && !string.Equals(category.SexDivision, sex, StringComparison.OrdinalIgnoreCase) &&
-            !category.SexDivision.StartsWith(sex ?? "__", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("The selected category does not match the competitor's sex division.");
-        if (dob.HasValue && (category.MinAge.HasValue || category.MaxAge.HasValue))
-        {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow); var age = today.Year - dob.Value.Year;
-            if (dob.Value > today.AddYears(-age)) age--;
-            if (category.MinAge.HasValue && age < category.MinAge || category.MaxAge.HasValue && age > category.MaxAge)
-                throw new InvalidOperationException("The competitor is outside this category's age range.");
-        }
-        if (category.MinWeightKg.HasValue && (!weight.HasValue || weight < category.MinWeightKg) ||
-            category.MaxWeightKg.HasValue && (!weight.HasValue || weight > category.MaxWeightKg))
-            throw new InvalidOperationException("Declared weight is outside this category's range.");
-        if (category.MinHeightCm.HasValue && (!height.HasValue || height < category.MinHeightCm) ||
-            category.MaxHeightCm.HasValue && (!height.HasValue || height > category.MaxHeightCm))
-            throw new InvalidOperationException("Declared height is outside this category's range.");
+        if (string.IsNullOrWhiteSpace(email) || email.Trim().Length > 160 || !System.Net.Mail.MailAddress.TryCreate(email.Trim(), out _))
+            throw new InvalidOperationException("A valid contact email is required.");
+        if (string.IsNullOrWhiteSpace(phone) || phone.Trim().Length is < 7 or > 40)
+            throw new InvalidOperationException("A contact phone number containing 7 to 40 characters is required.");
+        if (facebook?.Trim().Length > 300) throw new InvalidOperationException("Facebook contact must not exceed 300 characters.");
     }
 
     public static async Task<CompetitionRegistrationStatus> InitialStatusAsync(IApplicationDbContext db, CompetitionEvent e, CompetitionCategory c, CancellationToken ct)
@@ -73,12 +62,12 @@ public sealed class RegisterForCompetitionHandler(IApplicationDbContext db, ICur
         if (await db.CompetitionRegistrations.AsNoTracking().AnyAsync(x => x.EventId == e.Id && x.UserId == currentUser.UserId && x.Status != CompetitionRegistrationStatus.Withdrawn, ct))
             throw new InvalidOperationException("You already have an active registration for this event.");
         var c = e.Categories.FirstOrDefault(x => x.Id == request.CategoryId) ?? throw new InvalidOperationException("Category does not belong to this event.");
-        CompetitionRegistrationRules.ValidateEligibility(c, request.DateOfBirth, request.Sex, request.DeclaredWeightKg, request.DeclaredHeightCm);
+        CompetitionRegistrationRules.ValidateContact(request.ContactEmail, request.ContactPhone, request.ContactFacebook);
         var user = await db.ApplicationUsers.AsNoTracking().FirstAsync(x => x.Id == currentUser.UserId, ct);
         await using var capacityLock = await distributedLock.TryAcquireAsync($"competition:{e.Id}:capacity", TimeSpan.FromSeconds(10), ct);
         var status = await CompetitionRegistrationRules.InitialStatusAsync(db, e, c, ct);
-        var registration = New(e, c, user.Id, $"{user.FirstName} {user.LastName}".Trim(), user.Email ?? string.Empty,
-            request.ContactPhone, request.DateOfBirth, request.Sex, request.DeclaredWeightKg, request.DeclaredHeightCm, status);
+        var registration = New(e, c, user.Id, $"{user.FirstName} {user.LastName}".Trim(), request.ContactEmail,
+            request.ContactPhone, request.ContactFacebook, status);
         db.CompetitionRegistrations.Add(registration);
         await db.SaveChangesAsync(ct);
         await notifications.NotifyAsync(e.OwnerId, "CompetitionRegistrationSubmitted", $"{registration.AthleteName} applied to {e.Title}.", e.Id, "CompetitionEvent", ct);
@@ -87,10 +76,10 @@ public sealed class RegisterForCompetitionHandler(IApplicationDbContext db, ICur
     }
 
     internal static CompetitionRegistration New(CompetitionEvent e, CompetitionCategory c, Guid? userId, string name, string email,
-        string? phone, DateOnly? dob, string? sex, decimal? weight, decimal? height, CompetitionRegistrationStatus status) => new()
+        string phone, string? facebook, CompetitionRegistrationStatus status) => new()
     {
-        EventId = e.Id, CategoryId = c.Id, UserId = userId, AthleteName = name, ContactEmail = email.Trim(), ContactPhone = phone?.Trim(),
-        DateOfBirth = dob, Sex = sex?.Trim(), DeclaredWeightKg = weight, DeclaredHeightCm = height, Status = status,
+        EventId = e.Id, CategoryId = c.Id, UserId = userId, AthleteName = name, ContactEmail = email.Trim(), ContactPhone = phone.Trim(),
+        ContactFacebook = string.IsNullOrWhiteSpace(facebook) ? null : facebook.Trim(), Status = status,
         PaymentStatus = e.RegistrationFee == 0 ? CompetitionPaymentStatus.NotRequired : CompetitionPaymentStatus.AwaitingReceipt,
         ExpectedFee = e.RegistrationFee, Currency = e.Currency, SubmittedAt = DateTime.UtcNow
     };
@@ -105,14 +94,14 @@ public sealed class AddGuestCompetitionRegistrationHandler(IApplicationDbContext
         var e = await db.CompetitionEvents.Include(x => x.Categories).FirstAsync(x => x.Id == request.EventId, ct);
         if (e.Status is CompetitionEventStatus.Completed or CompetitionEventStatus.Cancelled) throw new InvalidOperationException("Registrations are closed.");
         var c = e.Categories.FirstOrDefault(x => x.Id == request.CategoryId) ?? throw new InvalidOperationException("Category does not belong to this event.");
-        if (request.AthleteName.Trim().Length < 2 || string.IsNullOrWhiteSpace(request.ContactEmail)) throw new InvalidOperationException("Guest name and contact email are required.");
+        if (request.AthleteName.Trim().Length < 2) throw new InvalidOperationException("Guest name is required.");
+        CompetitionRegistrationRules.ValidateContact(request.ContactEmail, request.ContactPhone, request.ContactFacebook);
         if (await db.CompetitionRegistrations.AsNoTracking().AnyAsync(x => x.EventId == e.Id && x.UserId == null && x.ContactEmail.ToLower() == request.ContactEmail.Trim().ToLower() && x.Status != CompetitionRegistrationStatus.Withdrawn, ct))
             throw new InvalidOperationException("A guest with this email is already registered.");
-        CompetitionRegistrationRules.ValidateEligibility(c, request.DateOfBirth, request.Sex, request.DeclaredWeightKg, request.DeclaredHeightCm);
         await using var capacityLock = await distributedLock.TryAcquireAsync($"competition:{e.Id}:capacity", TimeSpan.FromSeconds(10), ct);
         var status = await CompetitionRegistrationRules.InitialStatusAsync(db, e, c, ct);
         var registration = RegisterForCompetitionHandler.New(e, c, null, request.AthleteName.Trim(), request.ContactEmail, request.ContactPhone,
-            request.DateOfBirth, request.Sex, request.DeclaredWeightKg, request.DeclaredHeightCm, status);
+            request.ContactFacebook, status);
         db.CompetitionRegistrations.Add(registration); CompetitionAccess.Audit(db, e.Id, currentUser.UserId, "GuestRegistrationCreated", "CompetitionRegistration", registration.Id);
         await db.SaveChangesAsync(ct);
         registration.Event = e; registration.Category = c; return CompetitionAccess.MapRegistration(registration);
