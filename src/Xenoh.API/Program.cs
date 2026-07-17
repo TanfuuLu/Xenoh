@@ -1,15 +1,18 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Prometheus;
 using Scalar.AspNetCore;
 using Xenoh.API.Auth;
 using static Xenoh.API.Auth.ExternalAuthHelpers;
 using Xenoh.Infrastructure.Hubs;
+using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure;
 using Xenoh.Infrastructure.BackgroundServices;
@@ -65,6 +68,20 @@ builder.Services.AddAuthentication(options =>
                 ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                 ctx.Token = token;
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async ctx =>
+        {
+            var userIdValue = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                ctx.Fail("Invalid user id.");
+                return;
+            }
+
+            var userManager = ctx.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            if (user is null || await userManager.IsLockedOutAsync(user))
+                ctx.Fail("Account is not active.");
         }
     };
 })
@@ -104,10 +121,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(SubscriptionPolicies.RequirePro, policy =>
         policy.Requirements.Add(new ActiveSubscriptionRequirement(
             PlanTier.ProIndividual,
-            PlanTier.ProCoach)));
+            PlanTier.ProCoach,
+            PlanTier.Organizer)));
 
     options.AddPolicy(SubscriptionPolicies.RequireProCoach, policy =>
-        policy.Requirements.Add(new ActiveSubscriptionRequirement(PlanTier.ProCoach)));
+        policy.Requirements.Add(new ActiveSubscriptionRequirement(PlanTier.ProCoach, PlanTier.Organizer)));
+
+    options.AddPolicy(SubscriptionPolicies.RequireOrganizer, policy =>
+        policy.Requirements.Add(new ActiveSubscriptionRequirement(PlanTier.Organizer)));
 });
 builder.Services.AddScoped<IAuthorizationHandler, ActiveSubscriptionAuthorizationHandler>();
 var signalR = builder.Services.AddSignalR();
@@ -120,6 +141,7 @@ if (builder.Configuration.GetValue("Redis:Enabled", false) &&
 
 builder.Services.AddHostedService<ContractExpiryService>();
 builder.Services.AddHostedService<SubscriptionExpiryService>();
+builder.Services.AddHostedService<FitnessChallengeNotificationService>();
 
 builder.Services.AddXenohRateLimiting(builder.Configuration);
 

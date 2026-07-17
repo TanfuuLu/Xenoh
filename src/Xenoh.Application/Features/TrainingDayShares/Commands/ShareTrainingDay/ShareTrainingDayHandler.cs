@@ -90,8 +90,14 @@ public sealed class ShareTrainingDayHandler(
             Exercises = performedExercises.Select(e => new TrainingDayShareExercise
             {
                 Name = e.Name,
+                ExerciseTemplateId = e.ExerciseTemplateId,
                 PrimaryMuscleGroup = e.PrimaryMuscleGroup,
+                SecondaryMuscleGroups = [.. e.SecondaryMuscleGroups],
                 ExerciseKind = e.ExerciseKind,
+                EstimatedMet = e.EstimatedMet,
+                PlannedSets = e.PlannedSets,
+                PlannedReps = e.PlannedReps,
+                PlannedWeight = e.PlannedWeight,
                 SortOrder = e.SortOrder,
                 IsSkipped = e.IsSkipped,
                 IsPersonalRecord = IsPersonalRecordExercise(e),
@@ -102,6 +108,8 @@ public sealed class ShareTrainingDayHandler(
                     .Select(s => new TrainingDayShareSet
                     {
                         SetNumber = s.SetNumber,
+                        PlannedReps = s.PlannedReps,
+                        PlannedWeight = s.PlannedWeight,
                         ActualReps = s.ActualReps,
                         ActualWeight = s.ActualWeight,
                         Rpe = s.Rpe,

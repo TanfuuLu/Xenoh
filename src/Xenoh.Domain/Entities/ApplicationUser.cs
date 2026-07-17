@@ -73,6 +73,9 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<Friendship> FriendRequestsReceived { get; set; } = [];
     public ICollection<TrainingDayShare> TrainingDayShares { get; set; } = [];
     public ICollection<TrainingDayShareLove> TrainingDayShareLoves { get; set; } = [];
+    public CommunitySettings? CommunitySettings { get; set; }
+    public ICollection<FitnessChallenge> CreatedFitnessChallenges { get; set; } = [];
+    public ICollection<FitnessChallengeMember> FitnessChallengeMemberships { get; set; } = [];
 
     // XP / Leveling
     public long TotalXp { get; set; } = 0;

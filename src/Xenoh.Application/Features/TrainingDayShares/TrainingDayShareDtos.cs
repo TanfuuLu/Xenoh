@@ -18,6 +18,7 @@ public sealed record TrainingDayShareResponse(
     string? Caption,
     int LoveCount,
     bool LovedByCurrentUser,
+    bool IsReusable,
     DateTime CreatedAt,
     IReadOnlyList<TrainingDayShareExerciseResponse> Exercises);
 
@@ -26,6 +27,7 @@ public sealed record TrainingDayShareExerciseResponse(
     string Name,
     string PrimaryMuscleGroup,
     string ExerciseKind,
+    Guid ExerciseTemplateId,
     int SortOrder,
     bool IsSkipped,
     bool IsPersonalRecord,
@@ -36,6 +38,8 @@ public sealed record TrainingDayShareExerciseResponse(
 public sealed record TrainingDayShareSetResponse(
     Guid Id,
     int SetNumber,
+    int PlannedReps,
+    decimal? PlannedWeight,
     int? ActualReps,
     decimal? ActualWeight,
     decimal? Rpe,

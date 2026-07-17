@@ -41,7 +41,12 @@ public sealed class GetCommunityUserProfileHandler(
                 (f.UserAId == request.UserId && f.UserBId == currentUserId),
                 cancellationToken);
 
-        var canViewStats = currentUserId == request.UserId || friendship?.Status == FriendshipStatus.Accepted;
+        var statsVisibility = await db.CommunitySettings.AsNoTracking()
+            .Where(x => x.UserId == request.UserId)
+            .Select(x => (CommunityStatsVisibility?)x.StatsVisibility)
+            .FirstOrDefaultAsync(cancellationToken) ?? CommunityStatsVisibility.Friends;
+        var canViewStats = currentUserId == request.UserId ||
+            (friendship?.Status == FriendshipStatus.Accepted && statsVisibility == CommunityStatsVisibility.Friends);
         decimal? latestBodyweight = null;
         decimal? bmi = null;
         string? bmiCategory = null;
@@ -94,7 +99,7 @@ public sealed class GetCommunityUserProfileHandler(
         return new CommunityUserProfileResponse(
             target.Id,
             CommunityMapping.FullName(target),
-            canViewStats ? target.Email : null,
+            null,
             target.AvatarUrl,
             target.Bio,
             target.Gender?.ToString(),

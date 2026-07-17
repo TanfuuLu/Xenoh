@@ -51,6 +51,34 @@ public sealed class SubscriptionAuthorizationTests
     }
 
     [Theory]
+    [InlineData(PlanTier.Free, false)]
+    [InlineData(PlanTier.ProIndividual, false)]
+    [InlineData(PlanTier.ProCoach, false)]
+    [InlineData(PlanTier.Organizer, true)]
+    public async Task RequireOrganizer_AllowsOnlyActiveOrganizerTier(PlanTier tier, bool expected)
+    {
+        var requirement = new ActiveSubscriptionRequirement(PlanTier.Organizer);
+        var context = CreateContext(Guid.NewGuid(), requirement);
+        var handler = new ActiveSubscriptionAuthorizationHandler(new StubSubscriptionService(tier));
+
+        await handler.HandleAsync(context);
+
+        context.HasSucceeded.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(typeof(OrganizersController))]
+    [InlineData(typeof(CompetitionManagementController))]
+    public void OrganizerControllers_RequireOrganizerPolicy(Type controllerType)
+    {
+        var policies = controllerType.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>()
+            .Select(attribute => attribute.Policy);
+
+        policies.Should().Contain(SubscriptionPolicies.RequireOrganizer);
+    }
+
+    [Theory]
     [InlineData(typeof(InsightsController), nameof(InsightsController.GetMyAnalysis), SubscriptionPolicies.RequirePro)]
     [InlineData(typeof(PlansController), nameof(PlansController.CreateAiStarterPlan), SubscriptionPolicies.RequirePro)]
     [InlineData(typeof(PlansController), nameof(PlansController.GetPlanAnalytics), SubscriptionPolicies.RequirePro)]
@@ -94,7 +122,7 @@ public sealed class SubscriptionAuthorizationTests
             Task.FromResult(SubscriptionLimits(tier));
 
         public Task<bool> CanUseAdvancedAnalyticsAsync(Guid userId, CancellationToken ct = default) =>
-            Task.FromResult(tier is PlanTier.ProIndividual or PlanTier.ProCoach);
+            Task.FromResult(tier is PlanTier.ProIndividual or PlanTier.ProCoach or PlanTier.Organizer);
 
         private static int SubscriptionLimits(PlanTier currentTier) =>
             currentTier == PlanTier.Free ? 0 : int.MaxValue;

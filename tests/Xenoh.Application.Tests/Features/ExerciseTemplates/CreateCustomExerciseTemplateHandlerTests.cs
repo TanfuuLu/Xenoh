@@ -39,18 +39,45 @@ public sealed class CreateCustomExerciseTemplateHandlerTests : HandlerTestBase
     }
 
     [Fact]
-    public async Task Handle_WhenFreeUser_Throws()
+    public async Task Handle_WhenFreeUserHasFewerThanTen_CreatesTemplate()
     {
         await using var ctx = CreateContext();
-        var act = () => CreateHandler(ctx).Handle(new CreateCustomExerciseTemplateCommand
+        var result = await CreateHandler(ctx).Handle(new CreateCustomExerciseTemplateCommand
         {
             Name = "My Exercise",
+            PrimaryMuscleGroup = MuscleGroup.Chest,
+            ExerciseKind = ExerciseKind.Strength
+        }, CancellationToken.None);
+
+        result.Name.Should().Be("My Exercise");
+        result.IsCustom.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_WhenFreeUserAlreadyHasTen_Throws()
+    {
+        await using var ctx = CreateContext();
+        for (var index = 0; index < 10; index++)
+        {
+            ctx.ExerciseTemplates.Add(new ExerciseTemplate
+            {
+                Name = $"Custom Exercise {index + 1}",
+                OwnerId = UserId,
+                PrimaryMuscleGroup = MuscleGroup.Chest,
+                ExerciseKind = ExerciseKind.Strength
+            });
+        }
+        await ctx.SaveChangesAsync();
+
+        var act = () => CreateHandler(ctx).Handle(new CreateCustomExerciseTemplateCommand
+        {
+            Name = "Exercise Eleven",
             PrimaryMuscleGroup = MuscleGroup.Chest,
             ExerciseKind = ExerciseKind.Strength
         }, CancellationToken.None).AsTask();
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Pro subscription*");
+            .WithMessage("*up to 10 custom exercises*");
     }
 
     [Fact]

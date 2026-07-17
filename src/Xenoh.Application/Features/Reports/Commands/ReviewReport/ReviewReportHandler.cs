@@ -60,6 +60,8 @@ public sealed class ReviewReportHandler(
             report.ReviewedById,
             $"{admin.FirstName} {admin.LastName}".Trim(),
             report.ReviewedAtUtc,
-            report.CreatedAt);
+            report.CreatedAt,
+            report.RelatedEntityId,
+            report.RelatedEntityType);
     }
 }

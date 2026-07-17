@@ -41,7 +41,6 @@ public static class CacheTags
     public const string Leaderboards = "leaderboards";
     public const string Admin = "admin";
     public const string CoachDashboards = "coach-dashboards";
-    public const string Templates = "templates";
     public const string Foods = "foods";
 
     public static string User(Guid userId) => $"user:{userId:N}";

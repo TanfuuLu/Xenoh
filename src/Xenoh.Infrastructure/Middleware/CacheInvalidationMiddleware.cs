@@ -33,8 +33,6 @@ public sealed class CacheInvalidationMiddleware(RequestDelegate next)
         var path = context.Request.Path.Value ?? string.Empty;
         if (path.StartsWith("/api/nutrition/foods", StringComparison.OrdinalIgnoreCase))
             tags.Add(CacheTags.Foods);
-        if (path.StartsWith("/api/exercise-templates", StringComparison.OrdinalIgnoreCase))
-            tags.Add(CacheTags.Templates);
         if (path.StartsWith("/api/users", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/exercises", StringComparison.OrdinalIgnoreCase))
             tags.Add(CacheTags.Leaderboards);

@@ -38,7 +38,7 @@ public sealed class RefreshTokenHandler(
         {
             var subscription = await subscriptionRepo.FindByUserIdAsync(user.Id, cancellationToken);
             var proCoachIsActive = subscription is not null
-                && subscription.Tier == PlanTier.ProCoach
+                && subscription.Tier is PlanTier.ProCoach or PlanTier.Organizer
                 && subscription.ExpiresAt.HasValue
                 && subscription.ExpiresAt.Value > DateTime.UtcNow;
 

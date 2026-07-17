@@ -37,6 +37,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TrainingDayShareExercise> TrainingDayShareExercises => Set<TrainingDayShareExercise>();
     public DbSet<TrainingDayShareSet> TrainingDayShareSets => Set<TrainingDayShareSet>();
     public DbSet<TrainingDayShareLove> TrainingDayShareLoves => Set<TrainingDayShareLove>();
+    public DbSet<CommunitySettings> CommunitySettings => Set<CommunitySettings>();
+    public DbSet<FitnessChallenge> FitnessChallenges => Set<FitnessChallenge>();
+    public DbSet<FitnessChallengeMember> FitnessChallengeMembers => Set<FitnessChallengeMember>();
+    public DbSet<OrganizerProfile> OrganizerProfiles => Set<OrganizerProfile>();
+    public DbSet<CompetitionEvent> CompetitionEvents => Set<CompetitionEvent>();
+    public DbSet<CompetitionEventStaff> CompetitionEventStaff => Set<CompetitionEventStaff>();
+    public DbSet<CompetitionCategory> CompetitionCategories => Set<CompetitionCategory>();
+    public DbSet<CompetitionRegistration> CompetitionRegistrations => Set<CompetitionRegistration>();
+    public DbSet<CompetitionPaymentReceipt> CompetitionPaymentReceipts => Set<CompetitionPaymentReceipt>();
+    public DbSet<PowerliftingCompetitionResult> PowerliftingCompetitionResults => Set<PowerliftingCompetitionResult>();
+    public DbSet<BodybuildingCompetitionResult> BodybuildingCompetitionResults => Set<BodybuildingCompetitionResult>();
+    public DbSet<CompetitionAuditLog> CompetitionAuditLogs => Set<CompetitionAuditLog>();
     public DbSet<NutritionProfile> NutritionProfiles => Set<NutritionProfile>();
     public DbSet<NutritionDailyLog> NutritionDailyLogs => Set<NutritionDailyLog>();
     public DbSet<FoodItem> FoodItems => Set<FoodItem>();
@@ -62,6 +74,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<StoredFileShare> StoredFileShares => Set<StoredFileShare>();
     public DbSet<PromotionCode> PromotionCodes => Set<PromotionCode>();
+    public DbSet<AccountDeletionRequest> AccountDeletionRequests => Set<AccountDeletionRequest>();
+    public DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs => Set<AccountDeletionAuditLog>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

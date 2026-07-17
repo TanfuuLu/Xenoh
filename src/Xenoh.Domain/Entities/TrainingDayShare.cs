@@ -19,6 +19,7 @@ public class TrainingDayShare : BaseEntity
     public decimal? AverageRpe { get; set; }
     public bool HasPersonalRecord { get; set; }
     public string? Caption { get; set; }
+    public bool IsReusable { get; set; }
 
     public ICollection<TrainingDayShareExercise> Exercises { get; set; } = [];
     public ICollection<TrainingDayShareLove> Loves { get; set; } = [];

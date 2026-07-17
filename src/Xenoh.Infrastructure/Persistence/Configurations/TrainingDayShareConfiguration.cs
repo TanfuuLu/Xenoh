@@ -13,6 +13,7 @@ public sealed class TrainingDayShareConfiguration : IEntityTypeConfiguration<Tra
         builder.Property(s => s.Caption).HasMaxLength(500);
         builder.Property(s => s.TotalVolume).HasColumnType("decimal(12,2)");
         builder.Property(s => s.AverageRpe).HasColumnType("decimal(4,2)");
+        builder.Property(s => s.IsReusable).HasDefaultValue(false);
 
         builder.HasIndex(s => new { s.UserId, s.CreatedAt });
         builder.HasIndex(s => s.SourceDailyWorkoutId);

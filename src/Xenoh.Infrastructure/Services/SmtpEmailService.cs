@@ -40,6 +40,25 @@ public sealed class SmtpEmailService(IOptions<SmtpOptions> options) : IEmailServ
         await client.DisconnectAsync(true, cancellationToken);
     }
 
+    public async Task SendAccountDeletionVerificationAsync(string toEmail, string fullName, string verificationUrl, CancellationToken cancellationToken)
+    {
+        ValidateOptions();
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(smtpOptions.FromName, smtpOptions.FromEmail));
+        message.To.Add(MailboxAddress.Parse(toEmail));
+        message.Subject = "Confirm Xenoh account deletion";
+        message.Body = new BodyBuilder
+        {
+            TextBody = $"Confirm account deletion: {verificationUrl}",
+            HtmlBody = $"<p>Hi {System.Net.WebUtility.HtmlEncode(fullName)},</p><p>Confirm permanent Xenoh account deletion:</p><p><a href=\"{System.Net.WebUtility.HtmlEncode(verificationUrl)}\">Confirm deletion</a></p><p>This link expires in 24 hours.</p>"
+        }.ToMessageBody();
+        using var client = new SmtpClient();
+        await client.ConnectAsync(smtpOptions.Host, smtpOptions.Port, smtpOptions.EnableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None, cancellationToken);
+        await client.AuthenticateAsync(smtpOptions.Username, smtpOptions.Password, cancellationToken);
+        await client.SendAsync(message, cancellationToken);
+        await client.DisconnectAsync(true, cancellationToken);
+    }
+
     private void ValidateOptions()
     {
         if (string.IsNullOrWhiteSpace(smtpOptions.Host) ||

@@ -344,7 +344,7 @@ public sealed class AdjustAdminUserSubscriptionHandler(
 
     private async Task SyncCoachRoleAsync(ApplicationUser user, PlanTier tier, CancellationToken ct)
     {
-        if (tier == PlanTier.ProCoach)
+        if (tier is PlanTier.ProCoach or PlanTier.Organizer)
         {
             if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
             {

@@ -23,6 +23,8 @@ public sealed class CreatePaymentOrderHandler(
     {
         if (request.RequestedTier == PlanTier.Free)
             throw new InvalidOperationException("Cannot create a payment order for the Free tier.");
+        if (request.RequestedTier == PlanTier.Organizer)
+            throw new InvalidOperationException("Organizer plans are activated by an administrator after contacting Xenoh support.");
 
         decimal amount;
         try { amount = SubscriptionLimits.GetPrice(request.RequestedTier, request.DurationMonths); }

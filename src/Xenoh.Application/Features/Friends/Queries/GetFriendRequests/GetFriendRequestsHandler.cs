@@ -45,7 +45,7 @@ public sealed class GetFriendRequestsHandler(
                     f.Id,
                     user.Id,
                     CommunityMapping.FullName(user),
-                    user.Email ?? string.Empty,
+                    null,
                     user.AvatarUrl,
                     direction,
                     f.Status.ToString(),

@@ -9,6 +9,7 @@ public static class SubscriptionPolicies
 {
     public const string RequirePro = nameof(RequirePro);
     public const string RequireProCoach = nameof(RequireProCoach);
+    public const string RequireOrganizer = nameof(RequireOrganizer);
 }
 
 public sealed class ActiveSubscriptionRequirement(params PlanTier[] allowedTiers) : IAuthorizationRequirement

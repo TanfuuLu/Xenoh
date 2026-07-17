@@ -16,5 +16,7 @@ public sealed record UserReportResponse(
     Guid? ReviewedById,
     string? ReviewedByName,
     DateTime? ReviewedAtUtc,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType
 );

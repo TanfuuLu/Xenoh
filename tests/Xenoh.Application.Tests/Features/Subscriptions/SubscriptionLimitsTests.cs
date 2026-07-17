@@ -24,6 +24,7 @@ public sealed class SubscriptionLimitsTests
     [InlineData(PlanTier.Free, 250)]
     [InlineData(PlanTier.ProIndividual, 1024)]
     [InlineData(PlanTier.ProCoach, 5120)]
+    [InlineData(PlanTier.Organizer, 5120)]
     public void MaxStorageBytes_UsesPlanStorageLimits(PlanTier tier, long expectedMegabytes)
     {
         SubscriptionLimits.MaxStorageBytes(tier).Should().Be(expectedMegabytes * Mb);
@@ -33,8 +34,29 @@ public sealed class SubscriptionLimitsTests
     [InlineData(PlanTier.Free)]
     [InlineData(PlanTier.ProIndividual)]
     [InlineData(PlanTier.ProCoach)]
+    [InlineData(PlanTier.Organizer)]
     public void MaxFileSizeBytes_AllowsDocumentsForEachPlan(PlanTier tier)
     {
         SubscriptionLimits.MaxFileSizeBytes(tier).Should().Be(25L * Mb);
+    }
+
+    [Fact]
+    public void Organizer_InheritsTopTierProductLimitsWithoutSelfServePrice()
+    {
+        SubscriptionLimits.MaxPlans(PlanTier.Organizer).Should().Be(int.MaxValue);
+        SubscriptionLimits.MaxClients(PlanTier.Organizer).Should().Be(int.MaxValue);
+        SubscriptionLimits.CanUseAdvancedAnalytics(PlanTier.Organizer).Should().BeTrue();
+        SubscriptionLimits.MaxAiRequestsPerMonth(PlanTier.Organizer).Should().Be(500);
+        var getPrice = () => SubscriptionLimits.GetPrice(PlanTier.Organizer, 1);
+        getPrice.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void MaxCustomExercises_AllowsTenForFreeAndUnlimitedForPaidPlans()
+    {
+        SubscriptionLimits.MaxCustomExercises(PlanTier.Free).Should().Be(10);
+        SubscriptionLimits.MaxCustomExercises(PlanTier.ProIndividual).Should().Be(int.MaxValue);
+        SubscriptionLimits.MaxCustomExercises(PlanTier.ProCoach).Should().Be(int.MaxValue);
+        SubscriptionLimits.MaxCustomExercises(PlanTier.Organizer).Should().Be(int.MaxValue);
     }
 }

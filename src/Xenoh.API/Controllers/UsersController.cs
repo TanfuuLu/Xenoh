@@ -16,6 +16,7 @@ using Xenoh.Application.Features.Users.Queries.GetMyTrainingActivity;
 using Xenoh.Application.Features.Users.Queries.GetMyVolumeHistory;
 using Xenoh.Application.Features.Users.Queries.GetPublicUserProfile;
 using Xenoh.Application.Features.Users.Queries.GetUserProfile;
+using Xenoh.Application.Features.Auth.Commands.AccountDeletion;
 
 namespace Xenoh.API.Controllers;
 
@@ -24,6 +25,30 @@ namespace Xenoh.API.Controllers;
 [Authorize]
 public sealed class UsersController(IMediator mediator) : ControllerBase
 {
+    private const string RefreshTokenCookieName = "xenoh.refresh";
+
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteMyAccount([FromBody] DeleteMyAccountCommand command, CancellationToken ct)
+    {
+        var token = Request.Headers.Authorization.ToString().Replace("Bearer ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
+        try
+        {
+            await mediator.Send(command with { AccessToken = token }, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        Response.Cookies.Delete(RefreshTokenCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/api/auth"
+        });
+        return NoContent();
+    }
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile(CancellationToken ct)
     {

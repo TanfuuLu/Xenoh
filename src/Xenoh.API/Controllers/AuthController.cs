@@ -13,6 +13,7 @@ using Xenoh.Application.Features.Auth.Commands.Login;
 using Xenoh.Application.Features.Auth.Commands.Logout;
 using Xenoh.Application.Features.Auth.Commands.RefreshToken;
 using Xenoh.Application.Features.Auth.Commands.Register;
+using Xenoh.Application.Features.Auth.Commands.AccountDeletion;
 using Xenoh.Application.Features.WebsiteAnalytics;
 using Xenoh.Domain.Enums;
 
@@ -39,6 +40,21 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpPost("account-deletion-requests")]
+    [EnableRateLimiting(RateLimitPolicyNames.Auth)]
+    public async Task<IActionResult> RequestAccountDeletion([FromBody] RequestAccountDeletionCommand command, CancellationToken ct)
+    {
+        await mediator.Send(command, ct);
+        return Accepted();
+    }
+
+    [HttpPost("account-deletion-requests/verify")]
+    public async Task<IActionResult> VerifyAccountDeletion([FromBody] VerifyAccountDeletionCommand command, CancellationToken ct)
+    {
+        try { await mediator.Send(command, ct); return NoContent(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPost("login")]

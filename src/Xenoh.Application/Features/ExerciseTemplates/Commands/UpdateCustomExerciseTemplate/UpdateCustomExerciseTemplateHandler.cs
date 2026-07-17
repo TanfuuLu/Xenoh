@@ -21,9 +21,6 @@ public sealed class UpdateCustomExerciseTemplateHandler(
     {
         var userId = currentUser.UserId;
 
-        if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
-            throw new InvalidOperationException("Editing custom exercises requires an active Pro subscription. Upgrade to unlock this feature.");
-
         var template = await db.ExerciseTemplates
             .FirstOrDefaultAsync(t => t.Id == request.Id && t.OwnerId != null && !t.IsArchived, cancellationToken)
             ?? throw new InvalidOperationException("Custom exercise not found.");
@@ -33,6 +30,9 @@ public sealed class UpdateCustomExerciseTemplateHandler(
 
         if (templateOwnerId != userId)
         {
+            if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
+                throw new InvalidOperationException("Editing a client's custom exercises requires an active Pro subscription.");
+
             var relationship = await coachClientRepo.FindActiveByCoachAndClientAsync(
                 userId,
                 templateOwnerId,

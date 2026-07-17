@@ -1,5 +1,7 @@
 using Mediator;
+using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Subscriptions;
 using Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTemplates;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -20,8 +22,17 @@ public sealed class CreateCustomExerciseTemplateHandler(
         if (userId == Guid.Empty)
             throw new InvalidOperationException("User is not authenticated.");
 
-        if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(userId, cancellationToken))
-            throw new InvalidOperationException("Creating custom exercises requires an active Pro subscription. Upgrade to unlock this feature.");
+        var tier = await subscriptionService.GetActiveTierAsync(userId, cancellationToken);
+        var customExerciseLimit = SubscriptionLimits.MaxCustomExercises(tier);
+        if (customExerciseLimit != int.MaxValue)
+        {
+            var customExerciseCount = await db.ExerciseTemplates
+                .AsNoTracking()
+                .CountAsync(t => t.OwnerId == userId && !t.IsArchived, cancellationToken);
+
+            if (customExerciseCount >= customExerciseLimit)
+                throw new InvalidOperationException($"Your plan allows up to {customExerciseLimit} custom exercises. Delete one or upgrade to create another.");
+        }
 
         var template = new ExerciseTemplate
         {

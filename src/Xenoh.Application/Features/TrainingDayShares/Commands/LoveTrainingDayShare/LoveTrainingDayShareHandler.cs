@@ -8,7 +8,8 @@ namespace Xenoh.Application.Features.TrainingDayShares.Commands.LoveTrainingDayS
 
 public sealed class LoveTrainingDayShareHandler(
     IApplicationDbContext db,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    INotificationService? notifications = null
 ) : IRequestHandler<LoveTrainingDayShareCommand, TrainingDayShareResponse>
 {
     public async ValueTask<TrainingDayShareResponse> Handle(
@@ -35,6 +36,9 @@ public sealed class LoveTrainingDayShareHandler(
             };
             db.TrainingDayShareLoves.Add(love);
             await db.SaveChangesAsync(cancellationToken);
+            if (share.UserId != userId && notifications is not null)
+                await notifications.NotifyAsync(share.UserId, "TrainingKudos",
+            "A training partner supported your completed workout.", share.Id, "TrainingDayShare", cancellationToken);
         }
 
         return TrainingDayShareMapping.ToResponse(share, userId);

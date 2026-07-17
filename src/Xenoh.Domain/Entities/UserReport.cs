@@ -19,4 +19,6 @@ public class UserReport : BaseEntity
     public Guid? ReviewedById { get; set; }
     public ApplicationUser? ReviewedBy { get; set; }
     public DateTime? ReviewedAtUtc { get; set; }
+    public Guid? RelatedEntityId { get; set; }
+    public string? RelatedEntityType { get; set; }
 }

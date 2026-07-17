@@ -6,18 +6,13 @@ namespace Xenoh.Application.Features.ExerciseTemplates.Queries.GetExerciseTempla
 
 public sealed class GetExerciseTemplatesHandler(
     IExerciseTemplateRepository exerciseTemplateRepo,
-    ICurrentUserService currentUser,
-    IApplicationCache? cache = null)
+    ICurrentUserService currentUser)
     : IRequestHandler<GetExerciseTemplatesQuery, IReadOnlyList<ExerciseTemplateResponse>>
 {
     public ValueTask<IReadOnlyList<ExerciseTemplateResponse>> Handle(
         GetExerciseTemplatesQuery request, CancellationToken cancellationToken) =>
-        new(cache is null
-            ? exerciseTemplateRepo.GetAvailableForUserAsync(currentUser.UserId, request.MuscleGroup, cancellationToken)
-            : cache.GetOrCreateAsync(
-                CacheTags.Templates,
-                $"user:{currentUser.UserId:N}:muscle:{request.MuscleGroup?.ToString() ?? "all"}",
-                TimeSpan.FromMinutes(30),
-                ct => exerciseTemplateRepo.GetAvailableForUserAsync(currentUser.UserId, request.MuscleGroup, ct),
-                cancellationToken));
+        new(exerciseTemplateRepo.GetAvailableForUserAsync(
+            currentUser.UserId,
+            request.MuscleGroup,
+            cancellationToken));
 }

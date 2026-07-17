@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenBlacklist, RedisTokenBlacklist>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IFoodLogService, FoodLogService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICommentRealtimeService, CommentRealtimeService>();
@@ -103,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<IPrShareImageStorage, PrShareImageStorageService>();
         services.Configure<R2DocumentOptions>(configuration.GetSection(R2DocumentOptions.SectionName));
         services.AddScoped<IDocumentStorageService, DocumentStorageService>();
+        services.AddScoped<ICompetitionDocumentStorageService, CompetitionDocumentStorageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IAiQuotaService, AiQuotaService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();

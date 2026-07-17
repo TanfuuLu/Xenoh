@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Xenoh.Application.Common.Interfaces;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -33,6 +34,13 @@ public static class DatabaseInitializer
             // are seeded out-of-band via docs/seeds/clean-seed.sql, not from app startup.
             await SeedExerciseTemplatesAsync(db, ct);
             await SeedFoodItemsAsync(db, ct);
+
+            // Food reference-data reads are cached in shared Redis. Invalidate after
+            // synchronization so a previous version cannot keep serving stale foods.
+            // Exercise templates intentionally bypass Redis and need no invalidation.
+            var cacheInvalidator = services.GetService<ICacheInvalidator>();
+            if (cacheInvalidator is not null)
+                await cacheInvalidator.InvalidateAsync(CacheTags.Foods, ct);
         }
         catch (Exception ex)
         {
@@ -58,11 +66,26 @@ public static class DatabaseInitializer
             .Where(t => t.OwnerId == null)
             .OrderBy(t => t.CreatedAt)
             .ToListAsync(ct);
+
+        var changed = false;
+        foreach (var retiredTemplate in existingSystemTemplateRows.Where(t =>
+                     t.ImageUrl != null &&
+                     t.ImageUrl.StartsWith("/exercise-library-images/", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (retiredTemplate.IsArchived)
+                continue;
+
+            retiredTemplate.IsArchived = true;
+            retiredTemplate.UpdatedAt = DateTime.UtcNow;
+            changed = true;
+        }
+
         var existingSystemTemplates = existingSystemTemplateRows
+            .Where(t => t.ImageUrl == null ||
+                        !t.ImageUrl.StartsWith("/exercise-library-images/", StringComparison.OrdinalIgnoreCase))
             .GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        var changed = false;
         foreach (var seededTemplate in seededTemplates)
         {
             if (!existingSystemTemplates.TryGetValue(seededTemplate.Name, out var existingTemplate))

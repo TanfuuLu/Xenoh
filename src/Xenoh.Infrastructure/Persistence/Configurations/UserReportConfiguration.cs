@@ -11,6 +11,7 @@ public class UserReportConfiguration : IEntityTypeConfiguration<UserReport>
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Details).IsRequired().HasMaxLength(2000);
         builder.Property(r => r.AdminNote).HasMaxLength(2000);
+        builder.Property(r => r.RelatedEntityType).HasMaxLength(50);
 
         builder.HasIndex(r => new { r.Status, r.CreatedAt });
         builder.HasIndex(r => r.ReportedUserId);

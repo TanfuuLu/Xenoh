@@ -20,7 +20,22 @@ public sealed class SearchCommunityUsersHandler(
         var page = PaginationDefaults.NormalizePageNumber(request.Page);
         var pageSize = PaginationDefaults.NormalizePageSize(request.PageSize);
 
-        if (query.Length < 2)
+        TrainingDiscipline? discipline = null;
+        DevelopmentDirection? direction = null;
+        if (!string.IsNullOrWhiteSpace(request.Discipline))
+        {
+            if (!Enum.TryParse<TrainingDiscipline>(request.Discipline, true, out var parsedDiscipline))
+                throw new InvalidOperationException("Invalid training discipline.");
+            discipline = parsedDiscipline;
+        }
+        if (!string.IsNullOrWhiteSpace(request.Direction))
+        {
+            if (!Enum.TryParse<DevelopmentDirection>(request.Direction, true, out var parsedDirection))
+                throw new InvalidOperationException("Invalid development direction.");
+            direction = parsedDirection;
+        }
+
+        if (query.Length < 2 && discipline is null && direction is null)
             return new PagedResponse<CommunityUserSummaryResponse>([], page, pageSize, 0, false);
 
         var blockedIds = await db.UserBlocks
@@ -32,10 +47,14 @@ public sealed class SearchCommunityUsersHandler(
         var baseQuery = db.ApplicationUsers
             .AsNoTracking()
             .Where(u => u.Id != userId && !blockedIds.Contains(u.Id))
-            .Where(u =>
+            .Where(u => query.Length < 2 ||
                 u.FirstName.ToLower().Contains(query) ||
-                u.LastName.ToLower().Contains(query) ||
-                (u.Email != null && u.Email.ToLower().Contains(query)));
+                u.LastName.ToLower().Contains(query));
+
+        if (discipline.HasValue)
+            baseQuery = baseQuery.Where(u => u.TrainingDiscipline == discipline);
+        if (direction.HasValue)
+            baseQuery = baseQuery.Where(u => u.DevelopmentDirection == direction);
 
         var total = await baseQuery.CountAsync(cancellationToken);
 
@@ -61,7 +80,7 @@ public sealed class SearchCommunityUsersHandler(
                 return new CommunityUserSummaryResponse(
                     u.Id,
                     CommunityMapping.FullName(u),
-                    u.Email,
+                    null,
                     u.AvatarUrl,
                     u.Bio,
                     u.Gender?.ToString(),

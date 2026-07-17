@@ -46,7 +46,7 @@ public sealed class AcceptFriendRequestHandler(
             friendship.Id,
             requester.Id,
             CommunityMapping.FullName(requester),
-            requester.Email ?? string.Empty,
+            null,
             requester.AvatarUrl,
             "incoming",
             friendship.Status.ToString(),

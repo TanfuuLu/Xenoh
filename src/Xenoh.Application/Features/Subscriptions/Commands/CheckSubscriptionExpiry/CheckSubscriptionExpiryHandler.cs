@@ -63,7 +63,7 @@ public sealed class CheckSubscriptionExpiryHandler(
             var previousTier = expiredTiers[s.Id];
 
             var user = await userManager.FindByIdAsync(s.UserId.ToString());
-            if (user is not null && previousTier == PlanTier.ProCoach
+            if (user is not null && previousTier is PlanTier.ProCoach or PlanTier.Organizer
                 && await userManager.IsInRoleAsync(user, UserRole.Coach))
             {
                 await userManager.RemoveFromRoleAsync(user, UserRole.Coach);

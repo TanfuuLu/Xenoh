@@ -77,7 +77,8 @@ public sealed class SecurityHardeningTests
 
         ForwardedHeadersSetup.ConfigureTrustedForwardedHeaders(options, configuration);
 
-        options.ForwardedHeaders.Should().Be(ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+        options.ForwardedHeaders.Should().Be(
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost);
         options.KnownProxies.Should().Contain(IPAddress.Parse("172.18.0.1"));
         options.KnownProxies.Count.Should().BeGreaterThan(existingProxyCount);
     }

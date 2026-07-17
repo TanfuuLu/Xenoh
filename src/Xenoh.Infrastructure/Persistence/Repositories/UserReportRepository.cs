@@ -45,7 +45,9 @@ public sealed class UserReportRepository(ApplicationDbContext db) : IUserReportR
                 r.ReviewedById,
                 r.ReviewedBy == null ? null : $"{r.ReviewedBy.FirstName} {r.ReviewedBy.LastName}".Trim(),
                 r.ReviewedAtUtc,
-                r.CreatedAt))
+                r.CreatedAt,
+                r.RelatedEntityId,
+                r.RelatedEntityType))
             .ToListAsync(ct);
     }
 

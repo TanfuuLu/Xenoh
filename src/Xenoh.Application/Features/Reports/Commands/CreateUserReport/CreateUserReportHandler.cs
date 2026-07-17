@@ -54,6 +54,8 @@ public sealed class CreateUserReportHandler(
             null,
             null,
             null,
-            report.CreatedAt);
+            report.CreatedAt,
+            null,
+            null);
     }
 }

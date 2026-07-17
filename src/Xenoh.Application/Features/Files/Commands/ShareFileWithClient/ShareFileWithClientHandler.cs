@@ -19,7 +19,7 @@ public sealed class ShareFileWithClientHandler(
         var coachId = currentUser.UserId;
 
         var tier = await subscriptionService.GetActiveTierAsync(coachId, cancellationToken);
-        if (tier != PlanTier.ProCoach)
+        if (tier is not (PlanTier.ProCoach or PlanTier.Organizer))
             throw new InvalidOperationException("Only coaches can share files with clients.");
 
         var file = await db.StoredFiles

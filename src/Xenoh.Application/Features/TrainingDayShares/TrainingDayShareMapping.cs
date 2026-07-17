@@ -28,6 +28,7 @@ internal static class TrainingDayShareMapping
             share.Caption,
             loveCount,
             lovedByCurrentUser,
+            share.IsReusable,
             share.CreatedAt,
             share.Exercises
                 .OrderBy(e => e.SortOrder)
@@ -36,6 +37,7 @@ internal static class TrainingDayShareMapping
                     e.Name,
                     e.PrimaryMuscleGroup.ToString(),
                     e.ExerciseKind.ToString(),
+                    e.ExerciseTemplateId,
                     e.SortOrder,
                     e.IsSkipped,
                     e.IsPersonalRecord,
@@ -46,6 +48,8 @@ internal static class TrainingDayShareMapping
                         .Select(s => new TrainingDayShareSetResponse(
                             s.Id,
                             s.SetNumber,
+                            s.PlannedReps,
+                            s.PlannedWeight,
                             s.ActualReps,
                             s.ActualWeight,
                             s.Rpe,

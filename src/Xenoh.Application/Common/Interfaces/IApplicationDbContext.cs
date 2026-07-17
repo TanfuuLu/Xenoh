@@ -36,6 +36,18 @@ public interface IApplicationDbContext
     DbSet<TrainingDayShareExercise> TrainingDayShareExercises { get; }
     DbSet<TrainingDayShareSet> TrainingDayShareSets { get; }
     DbSet<TrainingDayShareLove> TrainingDayShareLoves { get; }
+    DbSet<CommunitySettings> CommunitySettings { get; }
+    DbSet<FitnessChallenge> FitnessChallenges { get; }
+    DbSet<FitnessChallengeMember> FitnessChallengeMembers { get; }
+    DbSet<OrganizerProfile> OrganizerProfiles { get; }
+    DbSet<CompetitionEvent> CompetitionEvents { get; }
+    DbSet<CompetitionEventStaff> CompetitionEventStaff { get; }
+    DbSet<CompetitionCategory> CompetitionCategories { get; }
+    DbSet<CompetitionRegistration> CompetitionRegistrations { get; }
+    DbSet<CompetitionPaymentReceipt> CompetitionPaymentReceipts { get; }
+    DbSet<PowerliftingCompetitionResult> PowerliftingCompetitionResults { get; }
+    DbSet<BodybuildingCompetitionResult> BodybuildingCompetitionResults { get; }
+    DbSet<CompetitionAuditLog> CompetitionAuditLogs { get; }
     DbSet<IdentityRole<Guid>> Roles { get; }
     DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<NutritionProfile> NutritionProfiles { get; }
@@ -63,6 +75,8 @@ public interface IApplicationDbContext
     DbSet<StoredFile> StoredFiles { get; }
     DbSet<StoredFileShare> StoredFileShares { get; }
     DbSet<PromotionCode> PromotionCodes { get; }
+    DbSet<AccountDeletionRequest> AccountDeletionRequests { get; }
+    DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

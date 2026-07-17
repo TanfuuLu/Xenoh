@@ -47,7 +47,7 @@ public sealed class GetFriendsHandler(
                 return new FriendResponse(
                     user.Id,
                     CommunityMapping.FullName(user),
-                    user.Email ?? string.Empty,
+                    null,
                     user.AvatarUrl,
                     user.Bio,
                     x.Friendship.RespondedAt ?? x.Friendship.UpdatedAt);

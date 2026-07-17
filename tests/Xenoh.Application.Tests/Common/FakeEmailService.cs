@@ -11,4 +11,6 @@ public sealed class FakeEmailService : IEmailService
         SentCodes.Add((toEmail, fullName, code));
         return Task.CompletedTask;
     }
+
+    public Task SendAccountDeletionVerificationAsync(string toEmail, string fullName, string verificationUrl, CancellationToken cancellationToken) => Task.CompletedTask;
 }

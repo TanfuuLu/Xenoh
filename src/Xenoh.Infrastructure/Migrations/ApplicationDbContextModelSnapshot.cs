@@ -152,6 +152,93 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.AccountDeletionAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountDeletionRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountDeletionRequestId", "CreatedAt");
+
+                    b.ToTable("AccountDeletionAuditLogs");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.AccountDeletionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("RetainUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VerificationTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VerificationTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("Email", "Status");
+
+                    b.ToTable("AccountDeletionRequests");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.AdminAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -554,6 +641,41 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.BodybuildingCompetitionResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("Place")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("BodybuildingCompetitionResults");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.BodyweightLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -720,6 +842,477 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("CoachInviteCodes");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CommunitySettings", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StatsVisibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("CommunitySettings");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId", "CreatedAt");
+
+                    b.ToTable("CompetitionAuditLogs");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgeDivision")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("BodybuildingDivision")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EligibilityNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("EquipmentDivision")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("MaxAge")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("MaxHeightCm")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal?>("MaxWeightKg")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<decimal?>("MinAge")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("MinHeightCm")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal?>("MinWeightKg")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("SexDivision")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("CompetitionCategories");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("BankAccountName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("BannerUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<string>("Discipline")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("EndsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OrganizerContact")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PowerliftingFormulaVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("PowerliftingScoringFormula")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RegistrationClosesAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("RegistrationFee")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime>("RegistrationOpensAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ResultsPublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("TransferInstructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VenueName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId", "Status");
+
+                    b.HasIndex("Status", "StartsAtUtc");
+
+                    b.ToTable("CompetitionEvents");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionEventStaff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Permissions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EventId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CompetitionEventStaff");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionPaymentReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedById")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId", "CreatedAt");
+
+                    b.ToTable("CompetitionPaymentReceipts");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AthleteName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DecisionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal?>("DeclaredHeightCm")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal?>("DeclaredWeightKg")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("numeric(7,2)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ExpectedFee")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sex")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CategoryId", "Status");
+
+                    b.HasIndex("EventId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"UserId\" IS NOT NULL AND \"Status\" <> 'Withdrawn'");
+
+                    b.HasIndex("EventId", "Status", "SubmittedAt");
+
+                    b.ToTable("CompetitionRegistrations");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CycleDailyLog", b =>
@@ -1069,6 +1662,97 @@ namespace Xenoh.Infrastructure.Migrations
                     b.HasIndex("UserId", "UsedAt", "ExpiresAt");
 
                     b.ToTable("ExternalAuthTickets");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.FitnessChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CompletionNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndsOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("StartsOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("TargetSessionsPerWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorId", "Status");
+
+                    b.HasIndex("StartsOn", "EndsOn");
+
+                    b.ToTable("FitnessChallenges");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.FitnessChallengeMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("LastBehindReminderWeekStart")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("LastCompletionNotificationWeekStart")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("FitnessChallengeMembers");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.FoodItem", b =>
@@ -1570,6 +2254,76 @@ namespace Xenoh.Infrastructure.Migrations
                     b.ToTable("NutritionProfiles");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.OrganizerProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EvidenceFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("OrganizationName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvidenceFileId");
+
+                    b.HasIndex("ReviewedById");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("OrganizerProfiles");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1769,6 +2523,75 @@ namespace Xenoh.Infrastructure.Migrations
                     b.HasIndex("PlanId", "CreatedAt");
 
                     b.ToTable("PlanComments");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PowerliftingCompetitionResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BestBenchKg")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<decimal>("BestDeadliftKg")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<decimal>("BestSquatKg")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<decimal>("BodyweightKg")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Formula")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("FormulaVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("Place")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<decimal>("TotalKg")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("PowerliftingCompetitionResults");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.PromotionCode", b =>
@@ -1984,6 +2807,11 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<bool>("HasPersonalRecord")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsReusable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid>("SourceDailyWorkoutId")
                         .HasColumnType("uuid");
 
@@ -2023,10 +2851,17 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<int?>("DurationSeconds")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("EstimatedMet")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<string>("ExerciseKind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("ExerciseTemplateId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsPersonalRecord")
                         .HasColumnType("boolean");
@@ -2043,10 +2878,23 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<int>("PlannedReps")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlannedSets")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PlannedWeight")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("PrimaryMuscleGroup")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.PrimitiveCollection<string>("SecondaryMuscleGroups")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
@@ -2058,6 +2906,8 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExerciseTemplateId");
 
                     b.HasIndex("TrainingDayShareId", "SortOrder");
 
@@ -2109,6 +2959,12 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("PlannedReps")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PlannedWeight")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<decimal?>("Rpe")
                         .HasColumnType("decimal(4,2)");
@@ -2294,6 +3150,13 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Property<int>("Reason")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<Guid>("ReportedUserId")
                         .HasColumnType("uuid");
@@ -2650,6 +3513,17 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.AccountDeletionAuditLog", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.AccountDeletionRequest", "AccountDeletionRequest")
+                        .WithMany()
+                        .HasForeignKey("AccountDeletionRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AccountDeletionRequest");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.AdminAuditLog", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "AdminUser")
@@ -2726,6 +3600,17 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.BodybuildingCompetitionResult", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionRegistration", "Registration")
+                        .WithOne("BodybuildingResult")
+                        .HasForeignKey("Xenoh.Domain.Entities.BodybuildingCompetitionResult", "RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.BodyweightLog", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", null)
@@ -2781,6 +3666,95 @@ namespace Xenoh.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Coach");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CommunitySettings", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("CommunitySettings")
+                        .HasForeignKey("Xenoh.Domain.Entities.CommunitySettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionCategory", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionEvent", "Event")
+                        .WithMany("Categories")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionEvent", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionEventStaff", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionEvent", "Event")
+                        .WithMany("Staff")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionPaymentReceipt", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionRegistration", "Registration")
+                        .WithMany("Receipts")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionRegistration", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionEvent", "Event")
+                        .WithMany("Registrations")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CycleDailyLog", b =>
@@ -2863,6 +3837,36 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.FitnessChallenge", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Creator")
+                        .WithMany("CreatedFitnessChallenges")
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.FitnessChallengeMember", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.FitnessChallenge", "Challenge")
+                        .WithMany("Members")
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("FitnessChallengeMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
 
                     b.Navigation("User");
                 });
@@ -3049,6 +4053,31 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.OrganizerProfile", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.StoredFile", "EvidenceFile")
+                        .WithMany()
+                        .HasForeignKey("EvidenceFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EvidenceFile");
+
+                    b.Navigation("ReviewedBy");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.PasswordResetCode", b =>
                 {
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "User")
@@ -3121,6 +4150,17 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Plan");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.PowerliftingCompetitionResult", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CompetitionRegistration", "Registration")
+                        .WithOne("PowerliftingResult")
+                        .HasForeignKey("Xenoh.Domain.Entities.PowerliftingCompetitionResult", "RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.RefreshToken", b =>
@@ -3393,6 +4433,10 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.Navigation("CoachRelationship");
 
+                    b.Navigation("CommunitySettings");
+
+                    b.Navigation("CreatedFitnessChallenges");
+
                     b.Navigation("CustomExerciseTemplates");
 
                     b.Navigation("CycleDailyLogs");
@@ -3400,6 +4444,8 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("CycleSettings");
 
                     b.Navigation("ExternalAuthTickets");
+
+                    b.Navigation("FitnessChallengeMemberships");
 
                     b.Navigation("FoodLogs");
 
@@ -3438,6 +4484,24 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Navigation("TrainingDayShares");
                 });
 
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionEvent", b =>
+                {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Registrations");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CompetitionRegistration", b =>
+                {
+                    b.Navigation("BodybuildingResult");
+
+                    b.Navigation("PowerliftingResult");
+
+                    b.Navigation("Receipts");
+                });
+
             modelBuilder.Entity("Xenoh.Domain.Entities.DailyWorkout", b =>
                 {
                     b.Navigation("Exercises");
@@ -3446,6 +4510,11 @@ namespace Xenoh.Infrastructure.Migrations
             modelBuilder.Entity("Xenoh.Domain.Entities.Exercise", b =>
                 {
                     b.Navigation("Sets");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.FitnessChallenge", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.FoodItem", b =>

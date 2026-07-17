@@ -10,6 +10,7 @@ public sealed class TrainingDayShareSetConfiguration : IEntityTypeConfiguration<
     {
         builder.HasKey(s => s.Id);
         builder.Property(s => s.ActualWeight).HasColumnType("decimal(10,2)");
+        builder.Property(s => s.PlannedWeight).HasColumnType("decimal(10,2)");
         builder.Property(s => s.Rpe).HasColumnType("decimal(4,2)");
         builder.HasIndex(s => new { s.TrainingDayShareExerciseId, s.SetNumber });
     }
