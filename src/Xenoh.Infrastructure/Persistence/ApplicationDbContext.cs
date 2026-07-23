@@ -76,6 +76,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PromotionCode> PromotionCodes => Set<PromotionCode>();
     public DbSet<AccountDeletionRequest> AccountDeletionRequests => Set<AccountDeletionRequest>();
     public DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs => Set<AccountDeletionAuditLog>();
+    public DbSet<SupplementRegimen> SupplementRegimens => Set<SupplementRegimen>();
+    public DbSet<SupplementScheduleVersion> SupplementScheduleVersions => Set<SupplementScheduleVersion>();
+    public DbSet<SupplementDoseSlot> SupplementDoseSlots => Set<SupplementDoseSlot>();
+    public DbSet<SupplementIntakeLog> SupplementIntakeLogs => Set<SupplementIntakeLog>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

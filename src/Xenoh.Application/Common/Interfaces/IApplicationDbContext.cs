@@ -77,6 +77,10 @@ public interface IApplicationDbContext
     DbSet<PromotionCode> PromotionCodes { get; }
     DbSet<AccountDeletionRequest> AccountDeletionRequests { get; }
     DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs { get; }
+    DbSet<SupplementRegimen> SupplementRegimens { get; }
+    DbSet<SupplementScheduleVersion> SupplementScheduleVersions { get; }
+    DbSet<SupplementDoseSlot> SupplementDoseSlots { get; }
+    DbSet<SupplementIntakeLog> SupplementIntakeLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

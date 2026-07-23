@@ -51,6 +51,10 @@ public class ApplicationUser : IdentityUser<Guid>
     public ICollection<NutritionDailyLog> NutritionDailyLogs { get; set; } = [];
     public ICollection<FoodLog> FoodLogs { get; set; } = [];
     public ICollection<MealPlanDay> MealPlanDays { get; set; } = [];
+    public ICollection<SupplementRegimen> SupplementRegimens { get; set; } = [];
+    public ICollection<SupplementRegimen> CreatedSupplementRegimens { get; set; } = [];
+    public ICollection<SupplementScheduleVersion> CreatedSupplementScheduleVersions { get; set; } = [];
+    public ICollection<SupplementIntakeLog> SupplementIntakeLogs { get; set; } = [];
 
     // Menstrual cycle tracking
     public CycleSettings? CycleSettings { get; set; }
