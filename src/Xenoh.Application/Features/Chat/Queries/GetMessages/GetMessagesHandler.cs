@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Pagination;
 using Xenoh.Application.Features.Chat.Dtos;
 
 namespace Xenoh.Application.Features.Chat.Queries.GetMessages;
@@ -14,6 +15,8 @@ public sealed class GetMessagesHandler(
         GetMessagesQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
+        // Unclamped, ?pageSize=100000000 materializes the whole message table.
+        var pageSize = PaginationDefaults.NormalizePageSize(request.PageSize);
 
         var memberCheck = await db.CoachClientRelationships
             .AsNoTracking()
@@ -34,7 +37,7 @@ public sealed class GetMessagesHandler(
 
         var items = await query
             .OrderByDescending(m => m.CreatedAt)
-            .Take(request.PageSize + 1)
+            .Take(pageSize + 1)
             .Select(m => new MessageResponse(
                 m.Id,
                 m.RelationshipId,
@@ -55,7 +58,7 @@ public sealed class GetMessagesHandler(
                 m.CreatedAt))
             .ToListAsync(cancellationToken);
 
-        var hasMore = items.Count > request.PageSize;
+        var hasMore = items.Count > pageSize;
         if (hasMore) items.RemoveAt(items.Count - 1);
 
         items.Reverse();

@@ -48,7 +48,10 @@ public sealed class UserAvatarStorageService : IUserAvatarStorageService
             BucketName = avatarOptions.BucketName,
             Key = key,
             InputStream = bufferedContent,
-            ContentType = contentType,
+            // Derived from the magic-byte-validated extension, never from the client's string.
+            // The bucket is served publicly, so storing an attacker-supplied Content-Type such
+            // as text/html would turn an upload into stored XSS on the avatar subdomain.
+            ContentType = CanonicalContentType(extension),
             DisablePayloadSigning = true,
             DisableDefaultChecksumValidation = true
         };
@@ -73,6 +76,15 @@ public sealed class UserAvatarStorageService : IUserAvatarStorageService
         string.IsNullOrWhiteSpace(value) ||
         value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
         value.Contains("_SECRET", StringComparison.OrdinalIgnoreCase);
+
+    private static string CanonicalContentType(string extension) => extension switch
+    {
+        ".jpg" => "image/jpeg",
+        ".png" => "image/png",
+        ".webp" => "image/webp",
+        ".gif" => "image/gif",
+        _ => "application/octet-stream"
+    };
 
     private static bool TryGetValidatedImageExtension(byte[] bytes, string contentType, out string extension)
     {

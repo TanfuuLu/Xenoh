@@ -31,6 +31,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     ForwardedHeadersSetup.ConfigureTrustedForwardedHeaders(options, builder.Configuration);
@@ -216,6 +218,11 @@ if (app.Environment.IsDevelopment())
         options.WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
     });
 }
+
+// Registered ahead of the rest of the pipeline so it is the innermost handler relative to the
+// framework's developer exception page: unhandled exceptions are mapped to the API's standard
+// error shape in every environment, and stack traces never reach a client.
+app.UseExceptionHandler(_ => { });
 
 app.UseForwardedHeaders();
 app.UseXenohSecurityHeaders();

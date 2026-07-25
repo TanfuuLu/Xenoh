@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -10,11 +11,29 @@ using Xenoh.Application.Features.Share.Queries.GetPrShareData;
 
 namespace Xenoh.Infrastructure.Services;
 
-public sealed class PrShareImageService(IWebHostEnvironment environment, IHttpClientFactory httpClientFactory)
+public sealed class PrShareImageService(
+    IWebHostEnvironment environment,
+    IHttpClientFactory httpClientFactory,
+    IOptions<R2AvatarOptions> avatarOptions)
     : IPrShareImageService
 {
+    public const string AvatarHttpClientName = "pr-share-avatar";
+
     private const int W = 1456;
     private const int H = 1088;
+
+    /// <summary>
+    /// Hosts whose images may be fetched server-side. AvatarUrl is normally an R2 URL we minted,
+    /// but ExternalLoginHandler stores the OAuth provider's picture claim verbatim, so the value
+    /// is user-influenced. Without this list the share endpoint — which is unauthenticated — is
+    /// an SSRF probe into cloud metadata and the internal network.
+    /// </summary>
+    private static readonly string[] AllowedAvatarHostSuffixes =
+    [
+        "googleusercontent.com",   // Google OAuth profile pictures
+        "fbsbx.com",               // Facebook platform-lookaside
+        "fbcdn.net"                // Facebook CDN
+    ];
 
     private static readonly Color Bg = Color.ParseHex("070711");
     private static readonly Color Panel = Color.ParseHex("11101B");
@@ -223,10 +242,11 @@ public sealed class PrShareImageService(IWebHostEnvironment environment, IHttpCl
         {
             if (Uri.TryCreate(avatarUrl, UriKind.Absolute, out var uri))
             {
-                if (uri.Scheme is not ("http" or "https"))
+                if (uri.Scheme != Uri.UriSchemeHttps || !IsAllowedAvatarHost(uri.Host))
                     return null;
 
-                using var response = await httpClientFactory.CreateClient().GetAsync(uri, ct);
+                var client = httpClientFactory.CreateClient(AvatarHttpClientName);
+                using var response = await client.GetAsync(uri, ct);
                 if (!response.IsSuccessStatusCode)
                     return null;
 
@@ -237,8 +257,16 @@ public sealed class PrShareImageService(IWebHostEnvironment environment, IHttpCl
             if (string.IsNullOrWhiteSpace(environment.WebRootPath))
                 return null;
 
+            // Resolve before touching the filesystem: a stored AvatarUrl containing ".." would
+            // otherwise escape wwwroot and render an arbitrary file into a public PNG.
+            var webRoot = System.IO.Path.GetFullPath(environment.WebRootPath);
             var relativePath = avatarUrl.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar);
-            var path = System.IO.Path.Combine(environment.WebRootPath, relativePath);
+            var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(webRoot, relativePath));
+            if (!path.StartsWith(
+                    webRoot.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar,
+                    StringComparison.Ordinal))
+                return null;
+
             if (!File.Exists(path))
                 return null;
 
@@ -248,6 +276,23 @@ public sealed class PrShareImageService(IWebHostEnvironment environment, IHttpCl
         {
             return null;
         }
+    }
+
+    private bool IsAllowedAvatarHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return false;
+
+        // Our own avatar bucket, whatever it is configured to.
+        var publicBase = avatarOptions.Value.PublicBaseUrl;
+        if (!string.IsNullOrWhiteSpace(publicBase)
+            && Uri.TryCreate(publicBase, UriKind.Absolute, out var baseUri)
+            && string.Equals(host, baseUri.Host, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return AllowedAvatarHostSuffixes.Any(suffix =>
+            host.Equals(suffix, StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith("." + suffix, StringComparison.OrdinalIgnoreCase));
     }
 
     private static Image<Rgba32> BuildCircularAvatar(Image<Rgba32> source, int size)

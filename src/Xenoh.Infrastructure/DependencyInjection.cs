@@ -71,6 +71,11 @@ public static class DependencyInjection
             options.Password.RequireNonAlphanumeric = true;
             options.Password.RequiredLength = 8;
             options.User.RequireUniqueEmail = true;
+            // Without these, CheckPasswordSignInAsync's lockout path never fires and password
+            // guessing is unbounded. See LoginHandler.
+            options.Lockout.AllowedForNewUsers = true;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
@@ -99,6 +104,17 @@ public static class DependencyInjection
         services.AddScoped<IUserAvatarStorageService, UserAvatarStorageService>();
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddScoped<IEmailService, SmtpEmailService>();
+
+        // Avatar fetching for share cards renders a user-influenced URL server-side (OAuth
+        // providers supply the initial AvatarUrl verbatim). Redirects are disabled so a 302
+        // cannot bounce the request past the host allowlist in PrShareImageService, and both
+        // the timeout and buffer cap bound what a hostile endpoint can cost us.
+        services.AddHttpClient(PrShareImageService.AvatarHttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+            client.MaxResponseContentBufferSize = 5 * 1024 * 1024;
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
         services.AddScoped<IPrShareImageService, PrShareImageService>();
         services.Configure<R2ShareOptions>(configuration.GetSection(R2ShareOptions.SectionName));

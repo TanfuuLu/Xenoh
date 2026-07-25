@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Validation;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -38,7 +39,8 @@ public sealed class ApplyForOrganizerHandler(IApplicationDbContext db, ICurrentU
         profile.OrganizationName = organization;
         profile.ContactEmail = request.ContactEmail.Trim();
         profile.ContactPhone = request.ContactPhone.Trim();
-        profile.WebsiteUrl = request.WebsiteUrl?.Trim();
+        // Rendered as a link on the admin review screen, so pin the scheme at the write.
+        profile.WebsiteUrl = ExternalUrl.NormalizeOrThrow(request.WebsiteUrl, "Website URL");
         profile.Notes = request.Notes?.Trim();
         profile.EvidenceFileId = request.EvidenceFileId;
         if (profile.Status != OrganizerProfileStatus.Approved) profile.Status = OrganizerProfileStatus.Pending;

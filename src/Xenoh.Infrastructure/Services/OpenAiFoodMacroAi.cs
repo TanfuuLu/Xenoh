@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xenoh.Application.Common.Interfaces;
 
@@ -9,7 +10,8 @@ namespace Xenoh.Infrastructure.Services;
 
 public sealed class OpenAiFoodMacroAi(
     HttpClient httpClient,
-    IOptions<OpenAiOptions> optionsAccessor
+    IOptions<OpenAiOptions> optionsAccessor,
+    ILogger<OpenAiFoodMacroAi> logger
 ) : IFoodMacroAi
 {
     private readonly OpenAiOptions _options = optionsAccessor.Value;
@@ -68,7 +70,12 @@ Return JSON ONLY matching this exact shape (no markdown, no commentary):
         var raw = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"OpenAI request failed ({(int)response.StatusCode}): {raw}");
+        {
+            // The upstream body carries org ids and rate-limit state, and controllers surface
+            // InvalidOperationException messages straight to the client. Keep it in the log.
+            logger.LogError("OpenAI request failed ({StatusCode}): {Body}", (int)response.StatusCode, raw);
+            throw new InvalidOperationException("The AI service is temporarily unavailable. Please try again.");
+        }
 
         using var doc = JsonDocument.Parse(raw);
         var content = doc.RootElement

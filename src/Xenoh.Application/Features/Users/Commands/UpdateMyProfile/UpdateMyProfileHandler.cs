@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
+using Xenoh.Application.Common.Validation;
 using Xenoh.Application.Features.Users.Queries.GetMyProfile;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -51,9 +52,11 @@ public sealed class UpdateMyProfileHandler(
         if (request.DateOfBirth is not null) user.DateOfBirth = request.DateOfBirth;
         if (request.DevelopmentDirection is not null) user.DevelopmentDirection = request.DevelopmentDirection;
         if (request.TrainingDiscipline is not null) user.TrainingDiscipline = request.TrainingDiscipline;
-        if (request.FacebookUrl is not null) user.FacebookUrl = string.IsNullOrWhiteSpace(request.FacebookUrl) ? null : request.FacebookUrl.Trim();
-        if (request.InstagramUrl is not null) user.InstagramUrl = string.IsNullOrWhiteSpace(request.InstagramUrl) ? null : request.InstagramUrl.Trim();
-        if (request.ZaloUrl is not null) user.ZaloUrl = string.IsNullOrWhiteSpace(request.ZaloUrl) ? null : request.ZaloUrl.Trim();
+        // These render as links on other users' screens (a coach's profile is shown to clients),
+        // so the scheme is pinned here — the client-side check can be bypassed by calling the API.
+        if (request.FacebookUrl is not null) user.FacebookUrl = ExternalUrl.NormalizeOrThrow(request.FacebookUrl, "Facebook URL");
+        if (request.InstagramUrl is not null) user.InstagramUrl = ExternalUrl.NormalizeOrThrow(request.InstagramUrl, "Instagram URL");
+        if (request.ZaloUrl is not null) user.ZaloUrl = ExternalUrl.NormalizeOrThrow(request.ZaloUrl, "Zalo URL");
 
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
