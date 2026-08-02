@@ -28,7 +28,8 @@ ValidateRequiredConfiguration(builder.Configuration, builder.Environment);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(allowIntegerValues: false));
     });
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -203,11 +204,22 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
+var rebuildDemoDatabase = args.Contains("--rebuild-demo-database", StringComparer.OrdinalIgnoreCase);
+var seedDemoDatabase = args.Contains("--seed-demo-database", StringComparer.OrdinalIgnoreCase);
+
 // Apply migrations and seed baseline data (roles, dev admin, templates, foods).
 using (var scope = app.Services.CreateScope())
 {
-    await DatabaseInitializer.InitializeAsync(scope.ServiceProvider, app.Environment.IsDevelopment());
+    if (rebuildDemoDatabase)
+        await DatabaseInitializer.RebuildDemoDatabaseAsync(scope.ServiceProvider, app.Environment.IsDevelopment());
+    else if (seedDemoDatabase)
+        await DatabaseInitializer.SeedDemoDatabaseAsync(scope.ServiceProvider, app.Environment.IsDevelopment());
+    else
+        await DatabaseInitializer.InitializeAsync(scope.ServiceProvider, app.Environment.IsDevelopment());
 }
+
+if (rebuildDemoDatabase || seedDemoDatabase)
+    return;
 
 if (app.Environment.IsDevelopment())
 {

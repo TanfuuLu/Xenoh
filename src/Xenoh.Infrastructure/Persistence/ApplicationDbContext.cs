@@ -30,6 +30,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
+    public DbSet<LegalAcceptance> LegalAcceptances => Set<LegalAcceptance>();
     public DbSet<UserReport> UserReports => Set<UserReport>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
@@ -40,6 +41,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<CommunitySettings> CommunitySettings => Set<CommunitySettings>();
     public DbSet<FitnessChallenge> FitnessChallenges => Set<FitnessChallenge>();
     public DbSet<FitnessChallengeMember> FitnessChallengeMembers => Set<FitnessChallengeMember>();
+    public DbSet<FitnessChallengeCheckIn> FitnessChallengeCheckIns => Set<FitnessChallengeCheckIn>();
     public DbSet<OrganizerProfile> OrganizerProfiles => Set<OrganizerProfile>();
     public DbSet<CompetitionEvent> CompetitionEvents => Set<CompetitionEvent>();
     public DbSet<CompetitionEventStaff> CompetitionEventStaff => Set<CompetitionEventStaff>();

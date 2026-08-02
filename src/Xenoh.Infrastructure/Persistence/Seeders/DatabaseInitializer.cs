@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Data;
+using System.Reflection;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
@@ -15,6 +18,9 @@ namespace Xenoh.Infrastructure.Persistence.Seeders;
 /// </summary>
 public static class DatabaseInitializer
 {
+    private const string DemoSeedResourceName =
+        "Xenoh.Infrastructure.Persistence.Seeders.clean-seed.sql";
+
     public static async Task InitializeAsync(
         IServiceProvider services,
         bool isDevelopment,
@@ -26,21 +32,7 @@ public static class DatabaseInitializer
         try
         {
             var db = services.GetRequiredService<ApplicationDbContext>();
-            await db.Database.MigrateAsync(ct);
-
-            await SeedRolesAsync(services);
-
-            // Reference data only. The demo/admin/coach accounts and their sample data
-            // are seeded out-of-band via docs/seeds/clean-seed.sql, not from app startup.
-            await SeedExerciseTemplatesAsync(db, ct);
-            await SeedFoodItemsAsync(db, ct);
-
-            // Food reference-data reads are cached in shared Redis. Invalidate after
-            // synchronization so a previous version cannot keep serving stale foods.
-            // Exercise templates intentionally bypass Redis and need no invalidation.
-            var cacheInvalidator = services.GetService<ICacheInvalidator>();
-            if (cacheInvalidator is not null)
-                await cacheInvalidator.InvalidateAsync(CacheTags.Foods, ct);
+            await InitializeCoreAsync(services, db, logger, ct);
         }
         catch (Exception ex)
         {
@@ -57,6 +49,106 @@ public static class DatabaseInitializer
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
+    }
+
+    /// <summary>
+    /// Permanently drops the configured development database, rebuilds it from all
+    /// migrations, and loads the comprehensive demo dataset. This is intentionally
+    /// reachable only through the explicit API command-line maintenance switch.
+    /// </summary>
+    public static async Task RebuildDemoDatabaseAsync(
+        IServiceProvider services,
+        bool isDevelopment,
+        CancellationToken ct = default)
+    {
+        if (!isDevelopment)
+            throw new InvalidOperationException("Demo database rebuild is allowed only in Development.");
+
+        var logger = services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(DatabaseInitializer).FullName!);
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        var total = Stopwatch.StartNew();
+
+        logger.LogWarning("Dropping and rebuilding development database {Database}.",
+            db.Database.GetDbConnection().Database);
+
+        var phase = Stopwatch.StartNew();
+        await db.Database.EnsureDeletedAsync(ct);
+        logger.LogInformation("Database drop completed in {ElapsedMs} ms.", phase.ElapsedMilliseconds);
+
+        phase.Restart();
+        await InitializeCoreAsync(services, db, logger, ct);
+        logger.LogInformation("Migrations and reference seed completed in {ElapsedMs} ms.", phase.ElapsedMilliseconds);
+
+        phase.Restart();
+        await SeedDemoDataAsync(db, ct);
+        logger.LogInformation(
+            "Demo seed completed in {ElapsedMs} ms; full rebuild completed in {TotalElapsedMs} ms.",
+            phase.ElapsedMilliseconds,
+            total.ElapsedMilliseconds);
+    }
+
+    public static async Task SeedDemoDatabaseAsync(
+        IServiceProvider services,
+        bool isDevelopment,
+        CancellationToken ct = default)
+    {
+        if (!isDevelopment)
+            throw new InvalidOperationException("Demo database seeding is allowed only in Development.");
+
+        var logger = services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(DatabaseInitializer).FullName!);
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        var timer = Stopwatch.StartNew();
+        await SeedDemoDataAsync(db, ct);
+        logger.LogInformation("Demo seed completed in {ElapsedMs} ms.", timer.ElapsedMilliseconds);
+    }
+
+    private static async Task SeedDemoDataAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        await using var stream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream(DemoSeedResourceName)
+            ?? throw new InvalidOperationException($"Embedded demo seed '{DemoSeedResourceName}' was not found.");
+        using var reader = new StreamReader(stream);
+        var sql = await reader.ReadToEndAsync(ct);
+        var connection = db.Database.GetDbConnection();
+        var openedHere = connection.State != ConnectionState.Open;
+        if (openedHere)
+            await connection.OpenAsync(ct);
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandTimeout = 30;
+            await command.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            if (openedHere)
+                await connection.CloseAsync();
+        }
+    }
+
+    private static async Task InitializeCoreAsync(
+        IServiceProvider services,
+        ApplicationDbContext db,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        var phase = Stopwatch.StartNew();
+        await db.Database.MigrateAsync(ct);
+        logger.LogInformation("Database migrations checked/applied in {ElapsedMs} ms.", phase.ElapsedMilliseconds);
+
+        phase.Restart();
+        await SeedRolesAsync(services);
+        await SeedExerciseTemplatesAsync(db, ct);
+        await SeedFoodItemsAsync(db, ct);
+        logger.LogInformation("Reference data synchronized in {ElapsedMs} ms.", phase.ElapsedMilliseconds);
+
+        var cacheInvalidator = services.GetService<ICacheInvalidator>();
+        if (cacheInvalidator is not null)
+            await cacheInvalidator.InvalidateAsync(CacheTags.Foods, ct);
     }
 
     private static async Task SeedExerciseTemplatesAsync(ApplicationDbContext db, CancellationToken ct)

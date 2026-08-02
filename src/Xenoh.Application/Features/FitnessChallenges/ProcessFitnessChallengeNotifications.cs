@@ -12,24 +12,32 @@ public sealed class ProcessFitnessChallengeNotificationsHandler(IApplicationDbCo
 {
     public async ValueTask<int> Handle(ProcessFitnessChallengeNotificationsCommand request, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
         var challenges = await db.FitnessChallenges.Include(x => x.Members)
-            .Where(x => x.CancelledAt == null && x.StartsOn <= today && x.CompletionNotifiedAt == null)
+            .Where(x => x.CancelledAt == null && x.StartsAtUtc <= now && x.CompletionNotifiedAt == null)
             .ToListAsync(ct);
         var calls = new List<(Guid UserId, string Type, string Message, Guid ChallengeId)>();
         foreach (var challenge in challenges)
         {
             var accepted = challenge.Members.Where(x => x.Status == FitnessChallengeMemberStatus.Accepted).ToList();
-            if (today > challenge.EndsOn)
+            if (now > challenge.EndsAtUtc)
             {
                 challenge.Status = FitnessChallengeStatus.Completed;
                 challenge.CompletionNotifiedAt = DateTime.UtcNow;
-                calls.AddRange(accepted.Select(x => (x.UserId, "FitnessChallengeCompleted", $"{challenge.Title} is complete. Review your consistency progress.", challenge.Id)));
+                calls.AddRange(accepted.Select(x => (x.UserId, "FitnessChallengeCompleted", $"{challenge.Title} is complete. Review the final leaderboard.", challenge.Id)));
                 continue;
             }
 
             challenge.Status = FitnessChallengeStatus.Active;
-            var weekStart = challenge.StartsOn.AddDays(((today.DayNumber - challenge.StartsOn.DayNumber) / 7) * 7);
+            if (!challenge.StartNotifiedAt.HasValue)
+            {
+                challenge.StartNotifiedAt = now;
+                calls.AddRange(accepted.Select(x => (x.UserId, "FitnessChallengeStarted", $"{challenge.Title} has started. Enrollment is now closed.", challenge.Id)));
+            }
+            if (challenge.MetricType != FitnessChallengeMetricType.TrainingSessions) continue;
+            var localToday = FitnessChallengeRules.LocalDate(challenge, now);
+            var localStart = FitnessChallengeRules.LocalDate(challenge, challenge.StartsAtUtc);
+            var weekStart = localStart.AddDays(((localToday.DayNumber - localStart.DayNumber) / 7) * 7);
             foreach (var member in accepted)
             {
                 var completed = await db.DailyWorkouts.AsNoTracking().Where(x => x.WeeklyWorkout.Plan.OwnerId == member.UserId &&
@@ -39,7 +47,7 @@ public sealed class ProcessFitnessChallengeNotificationsHandler(IApplicationDbCo
                     member.LastCompletionNotificationWeekStart = weekStart;
                     calls.Add((member.UserId, "FitnessChallengeTargetCompleted", $"Weekly target completed in {challenge.Title}.", challenge.Id));
                 }
-                else if ((today.DayOfWeek is DayOfWeek.Thursday or DayOfWeek.Friday or DayOfWeek.Saturday or DayOfWeek.Sunday) &&
+                else if ((localToday.DayOfWeek is DayOfWeek.Thursday or DayOfWeek.Friday or DayOfWeek.Saturday or DayOfWeek.Sunday) &&
                          member.LastBehindReminderWeekStart != weekStart)
                 {
                     member.LastBehindReminderWeekStart = weekStart;

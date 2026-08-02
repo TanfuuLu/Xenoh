@@ -25,7 +25,7 @@ public sealed class FitnessChallengeNotificationService(
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch (Exception ex) { logger.LogError(ex, "Fitness challenge notification scan failed."); }
-            try { await Task.Delay(TimeSpan.FromHours(6), stoppingToken); }
+            try { await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); }
             catch (OperationCanceledException) { break; }
         }
     }

@@ -346,6 +346,57 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
     }
 
     [Fact]
+    public async Task GetAnalyticsAsync_WithPartialCurrentWeek_ExcludesFutureDaysAndDoesNotReportVolumeDrop()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await using var seedCtx = CreateContext();
+        var plan = new Plan
+        {
+            Name = "Partial Week Plan",
+            OwnerId = UserId,
+            PlanType = PlanType.Self,
+            StartDate = today.AddDays(-13),
+            EndDate = today.AddDays(6)
+        };
+        seedCtx.Plans.Add(plan);
+
+        var previousWeek = new WeeklyWorkout
+        {
+            PlanId = plan.Id,
+            WeekNumber = 1,
+            Name = "Week 1",
+            StartDate = today.AddDays(-13),
+            EndDate = today.AddDays(-7)
+        };
+        var currentWeek = new WeeklyWorkout
+        {
+            PlanId = plan.Id,
+            WeekNumber = 2,
+            Name = "Week 2",
+            StartDate = today,
+            EndDate = today.AddDays(6)
+        };
+        seedCtx.WeeklyWorkouts.AddRange(previousWeek, currentWeek);
+
+        AddAnalyticsDay(seedCtx, previousWeek, today.AddDays(-7), isCompleted: true, reps: 10, weight: 1000m);
+        AddAnalyticsDay(seedCtx, currentWeek, today, isCompleted: true, reps: 7, weight: 300m);
+        AddAnalyticsDay(seedCtx, currentWeek, today.AddDays(2), isCompleted: false);
+        AddAnalyticsDay(seedCtx, currentWeek, today.AddDays(4), isCompleted: false);
+        await seedCtx.SaveChangesAsync();
+
+        await using var ctx = CreateContext();
+        var result = await new PlanRepository(ctx).GetAnalyticsAsync(plan.Id, UserId, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.ConsistencyPercent.Should().Be(100m);
+        result.WeeklyCompliance.Single(w => w.WeekNumber == 2).TotalDays.Should().Be(1);
+        result.WeeklyVolume.Single(w => w.WeekNumber == 2).IsPartial.Should().BeTrue();
+        result.Insights.Should().NotContain(i =>
+            i.Title == "Volume dropped sharply" || i.Title == "Volume is trending down");
+        result.Insights.Should().NotContain(i => i.Title == "Consistency is uneven");
+    }
+
+    [Fact]
     public async Task GetAnalyticsAsync_WithOtherUserPlan_ReturnsNull()
     {
         var planId = await SeedPlanAsync(ownerId: Guid.NewGuid());
@@ -463,13 +514,16 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
     private async Task<Guid> SeedPlanAsync(Guid? ownerId = null, params ExerciseSeed[] exercises)
     {
         await using var ctx = CreateContext();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var lastWeekNumber = exercises.Select(e => e.WeekNumber).DefaultIfEmpty(1).Max();
+        var planStart = today.AddDays(-((lastWeekNumber - 1) * 7 + 6));
         var plan = new Plan
         {
             Name = "Analytics Plan",
             OwnerId = ownerId ?? UserId,
             PlanType = PlanType.Self,
-            StartDate = DateOnly.FromDateTime(DateTime.Today),
-            EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(13))
+            StartDate = planStart,
+            EndDate = today
         };
 
         ctx.Plans.Add(plan);
@@ -481,14 +535,14 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
                 PlanId = plan.Id,
                 WeekNumber = weekNumber,
                 Name = $"Week {weekNumber}",
-                StartDate = DateOnly.FromDateTime(DateTime.Today.AddDays((weekNumber - 1) * 7)),
-                EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays((weekNumber - 1) * 7 + 6))
+                StartDate = planStart.AddDays((weekNumber - 1) * 7),
+                EndDate = planStart.AddDays((weekNumber - 1) * 7 + 6)
             };
 
             var day = new DailyWorkout
             {
                 WeeklyWorkoutId = week.Id,
-                Date = DateOnly.FromDateTime(DateTime.Today.AddDays((weekNumber - 1) * 7)),
+                Date = planStart.AddDays((weekNumber - 1) * 7),
                 DayOfWeek = DayOfWeek.Monday,
                 IsCompleted = true
             };
@@ -537,6 +591,52 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
 
         await ctx.SaveChangesAsync();
         return plan.Id;
+    }
+
+    private static void AddAnalyticsDay(
+        Xenoh.Infrastructure.Persistence.ApplicationDbContext context,
+        WeeklyWorkout week,
+        DateOnly date,
+        bool isCompleted,
+        int reps = 0,
+        decimal weight = 0m)
+    {
+        var day = new DailyWorkout
+        {
+            WeeklyWorkoutId = week.Id,
+            Date = date,
+            DayOfWeek = date.DayOfWeek,
+            IsCompleted = isCompleted,
+            Status = DayStatus.Normal
+        };
+        context.DailyWorkouts.Add(day);
+
+        if (!isCompleted)
+            return;
+
+        var exercise = new Exercise
+        {
+            DailyWorkoutId = day.Id,
+            Name = $"Exercise {week.WeekNumber}",
+            PrimaryMuscleGroup = MuscleGroup.Quads,
+            PlannedSets = 1,
+            PlannedReps = reps,
+            PlannedWeight = weight,
+            IsCompleted = true
+        };
+        var set = new ExerciseSet
+        {
+            ExerciseId = exercise.Id,
+            SetNumber = 1,
+            PlannedReps = reps,
+            PlannedWeight = weight,
+            ActualReps = reps,
+            ActualWeight = weight,
+            Rpe = 7m,
+            IsCompleted = true
+        };
+        context.Exercises.Add(exercise);
+        context.ExerciseSets.Add(set);
     }
 
     private async Task<Guid> SeedDesignPlanAsync(params DesignExerciseSeed[] exercises)

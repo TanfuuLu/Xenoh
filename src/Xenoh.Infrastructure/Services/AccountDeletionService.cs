@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Auth.Commands.AccountDeletion;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure.Persistence;
@@ -28,6 +29,15 @@ public sealed class AccountDeletionService(
         var deletedEmail = $"deleted-{user.Id:N}@deleted.xenoh.invalid";
         var storedObjectKeys = await CollectStoredObjectKeysAsync(userId, cancellationToken);
 
+        // Object storage cannot participate in the database transaction. Delete first and fail
+        // closed: a retry can safely repeat object deletion, while a failed deletion must never
+        // be reported as a completed privacy request.
+        await AccountDeletionObjectCleaner.DeleteAllAsync(
+            documentStorage,
+            logger,
+            storedObjectKeys,
+            cancellationToken);
+
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -53,8 +63,6 @@ public sealed class AccountDeletionService(
             await MarkFailedAsync(deletionRequest.Id, ex, cancellationToken);
             throw;
         }
-
-        await DeleteStoredObjectsBestEffortAsync(storedObjectKeys, cancellationToken);
     }
 
     private AccountDeletionRequest CreateDirectDeletionRequest(ApplicationUser user, DateTime now)
@@ -99,6 +107,16 @@ public sealed class AccountDeletionService(
             .Select(m => m.Id)
             .ToListAsync(ct);
 
+        var competitionRegistrationIds = await db.CompetitionRegistrations
+            .Where(r => r.UserId == userId)
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+
+        var organizerEvidenceFileIds = await db.OrganizerProfiles
+            .Where(p => p.UserId == userId && p.EvidenceFileId != null)
+            .Select(p => p.EvidenceFileId!.Value)
+            .ToListAsync(ct);
+
         var keys = await db.StoredFiles
             .Where(f => f.OwnerId == userId)
             .Select(f => f.StorageKey)
@@ -107,6 +125,16 @@ public sealed class AccountDeletionService(
         keys.AddRange(await db.ChatMessageAttachments
             .Where(a => messageIds.Contains(a.MessageId))
             .Select(a => a.StorageKey)
+            .ToListAsync(ct));
+
+        keys.AddRange(await db.CompetitionPaymentReceipts
+            .Where(r => r.UploadedById == userId || competitionRegistrationIds.Contains(r.RegistrationId))
+            .Select(r => r.StorageKey)
+            .ToListAsync(ct));
+
+        keys.AddRange(await db.StoredFiles
+            .Where(f => organizerEvidenceFileIds.Contains(f.Id))
+            .Select(f => f.StorageKey)
             .ToListAsync(ct));
 
         return keys.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.Ordinal).ToList();
@@ -150,6 +178,11 @@ public sealed class AccountDeletionService(
             .Where(f => f.OwnerId == userId)
             .Select(f => f.Id)
             .ToListAsync(ct);
+        fileIds.AddRange(await db.OrganizerProfiles
+            .Where(p => p.UserId == userId && p.EvidenceFileId != null)
+            .Select(p => p.EvidenceFileId!.Value)
+            .ToListAsync(ct));
+        fileIds = fileIds.Distinct().ToList();
         var mealPlanDayIds = await db.MealPlanDays
             .Where(d => d.UserId == userId)
             .Select(d => d.Id)
@@ -165,6 +198,14 @@ public sealed class AccountDeletionService(
         var customFoodItemIds = await db.FoodItems
             .Where(f => f.CreatedByUserId == userId)
             .Select(f => f.Id)
+            .ToListAsync(ct);
+        var createdChallengeIds = await db.FitnessChallenges
+            .Where(c => c.CreatorId == userId)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+        var competitionRegistrationIds = await db.CompetitionRegistrations
+            .Where(r => r.UserId == userId)
+            .Select(r => r.Id)
             .ToListAsync(ct);
 
         await db.ChatMessageAttachments.Where(a => messageIds.Contains(a.MessageId)).ExecuteDeleteAsync(ct);
@@ -231,6 +272,59 @@ public sealed class AccountDeletionService(
 
         await db.CycleDailyLogs.Where(l => l.UserId == userId).ExecuteDeleteAsync(ct);
         await db.CycleSettings.Where(s => s.UserId == userId).ExecuteDeleteAsync(ct);
+
+        await db.FitnessChallengeCheckIns
+            .Where(c => c.UserId == userId || createdChallengeIds.Contains(c.ChallengeId))
+            .ExecuteDeleteAsync(ct);
+        await db.FitnessChallengeMembers
+            .Where(m => m.UserId == userId || createdChallengeIds.Contains(m.ChallengeId))
+            .ExecuteDeleteAsync(ct);
+        await db.FitnessChallenges
+            .Where(c => createdChallengeIds.Contains(c.Id))
+            .ExecuteDeleteAsync(ct);
+
+        await db.CompetitionPaymentReceipts
+            .Where(r => r.UploadedById == userId || competitionRegistrationIds.Contains(r.RegistrationId))
+            .ExecuteDeleteAsync(ct);
+        await db.CompetitionPaymentReceipts
+            .Where(r => r.ReviewedById == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReviewedById, (Guid?)null), ct);
+        await db.CompetitionRegistrations
+            .Where(r => r.UserId == userId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.UserId, (Guid?)null)
+                .SetProperty(r => r.AthleteName, AccountDeletionPolicy.DeletedAthleteName)
+                .SetProperty(r => r.ContactEmail, AccountDeletionPolicy.DeletedContactEmail)
+                .SetProperty(r => r.ContactPhone, (string?)null)
+                .SetProperty(r => r.ContactFacebook, (string?)null)
+                .SetProperty(r => r.DateOfBirth, (DateOnly?)null)
+                .SetProperty(r => r.Sex, (string?)null)
+                .SetProperty(r => r.DeclaredWeightKg, (decimal?)null)
+                .SetProperty(r => r.DeclaredHeightCm, (decimal?)null)
+                .SetProperty(r => r.ReviewedById, (Guid?)null)
+                .SetProperty(r => r.DecisionReason, (string?)null), ct);
+        await db.CompetitionRegistrations
+            .Where(r => r.ReviewedById == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReviewedById, (Guid?)null), ct);
+        await db.CompetitionEventStaff.Where(s => s.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.CompetitionEvents
+            .Where(e => e.OwnerId == userId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.OrganizerContact, AccountDeletionPolicy.DeletedOrganizerContact)
+                .SetProperty(e => e.BankName, (string?)null)
+                .SetProperty(e => e.BankAccountNumber, (string?)null)
+                .SetProperty(e => e.BankAccountName, (string?)null)
+                .SetProperty(e => e.TransferInstructions, (string?)null), ct);
+        await db.OrganizerProfiles.Where(p => p.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.OrganizerProfiles
+            .Where(p => p.ReviewedById == userId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.ReviewedById, (Guid?)null)
+                .SetProperty(p => p.ReviewReason, (string?)null), ct);
+        await db.CompetitionAuditLogs
+            .Where(l => l.ActorId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(l => l.Details, (string?)null), ct);
+
         await db.Notifications.Where(n => n.RecipientId == userId).ExecuteDeleteAsync(ct);
         await db.UserBlocks.Where(b => b.BlockerId == userId || b.BlockedId == userId).ExecuteDeleteAsync(ct);
         await db.Friendships
@@ -346,20 +440,5 @@ public sealed class AccountDeletionService(
             Detail = request.FailureReason
         });
         await db.SaveChangesAsync(ct);
-    }
-
-    private async Task DeleteStoredObjectsBestEffortAsync(IEnumerable<string> storageKeys, CancellationToken ct)
-    {
-        foreach (var key in storageKeys)
-        {
-            try
-            {
-                await documentStorage.DeleteAsync(key, ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to delete stored object {StorageKey} during account deletion.", key);
-            }
-        }
     }
 }

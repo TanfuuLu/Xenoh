@@ -6,6 +6,7 @@ using Xenoh.Application.Features.Promotions.Queries.ValidatePromotionCode;
 using Xenoh.Application.Features.Subscriptions.Commands.CreatePaymentOrder;
 using Xenoh.Application.Features.Subscriptions.Commands.DevActivateSubscription;
 using Xenoh.Application.Features.Subscriptions.Queries.GetMySubscription;
+using Xenoh.Application.Features.Subscriptions.Queries.GetSubscriptionCatalog;
 
 namespace Xenoh.API.Controllers;
 
@@ -14,6 +15,14 @@ namespace Xenoh.API.Controllers;
 [Authorize]
 public sealed class SubscriptionsController(IMediator mediator, IWebHostEnvironment env) : ControllerBase
 {
+    [HttpGet("catalog")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCatalog(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetSubscriptionCatalogQuery(), ct);
+        return Ok(result);
+    }
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMySubscription(CancellationToken ct)
     {

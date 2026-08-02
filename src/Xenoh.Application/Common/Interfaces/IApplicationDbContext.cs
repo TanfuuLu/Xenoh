@@ -29,6 +29,7 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<UserSubscription> UserSubscriptions { get; }
     DbSet<PaymentOrder> PaymentOrders { get; }
+    DbSet<LegalAcceptance> LegalAcceptances { get; }
     DbSet<UserReport> UserReports { get; }
     DbSet<UserBlock> UserBlocks { get; }
     DbSet<Friendship> Friendships { get; }
@@ -39,6 +40,7 @@ public interface IApplicationDbContext
     DbSet<CommunitySettings> CommunitySettings { get; }
     DbSet<FitnessChallenge> FitnessChallenges { get; }
     DbSet<FitnessChallengeMember> FitnessChallengeMembers { get; }
+    DbSet<FitnessChallengeCheckIn> FitnessChallengeCheckIns { get; }
     DbSet<OrganizerProfile> OrganizerProfiles { get; }
     DbSet<CompetitionEvent> CompetitionEvents { get; }
     DbSet<CompetitionEventStaff> CompetitionEventStaff { get; }

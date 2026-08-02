@@ -51,7 +51,10 @@ public sealed record AdminDashboardResponse(
     List<AdminMetricPointResponse> UserRegistrations,
     List<AdminMetricPointResponse> Revenue,
     List<AdminMetricPointResponse> SubscriptionTierDistribution,
-    List<AdminMetricPointResponse> PlanCompletionTrend);
+    List<AdminMetricPointResponse> PlanCompletionTrend,
+    List<AdminMetricPointResponse> WorkoutActivity,
+    List<AdminMetricPointResponse> WebsiteActivity,
+    List<AdminMetricPointResponse> ReportStatusDistribution);
 
 public sealed record AdminReportSummaryResponse(int Total, List<AdminStatusCountResponse> CountsByStatus);
 

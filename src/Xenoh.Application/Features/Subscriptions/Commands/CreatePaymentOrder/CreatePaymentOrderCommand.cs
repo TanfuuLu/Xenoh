@@ -15,6 +15,11 @@ public sealed record CreatePaymentOrderCommand : IRequest<PaymentOrderResponse>
 
     [MaxLength(40)]
     public string? PromotionCode { get; init; }
+
+    public bool AcceptedTerms { get; init; }
+
+    [MaxLength(40)]
+    public string? TermsVersion { get; init; }
 }
 
 public sealed record PaymentOrderResponse(

@@ -59,12 +59,19 @@ public sealed class OpenAiUserAnalysisAi(
 {{XenohCoachPrompt.Core}}
 
 # Feature goal
-The athlete is reading the Xenoh insights page. Turn their training and body-metric snapshot into a prioritized coaching review that changes what they do next.
-The athlete can already see the dashboard, so every section must add judgment that the raw numbers do not provide.
-You are a coach, not a reporter. Do not write a summary of the data — the user can already see their own numbers.
-Every section must turn the data into a tip, an adjustment, or a next step that moves their progress forward.
+The athlete is reading the Xenoh insights page. First audit the available training and body-metric snapshot, then give a detailed, prioritized coaching review that changes what they do next.
+You are a strength and physique coach. Explain the evidence and uncertainty before prescribing changes. The review must support powerlifting performance and bodybuilding development when those are the athlete's chosen directions.
 
 Rules:
+- Start by summarizing what data is actually available, its time window, and any material gaps. Distinguish a real negative signal from data that is merely incomplete.
+- The current week may be in progress. currentWeek.isPartial identifies this, while scheduledDaysToDate and scheduledExercisesToDate exclude future work. NEVER treat future work, an unfinished current week, or lower partial-week volume as a problem. Do not tell the athlete to catch up.
+- NEVER recommend compressing missed sessions into the remaining days, stacking compound sessions, or adding make-up sets. Missed work is skipped, not repaid. Preserve recovery and the quality of the next squat, bench press, or deadlift session.
+- Muscle-group distribution is not expected to be equal. Judge it against profileContext.developmentDirection, profileContext.trainingDiscipline, the athlete's main lifts, and the apparent specialization of the plan. Only call an imbalance a problem when it conflicts with those goals or creates a clear performance or recovery constraint.
+- Do not prescribe extra sets merely to make a muscle chart look balanced. For powerlifting, account for indirect stimulus and fatigue from squat, bench press, deadlift, and their variations. For bodybuilding, judge whether priority muscles receive enough recoverable work, not equal work.
+- Give an explicit deload decision. Recommend a deload only when evidence supports accumulated fatigue, such as repeated high RPE, missed reps, declining performance, persistent recovery warnings, or a long hard block. Low RPE alone supports progression or better calibration, not a deload.
+- Give an explicit load-progression decision. Name which lifts can increase, hold, or reduce load and use a conditional rule based on achieved reps, technique, and RPE. Do not infer readiness to add weight from one easy set alone.
+- Give an explicit RPE interpretation. Separate planned RPE from actual RPE, explain whether the available logs are sufficient, and provide target ranges for compounds and accessories that fit the goal.
+- Give an explicit volume interpretation. Prefer changes to recoverable weekly volume and session quality. When fatigue is high, reduce accessory volume before reducing specific compound practice; when adding volume, add it gradually to a goal-relevant movement or muscle.
 - Lead with what to do, then back it with the number. Each section.detail must contain at least one concrete, actionable tip the user can apply, not just a description of what happened.
 - Use numbers from the snapshot as evidence for the advice (sets, kg, %, days, RPE), but the number is support for the tip, never the whole point.
 - Make tips specific and executable: name the lift, the muscle, the set count, the load change, the day, or the habit. Avoid vague advice like "train harder" or "stay consistent".
@@ -74,25 +81,42 @@ Rules:
 - Treat profileContext.developmentDirection and profileContext.trainingDiscipline as the user's chosen direction. Use them as the main lens for every tip, risk, plan fix, and next action.
 - Tailor tips by direction/discipline: strength or powerlifting needs squat/bench/deadlift specificity, intensity management, and top-set/back-off logic; hypertrophy or bodybuilding needs weekly set distribution, proximity to failure, and muscle-balance bias; fat loss or recomposition needs adherence, bodyweight trend, protein/recovery, and strength retention; endurance or running needs consistency, load progression, and recovery; general health or general fitness should stay practical and broad.
 - If profileContext is missing, keep tips general and tell the user that completing direction/discipline in their profile will sharpen the guidance.
-- Surface abnormalities as something to act on: sudden adherence drop, empty current week, bodyweight outlier, volume cliff, muscle-group imbalance, repeated high-RPE misses, or unusually easy completed work. For each, give the fix.
+- Surface abnormalities as something to act on: a completed-week adherence drop, bodyweight outlier, volume cliff across comparable completed periods, goal-relevant muscle-group issue, repeated high-RPE misses, or consistently easy completed work. For each, give the fix.
 - Do not overstate weak evidence. If one data point may be a logging outlier, call it a data-quality issue and tell the user how to verify it.
-- For muscleBalance, compare recent per-muscle volume, call out the meaningful push/pull or upper/lower imbalance, and tell the user which muscle to add sets to and roughly how many.
+- For muscleBalance, explain whether the distribution matches the athlete's stated goal. Recommend a volume change only when the evidence shows a goal-relevant gap and recovery capacity allows it.
 - For effortGap, reason from sets where actual work missed plan at high RPE (reduce load or fatigue) or hit plan at low RPE (add load or reps). Give the adjustment.
 - recommendation.actions must be concrete coaching steps ordered by priority, each something the user can do this week.
-- planReview.suggestions must be concrete improvements to the plan, not restatements of the mistakes.
-- planReview must call out likely plan mistakes from the available evidence: empty plan, low adherence, too much/too little volume, poor muscle balance, high RPE misses, or missing recovery signals. If no mistake is visible, say the plan looks acceptable and tell the user the one thing to push next to keep progressing.
+- planReview is a detailed training decision review, not a list of plan mistakes. It must audit the current evidence and cover goal fit, deload, load progression, RPE, volume, and ordered priorities.
+- Each planReview decision must state what the evidence supports, what it does not prove, and a conditional prescription. If evidence is insufficient, say exactly which logs are needed instead of inventing certainty.
 {{CycleGuidance}}
 {{languageInstruction}}
 
-Return JSON ONLY matching this exact shape (no markdown, no commentary). Each detail is 2-4 sentences and must end with an actionable tip:
+Return JSON ONLY matching this exact shape (no markdown, no commentary). Write enough detail to explain the reasoning; do not compress the review into slogans:
 {
-  "trainingAdherence":  { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
-  "bodyMetrics":        { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
-  "volumeStrength":     { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
-  "muscleBalance":      { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
-  "effortGap":          { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (2-4 sentences, includes a concrete tip)" },
-  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string (3-5 items, each <= 160 chars, an action to do this week)"] },
-  "planReview":         { "headline": "string (<= 90 chars)", "mistakes": ["string (max 4, each <= 160 chars)"], "suggestions": ["string (max 4, each <= 160 chars, a concrete fix)"] }
+  "trainingAdherence":  { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (3-5 sentences, includes a concrete tip)" },
+  "bodyMetrics":        { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (3-5 sentences, includes a concrete tip)" },
+  "volumeStrength":     { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (3-5 sentences, includes a concrete tip)" },
+  "muscleBalance":      { "headline": "string (<= 90 chars, framed around goal fit)", "detail": "string (3-5 sentences, includes a concrete tip or an explicit hold decision)" },
+  "effortGap":          { "headline": "string (<= 90 chars, framed as a next step)", "detail": "string (3-5 sentences, includes a concrete tip)" },
+  "recommendation":     { "headline": "string (<= 90 chars)", "actions": ["string (3-5 ordered actions, each may use 1-2 sentences)"] },
+  "planReview": {
+    "headline": "string (<= 110 chars, overall readiness verdict)",
+    "dataSummary": "string (4-7 sentences: audit the current data, dates or time windows, useful evidence, and missing evidence)",
+    "goalFit": "string (3-5 sentences: judge the distribution against the user's own direction or discipline, never generic balance)",
+    "deload": {
+      "verdict": "Deload|No deload|Hold and monitor|Insufficient data",
+      "rationale": "string (3-5 sentences grounded in fatigue and performance evidence)",
+      "prescription": "string (2-4 sentences with exact volume or intensity changes if deloading, otherwise monitoring triggers)"
+    },
+    "loadProgression": {
+      "verdict": "Increase|Hold|Reduce|Mixed|Insufficient data",
+      "rationale": "string (3-5 sentences grounded in lift, reps, RPE, and trend evidence)",
+      "prescription": "string (3-5 sentences with lift-specific increments or conditional rules)"
+    },
+    "rpeGuidance": "string (4-6 sentences: interpret logged RPE, give compound and accessory targets, and state what to log)",
+    "volumeGuidance": "string (4-6 sentences: assess recoverable goal-specific volume and give conditional set changes)",
+    "priorities": ["string (3-5 ordered priorities; specific, recovery-aware, and never catch-up work)"]
+  }
 }
 """;
 
@@ -103,7 +127,12 @@ Snapshot:
 ```
 """;
 
-        var json = await SendJsonPromptAsync(systemPrompt, userPrompt, 0.4, cancellationToken);
+        var json = await SendJsonPromptAsync(
+            systemPrompt,
+            userPrompt,
+            0.4,
+            cancellationToken,
+            _options.MaxAnalysisCompletionTokens);
         return new UserAnalysisAiResult(json);
     }
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Xenoh.Application.Features.Admin;
 using Xenoh.Application.Tests.Common;
@@ -44,6 +45,27 @@ public sealed class AdminQueryHandlerTests : HandlerTestBase
         var result = await CreateDashboardHandler(ctx).Handle(new GetAdminDashboardQuery(), CancellationToken.None);
 
         result.TotalUsers.Should().Be(2);
+    }
+
+    [Fact]
+    public void GetAdminDashboard_TrendQueries_GroupInPostgreSql()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=xenoh_query_shape;Username=xenoh;Password=xenoh")
+            .Options;
+        using var ctx = new ApplicationDbContext(options);
+        var startDate = new DateOnly(2026, 1, 1);
+        var startDateTime = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var workoutSql = GetAdminDashboardHandler
+            .BuildWorkoutMonthlyCountsQuery(ctx, startDate)
+            .ToQueryString();
+        var websiteSql = GetAdminDashboardHandler
+            .BuildWebsiteMonthlyCountsQuery(ctx, startDateTime)
+            .ToQueryString();
+
+        workoutSql.Should().ContainEquivalentOf("GROUP BY");
+        websiteSql.Should().ContainEquivalentOf("GROUP BY");
     }
 
     [Fact]

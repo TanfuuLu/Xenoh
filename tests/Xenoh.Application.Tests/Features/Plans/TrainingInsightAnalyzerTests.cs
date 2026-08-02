@@ -17,14 +17,7 @@ public sealed class TrainingInsightAnalyzerTests
             WarningDays: 0,
             AverageRpe: 7.5m,
             HighRpeSetCount: 0,
-            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 11200m)],
-            MuscleGroupVolume:
-            [
-                new MuscleGroupPoint("Chest", 4, 2500m, 2500m, 0m, 25m),
-                new MuscleGroupPoint("Back", 4, 2500m, 2500m, 0m, 25m),
-                new MuscleGroupPoint("Quads", 4, 2500m, 2500m, 0m, 25m),
-                new MuscleGroupPoint("Hamstrings", 4, 2500m, 2500m, 0m, 25m)
-            ]));
+            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 11200m)]));
 
         result.TrainingScore.Should().BeGreaterThanOrEqualTo(80);
         result.Insights.Should().Contain(i => i.Type == "Recommendation" && i.Severity == "Positive");
@@ -41,12 +34,11 @@ public sealed class TrainingInsightAnalyzerTests
             WarningDays: 1,
             AverageRpe: 7m,
             HighRpeSetCount: 0,
-            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 9000m)],
-            MuscleGroupVolume: [new MuscleGroupPoint("Chest", 10, 1000m, 1000m, 0m, 100m)]));
+            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 9000m)]));
 
-        result.TrainingScore.Should().BeLessThan(60);
-        result.Insights.Should().Contain(i => i.Type == "Consistency" && i.Severity == "Critical");
+        result.TrainingScore.Should().BeLessThan(80);
         result.Insights.Should().Contain(i => i.Type == "Recommendation" && i.Severity == "Critical");
+        result.Insights.Should().NotContain(i => i.Type == "Consistency");
     }
 
     [Fact]
@@ -59,8 +51,7 @@ public sealed class TrainingInsightAnalyzerTests
             WarningDays: 0,
             AverageRpe: null,
             HighRpeSetCount: 0,
-            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 7000m)],
-            MuscleGroupVolume: []));
+            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 7000m)]));
 
         result.Insights.Should().Contain(i => i.Type == "VolumeTrend" && i.Severity == "Warning");
     }
@@ -75,10 +66,67 @@ public sealed class TrainingInsightAnalyzerTests
             WarningDays: 1,
             AverageRpe: 8.7m,
             HighRpeSetCount: 6,
-            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 10300m)],
-            MuscleGroupVolume: []));
+            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m), new WeekVolumePoint(2, "Week 2", 10300m)]));
 
-        result.Insights.Should().Contain(i => i.Type == "FatigueRisk" && i.Severity == "Warning");
         result.Insights.Should().Contain(i => i.Type == "Recommendation" && i.Severity == "Warning");
+        result.Insights.Should().NotContain(i => i.Type == "FatigueRisk");
+    }
+
+    [Fact]
+    public void Analyze_WithCurrentPartialWeek_DoesNotReportVolumeDrop()
+    {
+        var result = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
+            ConsistencyPercent: 100m,
+            NonRestDays: 5,
+            MissedDays: 0,
+            WarningDays: 0,
+            AverageRpe: 7.5m,
+            HighRpeSetCount: 0,
+            WeeklyVolume:
+            [
+                new WeekVolumePoint(1, "Week 1", 10000m),
+                new WeekVolumePoint(2, "Week 2", 2100m, IsPartial: true)
+            ]));
+
+        result.Insights.Should().NotContain(i =>
+            i.Title == "Volume dropped sharply" || i.Title == "Volume is trending down");
+        result.Insights.Should().Contain(i => i.Title == "More volume history needed");
+    }
+
+    [Fact]
+    public void Analyze_WithHoldRecommendation_DoesNotRepeatConsistencyWarning()
+    {
+        var result = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
+            ConsistencyPercent: 60m,
+            NonRestDays: 5,
+            MissedDays: 0,
+            WarningDays: 0,
+            AverageRpe: 7.5m,
+            HighRpeSetCount: 0,
+            WeeklyVolume: [new WeekVolumePoint(1, "Week 1", 10000m)]));
+
+        result.Insights.Should().Contain(i => i.Title == "Hold the plan steady");
+        result.Insights.Should().NotContain(i => i.Type == "Consistency");
+    }
+
+    [Fact]
+    public void Analyze_WithProgrammedLighterWeek_DoesNotReportVolumeDrop()
+    {
+        var result = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
+            ConsistencyPercent: 100m,
+            NonRestDays: 8,
+            MissedDays: 0,
+            WarningDays: 0,
+            AverageRpe: 7m,
+            HighRpeSetCount: 0,
+            WeeklyVolume:
+            [
+                new WeekVolumePoint(1, "Week 1", 10000m, PlannedVolume: 10000m),
+                new WeekVolumePoint(2, "Week 2", 6000m, PlannedVolume: 6000m)
+            ]));
+
+        result.Insights.Should().Contain(i => i.Title == "Planned volume reduction");
+        result.Insights.Should().NotContain(i =>
+            i.Title == "Volume dropped sharply" || i.Title == "Volume is trending down");
     }
 }

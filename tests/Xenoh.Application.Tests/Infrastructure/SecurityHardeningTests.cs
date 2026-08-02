@@ -139,6 +139,13 @@ public sealed class SecurityHardeningTests
     {
         var root = FindRepositoryRoot();
         var sourceRoot = Path.Combine(root, "src");
+        var trustedMaintenanceSeed = Path.Combine(
+            sourceRoot,
+            "Xenoh.Infrastructure",
+            "Persistence",
+            "Seeders",
+            "DatabaseInitializer.cs");
+        const string trustedCommandAssignment = "command.CommandText = sql;";
         var blockedPatterns = new[]
         {
             "FromSqlRaw",
@@ -149,12 +156,23 @@ public sealed class SecurityHardeningTests
             "CommandText"
         };
 
-        var offenders = Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+        var sourceLines = Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
             .SelectMany(path => File.ReadLines(path)
                 .Select((line, index) => new { path, line, lineNumber = index + 1 }))
+            .ToArray();
+        sourceLines
+            .Where(entry =>
+                string.Equals(entry.path, trustedMaintenanceSeed, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(entry.line.Trim(), trustedCommandAssignment, StringComparison.Ordinal))
+            .Should()
+            .ContainSingle("the Development-only embedded seed must remain the sole reviewed raw-SQL assignment");
+
+        var offenders = sourceLines
             .Where(entry => blockedPatterns.Any(pattern =>
-                entry.line.Contains(pattern, StringComparison.Ordinal)))
+                entry.line.Contains(pattern, StringComparison.Ordinal)) &&
+                !(string.Equals(entry.path, trustedMaintenanceSeed, StringComparison.OrdinalIgnoreCase) &&
+                  string.Equals(entry.line.Trim(), trustedCommandAssignment, StringComparison.Ordinal)))
             .Select(entry => $"{Path.GetRelativePath(root, entry.path)}:{entry.lineNumber}")
             .ToArray();
 

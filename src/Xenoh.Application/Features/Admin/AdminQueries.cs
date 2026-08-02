@@ -601,7 +601,14 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db, IApplicat
             UserRegistrations: await BuildUserRegistrationTrendAsync(db, now, ct),
             Revenue: await BuildRevenueTrendAsync(db, now, ct),
             SubscriptionTierDistribution: subscriptionDistribution,
-            PlanCompletionTrend: await BuildPlanCompletionTrendAsync(db, now, ct));
+            PlanCompletionTrend: await BuildPlanCompletionTrendAsync(db, now, ct),
+            WorkoutActivity: await BuildWorkoutActivityTrendAsync(db, now, ct),
+            WebsiteActivity: await BuildWebsiteActivityTrendAsync(db, now, ct),
+            ReportStatusDistribution: await db.UserReports
+                .AsNoTracking()
+                .GroupBy(report => report.Status)
+                .Select(group => new AdminMetricPointResponse(group.Key.ToString(), group.Count()))
+                .ToListAsync(ct));
     }
 
     private static async Task<List<AdminMetricPointResponse>> BuildUserRegistrationTrendAsync(IApplicationDbContext db, DateTime now, CancellationToken ct)
@@ -655,6 +662,70 @@ public sealed class GetAdminDashboardHandler(IApplicationDbContext db, IApplicat
             })
             .ToList();
     }
+
+    private static async Task<List<AdminMetricPointResponse>> BuildWorkoutActivityTrendAsync(
+        IApplicationDbContext db,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var start = DateOnly.FromDateTime(
+            new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5));
+        var counts = await BuildWorkoutMonthlyCountsQuery(db, start).ToListAsync(ct);
+
+        return BuildMonthlyCountSeries(start, counts);
+    }
+
+    private static async Task<List<AdminMetricPointResponse>> BuildWebsiteActivityTrendAsync(
+        IApplicationDbContext db,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var startDateTime = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var counts = await BuildWebsiteMonthlyCountsQuery(db, startDateTime).ToListAsync(ct);
+
+        return BuildMonthlyCountSeries(DateOnly.FromDateTime(startDateTime), counts);
+    }
+
+    internal static IQueryable<AdminMonthlyCountRow> BuildWorkoutMonthlyCountsQuery(
+        IApplicationDbContext db,
+        DateOnly start) =>
+        db.DailyWorkouts
+            .AsNoTracking()
+            .Where(day => day.IsCompleted && day.Date >= start)
+            .GroupBy(day => new { day.Date.Year, day.Date.Month })
+            .Select(group => new AdminMonthlyCountRow(
+                group.Key.Year,
+                group.Key.Month,
+                group.Count()));
+
+    internal static IQueryable<AdminMonthlyCountRow> BuildWebsiteMonthlyCountsQuery(
+        IApplicationDbContext db,
+        DateTime start) =>
+        db.WebsiteActivityEvents
+            .AsNoTracking()
+            .Where(activity => activity.OccurredAtUtc >= start)
+            .GroupBy(activity => new
+            {
+                activity.OccurredAtUtc.Year,
+                activity.OccurredAtUtc.Month
+            })
+            .Select(group => new AdminMonthlyCountRow(
+                group.Key.Year,
+                group.Key.Month,
+                group.Count()));
+
+    private static List<AdminMetricPointResponse> BuildMonthlyCountSeries(
+        DateOnly start,
+        IReadOnlyCollection<AdminMonthlyCountRow> counts) =>
+        Enumerable.Range(0, 6)
+            .Select(start.AddMonths)
+            .Select(month => new AdminMetricPointResponse(
+                month.ToString("MMM yyyy"),
+                counts.FirstOrDefault(count =>
+                    count.Year == month.Year && count.Month == month.Month)?.Count ?? 0))
+            .ToList();
+
+    internal sealed record AdminMonthlyCountRow(int Year, int Month, int Count);
 }
 
 public sealed class GetReportSummaryHandler(IApplicationDbContext db)

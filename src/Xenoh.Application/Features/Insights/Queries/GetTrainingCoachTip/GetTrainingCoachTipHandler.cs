@@ -275,8 +275,10 @@ public sealed class GetTrainingCoachTipHandler(
     {
         if (week is null) return null;
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var reachedDays = week.Days.Where(d => d.Date <= today).ToList();
         var weekSets = recentSets
-            .Where(s => week.StartDate <= s.Date && s.Date <= week.EndDate)
+            .Where(s => week.StartDate <= s.Date && s.Date <= week.EndDate && s.Date <= today)
             .ToList();
 
         return new
@@ -285,14 +287,15 @@ public sealed class GetTrainingCoachTipHandler(
             week.Name,
             week.StartDate,
             week.EndDate,
-            CalendarDays = week.Days.Count,
-            TotalDays = week.Days.Count(IsScheduledTrainingDay),
-            ScheduledDays = week.Days.Count(IsScheduledTrainingDay),
-            CompletedDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.IsCompleted),
-            MissedDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.Status == DayStatus.Missed),
-            WarningDays = week.Days.Count(d => IsScheduledTrainingDay(d) && d.HasMissedTargets),
-            TotalExercises = week.Days.Sum(d => d.ExerciseCount),
-            CompletedExercises = week.Days.Sum(d => d.CompletedExercises),
+            IsPartial = week.EndDate > today,
+            CalendarDays = reachedDays.Count,
+            TotalDays = reachedDays.Count(IsScheduledTrainingDay),
+            ScheduledDays = reachedDays.Count(IsScheduledTrainingDay),
+            CompletedDays = reachedDays.Count(d => IsScheduledTrainingDay(d) && d.IsCompleted),
+            MissedDays = reachedDays.Count(d => IsScheduledTrainingDay(d) && d.Status == DayStatus.Missed),
+            WarningDays = reachedDays.Count(d => IsScheduledTrainingDay(d) && d.HasMissedTargets),
+            TotalExercises = reachedDays.Sum(d => d.ExerciseCount),
+            CompletedExercises = reachedDays.Sum(d => d.CompletedExercises),
             Volume = Math.Round(weekSets.Sum(SetVolume), 1)
         };
     }
@@ -335,25 +338,19 @@ public sealed class GetTrainingCoachTipHandler(
         var weekVolumes = new List<WeekVolumePoint>();
         if (activePlan is not null)
         {
-            foreach (var week in activePlan.Weeks)
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            foreach (var week in activePlan.Weeks.Where(w => w.StartDate <= today))
             {
                 var volume = recentSets
-                    .Where(s => week.StartDate <= s.Date && s.Date <= week.EndDate)
+                    .Where(s => week.StartDate <= s.Date && s.Date <= week.EndDate && s.Date <= today)
                     .Sum(SetVolume);
-                weekVolumes.Add(new WeekVolumePoint(week.WeekNumber, week.Name, Math.Round(volume, 1)));
+                weekVolumes.Add(new WeekVolumePoint(
+                    week.WeekNumber,
+                    week.Name,
+                    Math.Round(volume, 1),
+                    IsPartial: week.EndDate > today));
             }
         }
-
-        var totalVolume = recentSets.Sum(SetVolume);
-        var musclePoints = recentSets
-            .GroupBy(s => s.Muscle)
-            .Select(g =>
-            {
-                var volume = g.Sum(SetVolume);
-                var percent = totalVolume <= 0m ? 0m : Math.Round(volume / totalVolume * 100m, 1);
-                return new MuscleGroupPoint(g.Key, g.Count(), volume, volume, 0m, percent);
-            })
-            .ToList();
 
         var result = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
             totalDays <= 0 ? 0m : Math.Round(completedDays * 100m / totalDays, 1),
@@ -362,8 +359,7 @@ public sealed class GetTrainingCoachTipHandler(
             warningDays,
             recentSets.Where(s => s.Rpe.HasValue).Select(s => s.Rpe!.Value).DefaultIfEmpty().Average(),
             recentSets.Count(s => s.Rpe >= 8.5m),
-            weekVolumes,
-            musclePoints));
+            weekVolumes));
 
         return result.Insights
             .Select(i => new
@@ -381,7 +377,11 @@ public sealed class GetTrainingCoachTipHandler(
 
     private static PlanMetrics BuildPlanMetrics(PlanSnapshotData activePlan)
     {
-        var scheduledDays = activePlan.Weeks.SelectMany(w => w.Days).Where(IsScheduledTrainingDay).ToList();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var scheduledDays = activePlan.Weeks
+            .SelectMany(w => w.Days)
+            .Where(d => d.Date <= today && IsScheduledTrainingDay(d))
+            .ToList();
         var completedDays = scheduledDays.Count(d => d.IsCompleted);
         var totalDays = scheduledDays.Count;
 

@@ -155,15 +155,24 @@ dotnet run --project src/Xenoh.API --launch-profile http
 
 The application initializes the database, applies pending migrations, and seeds baseline data during startup.
 
-### 4. Seed complete demo data (development only)
+### 4. Rebuild and seed complete demo data (development only)
 
-After the API has started once (so migrations, roles, exercise templates, and foods exist), run the re-runnable seed against your **local development database**:
+To permanently drop the configured Development database, recreate it from every
+migration, synchronize reference data, and load the complete demo dataset:
 
 ```powershell
-psql --dbname "<development-connection-string>" --file docs/seeds/clean-seed.sql
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project src/Xenoh.API -- --rebuild-demo-database
 ```
 
-It recreates these accounts and their related training data:
+To refresh only the demo accounts and their data without rebuilding the schema:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+dotnet run --project src/Xenoh.API -- --seed-demo-database
+```
+
+Both commands refuse to run outside Development. The seed recreates these accounts:
 
 | Account | Password | Roles | Subscription |
 | --- | --- | --- | --- |
@@ -172,7 +181,12 @@ It recreates these accounts and their related training data:
 | `democoach@xenoh.app` | `Coach@Xenoh123!` | Coach, Individual | Pro Coach |
 | `free@xenoh.app` | `Demo@Xenoh123!` | Individual | Free |
 
-The data covers active self plans, a coach-authored plan, completed and upcoming workouts, bodyweight and PR history, nutrition, cycle tracking, a coach-client relationship and chat, friendships, and community shares. Do not run this script against a shared or production database: it removes and recreates its demo accounts.
+The data covers active self and coach-authored plans, completed/upcoming/missed
+workouts, bodyweight and PR history, nutrition, cycle tracking, coaching and chat,
+friendships, community shares and challenges, billing and promotions, AI usage,
+notifications, moderation, bug reports, website analytics, supplements, and a
+published competition with an approved registration. The SQL is embedded into the
+Infrastructure assembly from `docs/seeds/clean-seed.sql` and runs in one transaction.
 
 Development endpoints:
 

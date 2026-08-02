@@ -54,7 +54,13 @@ public sealed record TrainingInsightResponse(
 );
 
 public sealed record WeekCompliancePoint(int WeekNumber, string WeekName, int CompletedDays, int TotalDays);
-public sealed record WeekVolumePoint(int WeekNumber, string WeekName, decimal TotalVolume);
+public sealed record WeekVolumePoint(
+    int WeekNumber,
+    string WeekName,
+    decimal TotalVolume,
+    bool IsPartial = false,
+    decimal PlannedVolume = 0m
+);
 public sealed record MuscleGroupPoint(
     string MuscleGroup,
     int CompletedSets,

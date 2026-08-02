@@ -1,5 +1,5 @@
 -- ============================================================================
--- Xenoh clean seed — four accounts that cover every role and subscription tier.
+-- Xenoh comprehensive demo seed — four accounts covering the product surface.
 --
 --   admin@xenoh.app      / Admin@Xenoh123!   (Admin + Coach + Individual)
 --   demo@xenoh.app       / Demo@Xenoh123!    (Individual, FEMALE, cycle data)
@@ -15,7 +15,8 @@
 -- ExerciseTemplates (OwnerId IS NULL) and seed FoodItems. This script only
 -- creates the users and their data; it relies on those reference rows existing.
 --
--- Re-runnable: it deletes the four seed emails (and their data) first.
+-- Re-runnable: it deletes the four seed emails (and their data) first. For a
+-- complete schema rebuild use the API's --rebuild-demo-database maintenance mode.
 -- Password hashes are ASP.NET Core Identity v3 (PBKDF2-HMACSHA256, 100k iters);
 -- the verifier reads the parameters from the blob, so they validate as-is.
 -- ============================================================================
@@ -77,6 +78,22 @@ BEGIN
    WHERE "Email" IN ('admin@xenoh.app','demo@xenoh.app','democoach@xenoh.app','free@xenoh.app');
   IF uids IS NULL THEN RETURN; END IF;
 
+  DELETE FROM "CompetitionAuditLogs"
+    WHERE "EventId" IN (SELECT "Id" FROM "CompetitionEvents" WHERE "OwnerId"=ANY(uids));
+  DELETE FROM "CompetitionEvents" WHERE "OwnerId"=ANY(uids);
+  DELETE FROM "OrganizerProfiles" WHERE "UserId"=ANY(uids);
+  DELETE FROM "FitnessChallengeCheckIns" WHERE "UserId"=ANY(uids);
+  DELETE FROM "FitnessChallengeMembers" WHERE "UserId"=ANY(uids);
+  DELETE FROM "FitnessChallenges" WHERE "CreatorId"=ANY(uids);
+  DELETE FROM "SupplementIntakeLogs" WHERE "UserId"=ANY(uids);
+  DELETE FROM "SupplementRegimens" WHERE "UserId"=ANY(uids);
+  DELETE FROM "WebsiteActivityEvents" WHERE "UserId"=ANY(uids);
+  DELETE FROM "WebsiteBugReports" WHERE "UserId"=ANY(uids) OR "ReviewedById"=ANY(uids);
+  DELETE FROM "Notifications" WHERE "RecipientId"=ANY(uids);
+  DELETE FROM "AiFeatureUsages" WHERE "UserId"=ANY(uids);
+  DELETE FROM "AiUsageQuotas" WHERE "UserId"=ANY(uids);
+  DELETE FROM "CommunitySettings" WHERE "UserId"=ANY(uids);
+
   DELETE FROM "TrainingDayShareSets" s USING "TrainingDayShareExercises" e, "TrainingDayShares" sh
     WHERE s."TrainingDayShareExerciseId"=e."Id" AND e."TrainingDayShareId"=sh."Id" AND sh."UserId"=ANY(uids);
   DELETE FROM "TrainingDayShareExercises" e USING "TrainingDayShares" sh
@@ -123,6 +140,7 @@ BEGIN
   DELETE FROM "PaymentOrders"
     WHERE "UserId"=ANY(uids)
        OR "SubscriptionId" IN (SELECT "Id" FROM "UserSubscriptions" WHERE "UserId"=ANY(uids));
+  DELETE FROM "PromotionCodes" WHERE "Code" IN ('WELCOME20','COACH500K');
   DELETE FROM "UserSubscriptions" WHERE "UserId"=ANY(uids);
   DELETE FROM "AspNetUserRoles" WHERE "UserId"=ANY(uids);
   DELETE FROM "AspNetUsers" WHERE "Id"=ANY(uids);
@@ -290,6 +308,20 @@ DECLARE
   coach_id uuid := gen_random_uuid();
   free_id  uuid := gen_random_uuid();
   rel_id uuid := gen_random_uuid();
+  challenge_id uuid := gen_random_uuid();
+  streak_challenge_id uuid := gen_random_uuid();
+  custom_challenge_id uuid := gen_random_uuid();
+  sbd_challenge_id uuid := gen_random_uuid();
+  regimen_id uuid := gen_random_uuid();
+  schedule_id uuid := gen_random_uuid();
+  creatine_slot_id uuid := gen_random_uuid();
+  vitamin_slot_id uuid := gen_random_uuid();
+  event_id uuid := gen_random_uuid();
+  category_id uuid := gen_random_uuid();
+  registration_id uuid := gen_random_uuid();
+  promo_id uuid := gen_random_uuid();
+  demo_subscription_id uuid := gen_random_uuid();
+  coach_subscription_id uuid := gen_random_uuid();
   i int; d date; ps date; v_flow int; v_sym int; v_mood int; v_en int;
 BEGIN
   SELECT "Id" INTO role_admin FROM "AspNetRoles" WHERE "Name"='Admin';
@@ -334,9 +366,37 @@ BEGIN
   -- ----- Subscriptions -----
   INSERT INTO "UserSubscriptions"("Id","UserId","Tier","ExpiresAt","CreatedAt","UpdatedAt") VALUES
     (gen_random_uuid(), admin_id,'ProCoach', TIMESTAMPTZ '9999-12-31 23:59:59+00', now(), now()),
-    (gen_random_uuid(), demo_id, 'ProIndividual', now()+interval '1 year', now(), now()),
-    (gen_random_uuid(), coach_id,'ProCoach', now()+interval '1 year', now(), now()),
+    (demo_subscription_id, demo_id, 'ProIndividual', now()+interval '1 year', now(), now()),
+    (coach_subscription_id, coach_id,'ProCoach', now()+interval '1 year', now(), now()),
     (gen_random_uuid(), free_id, 'Free', NULL, now(), now());
+
+  -- ----- Billing and promotions (feeds Admin revenue charts) -----
+  INSERT INTO "PromotionCodes"("Id","Code","Description","DiscountType","DiscountValue","AppliesToTier",
+    "MaxRedemptions","MaxRedemptionsPerUser","StartsAt","ExpiresAt","IsActive","CreatedAt","UpdatedAt")
+  VALUES
+    (promo_id,'WELCOME20','Twenty percent off the first Pro Individual purchase','Percent',20,'ProIndividual',
+     100,1,now()-interval '1 year',now()+interval '1 year',true,now()-interval '1 year',now()),
+    (gen_random_uuid(),'COACH500K','Coach launch discount','FixedAmount',500000,'ProCoach',
+     50,1,now()-interval '6 months',now()+interval '6 months',true,now()-interval '6 months',now());
+
+  FOR i IN 0..5 LOOP
+    INSERT INTO "PaymentOrders"("Id","UserId","SubscriptionId","RequestedTier","TransferCode","Amount",
+      "DiscountAmount","PromotionCodeId","DurationMonths","Status","ExpiresAt","SePayTransactionId",
+      "SePayReferenceCode","PaidAt","CreatedAt","UpdatedAt")
+    VALUES (
+      gen_random_uuid(),
+      CASE WHEN i%2=0 THEN demo_id ELSE coach_id END,
+      CASE WHEN i%2=0 THEN demo_subscription_id ELSE coach_subscription_id END,
+      CASE WHEN i%2=0 THEN 'ProIndividual' ELSE 'ProCoach' END,
+      'XENOH_DEMO_'||i,
+      CASE WHEN i%2=0 THEN 399000 ELSE 1499000 END,
+      CASE WHEN i=0 THEN 100000 ELSE 0 END,
+      CASE WHEN i=0 THEN promo_id ELSE NULL END,
+      1,'Completed',now()-((i*30)||' days')::interval+interval '30 minutes',
+      'DEMO-TXN-'||i,'DEMO-REF-'||i,now()-((i*30)||' days')::interval,
+      now()-((i*30)||' days')::interval-interval '10 minutes',now()-((i*30)||' days')::interval
+    );
+  END LOOP;
 
   -- ----- Plans / workouts -----
   PERFORM pg_temp.gen_plan(demo_id, '16-Week Strength Block', 16, monday - 70, 1.00, 0, NULL, true, today);     -- Demo self (active)
@@ -437,6 +497,128 @@ BEGIN
   -- ----- Community shares -----
   PERFORM pg_temp.gen_shares(demo_id, coach_id, 3);
   PERFORM pg_temp.gen_shares(coach_id, demo_id, 2);
+
+  -- ----- Community privacy + flexible challenge lifecycle/metric coverage -----
+  INSERT INTO "CommunitySettings"("UserId","StatsVisibility") VALUES
+    (demo_id,'Friends'),(coach_id,'Friends'),(free_id,'OnlyMe');
+
+  INSERT INTO "FitnessChallenges"("Id","CreatorId","Title","Description","MetricType","AccessType",
+    "TargetSessionsPerWeek","SelectedLifts","CheckInPrompt","Capacity","TimeZoneId","StartsAtUtc","EndsAtUtc",
+    "Status","CreatedAt","UpdatedAt") VALUES
+    (challenge_id,coach_id,'Four-session momentum','Complete four training days each week and keep the whole group moving.',
+     'TrainingSessions','InviteOnly',4,'[]'::jsonb,NULL,10,'Asia/Ho_Chi_Minh',now()-interval '14 days',now()+interval '14 days',
+     'Active',now()-interval '18 days',now()),
+    (streak_challenge_id,demo_id,'Longest trained streak','Build the longest run of consecutive training days. One completed workout keeps the streak alive.',
+     'TrainingStreak','Community',0,'[]'::jsonb,NULL,10,'Asia/Ho_Chi_Minh',now()+interval '5 days',now()+interval '26 days',
+     'Upcoming',now()-interval '2 days',now()),
+    (custom_challenge_id,coach_id,'Daily mobility reset','Check in after completing at least ten minutes of focused mobility work.',
+     'CustomCheckIns','Connections',0,'[]'::jsonb,'I completed my 10-minute mobility reset',25,'Asia/Ho_Chi_Minh',
+     now()-interval '6 days',now()+interval '8 days','Active',now()-interval '10 days',now()),
+    (sbd_challenge_id,coach_id,'Big three progress block','Improve your combined estimated 1RM across squat, bench press, and deadlift.',
+     'SbdImprovement','Community',0,'[0,1,2]'::jsonb,NULL,25,'Asia/Ho_Chi_Minh',
+     now()-interval '70 days',now()-interval '8 days','Completed',now()-interval '80 days',now());
+
+  INSERT INTO "FitnessChallengeMembers"("Id","ChallengeId","UserId","Status","RespondedAt","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),challenge_id,coach_id,'Accepted',now()-interval '18 days',now()-interval '18 days',now()),
+    (gen_random_uuid(),challenge_id,demo_id,'Accepted',now()-interval '16 days',now()-interval '17 days',now()),
+    (gen_random_uuid(),challenge_id,free_id,'Invited',NULL,now()-interval '2 days',now()),
+    (gen_random_uuid(),streak_challenge_id,demo_id,'Accepted',now()-interval '2 days',now()-interval '2 days',now()),
+    (gen_random_uuid(),custom_challenge_id,coach_id,'Accepted',now()-interval '10 days',now()-interval '10 days',now()),
+    (gen_random_uuid(),custom_challenge_id,demo_id,'Accepted',now()-interval '9 days',now()-interval '9 days',now()),
+    (gen_random_uuid(),sbd_challenge_id,coach_id,'Accepted',now()-interval '80 days',now()-interval '80 days',now()),
+    (gen_random_uuid(),sbd_challenge_id,demo_id,'Accepted',now()-interval '78 days',now()-interval '78 days',now());
+
+  FOR i IN 0..5 LOOP
+    INSERT INTO "FitnessChallengeCheckIns"("Id","ChallengeId","UserId","LocalDate","Note","CreatedAt","UpdatedAt")
+    VALUES (gen_random_uuid(),custom_challenge_id,demo_id,today-i,
+      CASE WHEN i=0 THEN 'Hips and ankles done before squats.' ELSE NULL END,now()-make_interval(days=>i),now());
+    IF i <> 2 THEN
+      INSERT INTO "FitnessChallengeCheckIns"("Id","ChallengeId","UserId","LocalDate","Note","CreatedAt","UpdatedAt")
+      VALUES (gen_random_uuid(),custom_challenge_id,coach_id,today-i,NULL,now()-make_interval(days=>i),now());
+    END IF;
+  END LOOP;
+
+  -- ----- Supplements with adherence history -----
+  INSERT INTO "SupplementRegimens"("Id","UserId","CreatedByUserId","Name","Brand","Form","Instructions","Notes",
+    "IsArchived","CreatedAt","UpdatedAt")
+  VALUES (regimen_id,demo_id,coach_id,'Strength support stack','Demo Nutrition','Capsule / powder',
+    'Take consistently with food and water.','Demo schedule authored by coach.',false,now()-interval '60 days',now());
+  INSERT INTO "SupplementScheduleVersions"("Id","RegimenId","CreatedByUserId","EffectiveFrom","CreatedAt","UpdatedAt")
+  VALUES (schedule_id,regimen_id,coach_id,today-30,now()-interval '30 days',now());
+  INSERT INTO "SupplementDoseSlots"("Id","ScheduleVersionId","Amount","Unit","Time","Weekdays","CreatedAt","UpdatedAt") VALUES
+    (creatine_slot_id,schedule_id,5,'g',TIME '08:00',127,now()-interval '30 days',now()),
+    (vitamin_slot_id,schedule_id,1,'capsule',TIME '12:30',127,now()-interval '30 days',now());
+  FOR i IN 1..21 LOOP
+    d := today-i;
+    INSERT INTO "SupplementIntakeLogs"("Id","UserId","DoseSlotId","ScheduledDate","Status","RecordedAt","Note","CreatedAt","UpdatedAt") VALUES
+      (gen_random_uuid(),demo_id,creatine_slot_id,d,CASE WHEN i IN (6,13) THEN 2 ELSE 1 END,
+       (d+TIME '08:05') AT TIME ZONE 'Asia/Ho_Chi_Minh',CASE WHEN i IN (6,13) THEN 'Missed while travelling' ELSE NULL END,now(),now()),
+      (gen_random_uuid(),demo_id,vitamin_slot_id,d,CASE WHEN i=9 THEN 2 ELSE 1 END,
+       (d+TIME '12:35') AT TIME ZONE 'Asia/Ho_Chi_Minh',NULL,now(),now());
+  END LOOP;
+
+  -- ----- AI usage, notifications, moderation, and bug-management states -----
+  INSERT INTO "AiFeatureUsages"("Id","UserId","PeriodStart","Feature","UsedRequests","LastConsumedAt","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),demo_id,date_trunc('month',today)::date,'UserAnalysis',7,now()-interval '1 day',now(),now()),
+    (gen_random_uuid(),demo_id,date_trunc('month',today)::date,'FoodMacro',12,now()-interval '2 hours',now(),now()),
+    (gen_random_uuid(),coach_id,date_trunc('month',today)::date,'CoachChat',18,now()-interval '30 minutes',now(),now());
+  INSERT INTO "AiUsageQuotas"("Id","UserId","PeriodStart","UsedRequests","LastFeature","LastConsumedAt","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),demo_id,date_trunc('month',today)::date,19,'FoodMacro',now()-interval '2 hours',now(),now()),
+    (gen_random_uuid(),coach_id,date_trunc('month',today)::date,18,'CoachChat',now()-interval '30 minutes',now(),now());
+
+  INSERT INTO "Notifications"("Id","RecipientId","Type","Message","IsRead","RelatedEntityId","RelatedEntityType","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),demo_id,'Challenge','You are on track for Summer Strength Streak.',false,challenge_id,'FitnessChallenge',now()-interval '1 hour',now()),
+    (gen_random_uuid(),demo_id,'CoachMessage','Your coach sent a new message.',true,rel_id,'CoachClientRelationship',now()-interval '1 day',now()),
+    (gen_random_uuid(),coach_id,'ClientPR','Demo Athlete achieved a new squat PR.',false,demo_id,'ApplicationUser',now()-interval '2 days',now());
+
+  INSERT INTO "UserReports"("Id","ReporterId","ReportedUserId","Reason","Details","Status","RelatedEntityType","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),free_id,demo_id,1,'Demo pending moderation item for the admin queue.',0,'TrainingDayShare',now()-interval '3 days',now()),
+    (gen_random_uuid(),demo_id,free_id,0,'Resolved example report.',1,'ApplicationUser',now()-interval '25 days',now());
+  INSERT INTO "WebsiteBugReports"("Id","UserId","Title","Description","PageUrl","BrowserInfo","Severity","Status",
+    "AdminNote","ReviewedById","ReviewedAtUtc","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),demo_id,'Workout timer loses focus','Reproduction data for the open admin bug queue.','/workout/today','Chrome demo','High','Open',NULL,NULL,NULL,now()-interval '2 days',now()),
+    (gen_random_uuid(),coach_id,'Client chart label overlap','Resolved example for status charts.','/coach/clients','Safari demo','Medium','Resolved','Verified in current build.',admin_id,now()-interval '1 day',now()-interval '12 days',now());
+
+  -- ----- Website funnel/activity history (feeds Admin marketing charts) -----
+  FOR i IN 0..89 LOOP
+    d := today-i;
+    INSERT INTO "WebsiteActivityEvents"("Id","UserId","EventType","SessionId","Path","PreviousPath","Referrer",
+      "UtmSource","UtmMedium","UtmCampaign","DurationSeconds","UserAgent","OccurredAtUtc","CreatedAt","UpdatedAt")
+    VALUES
+      (gen_random_uuid(),demo_id,'PageView','demo-'||i,'/dashboard','/login',
+       'https://www.google.com','google','organic','strength-demo',80+(i%120),'Seed browser',
+       (d+TIME '08:00') AT TIME ZONE 'Asia/Ho_Chi_Minh',now(),now()),
+      (gen_random_uuid(),coach_id,'SessionUsage','coach-'||i,'/coach/clients','/dashboard',
+       NULL,'direct','none',NULL,180+(i%240),'Seed browser',
+       (d+TIME '10:00') AT TIME ZONE 'Asia/Ho_Chi_Minh',now(),now());
+  END LOOP;
+
+  -- ----- Published competition with an approved, paid registration -----
+  INSERT INTO "OrganizerProfiles"("Id","UserId","OrganizationName","ContactEmail","ContactPhone","WebsiteUrl","Notes",
+    "Status","ReviewedById","ReviewedAt","CreatedAt","UpdatedAt")
+  VALUES (gen_random_uuid(),coach_id,'Xenoh Demo Meets','events@xenoh.app','0900000000','https://www.xenoh.online',
+    'Approved organizer profile for full demo coverage.','Approved',admin_id,now()-interval '60 days',now()-interval '90 days',now());
+  INSERT INTO "CompetitionEvents"("Id","OwnerId","Slug","Title","Description","Discipline","Status","VenueName","Address",
+    "TimeZoneId","StartsAtUtc","EndsAtUtc","RegistrationOpensAtUtc","RegistrationClosesAtUtc","Capacity",
+    "RegistrationFee","Currency","OrganizerContact","BankName","BankAccountNumber","BankAccountName",
+    "PowerliftingFormulaVersion","PowerliftingScoringFormula","PublishedAt","CreatedAt","UpdatedAt")
+  VALUES (event_id,coach_id,'xenoh-demo-open','Xenoh Demo Open','A seeded powerlifting meet demonstrating organizer and athlete workflows.',
+    'Powerlifting','Published','Xenoh Strength Hall','Ho Chi Minh City','Asia/Ho_Chi_Minh',
+    now()+interval '45 days',now()+interval '45 days 8 hours',now()-interval '30 days',now()+interval '30 days',
+    60,500000,'VND','events@xenoh.app','MBBank','0000000000','XENOH DEMO','2020','Dots',now()-interval '35 days',now()-interval '40 days',now());
+  INSERT INTO "CompetitionCategories"("Id","EventId","Code","Name","EligibilityNotes","Capacity","DisplayOrder",
+    "SexDivision","AgeDivision","MinWeightKg","MaxWeightKg","EquipmentDivision","CreatedAt","UpdatedAt")
+  VALUES (category_id,event_id,'F-OPEN-69','Women Open up to 69kg','Open powerlifting category.',30,1,
+    'Female','Open',0,69,'Raw',now()-interval '40 days',now());
+  INSERT INTO "CompetitionRegistrations"("Id","EventId","CategoryId","UserId","AthleteName","ContactEmail","ContactPhone",
+    "DateOfBirth","Sex","DeclaredWeightKg","DeclaredHeightCm","Status","PaymentStatus","ExpectedFee","Currency",
+    "SubmittedAt","ReviewedAt","ReviewedById","DecisionReason","CreatedAt","UpdatedAt")
+  VALUES (registration_id,event_id,category_id,demo_id,'Demo Athlete','demo@xenoh.app','0900000001',
+    DATE '1998-07-22','Female',62.4,165,'Approved','Paid',500000,'VND',
+    now()-interval '12 days',now()-interval '10 days',coach_id,'Payment verified.',now()-interval '12 days',now());
+  INSERT INTO "CompetitionAuditLogs"("Id","EventId","ActorId","Action","EntityType","EntityId","Details","CreatedAt","UpdatedAt") VALUES
+    (gen_random_uuid(),event_id,coach_id,'Published','CompetitionEvent',event_id,'Demo event published.',now()-interval '35 days',now()),
+    (gen_random_uuid(),event_id,coach_id,'RegistrationApproved','CompetitionRegistration',registration_id,'Demo athlete approved.',now()-interval '10 days',now());
 END
 $main$;
 

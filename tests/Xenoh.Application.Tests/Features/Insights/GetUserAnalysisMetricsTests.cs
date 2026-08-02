@@ -42,6 +42,7 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         ai.CallCount.Should().Be(3);
         result.Content.BodyMetrics.Should().NotBeNull();
         result.Content.Recommendation.Should().NotBeNull();
+        result.Content.PlanReview.Deload.Verdict.Should().Be("No deload");
     }
 
     [Fact]
@@ -118,8 +119,8 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         var result = await handler.Handle(new GetUserAnalysisQuery("en"), CancellationToken.None);
 
         result.Metrics.Adherence.ActivePlanName.Should().Be("Strength Block");
-        result.Metrics.Adherence.PlanCompletionPercent.Should().Be(38);
-        result.Metrics.Adherence.CurrentWeek!.CompletionPercent.Should().Be(50);
+        result.Metrics.Adherence.PlanCompletionPercent.Should().Be(40);
+        result.Metrics.Adherence.CurrentWeek!.CompletionPercent.Should().Be(100);
         result.Metrics.Adherence.PreviousWeek!.CompletionPercent.Should().Be(25);
         result.Metrics.Bodyweight.Points.Select(p => p.Date).Should().BeInAscendingOrder();
         result.Metrics.Bodyweight.Delta.Should().Be(1m);
@@ -260,7 +261,25 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
           "volumeStrength": { "headline": "Volume", "detail": "Volume detail." },
           "muscleBalance": { "headline": "Balance", "detail": "Balance detail." },
           "effortGap": { "headline": "Effort", "detail": "Effort detail." },
-          "recommendation": { "headline": "Next", "actions": ["Log consistently"] }
+          "recommendation": { "headline": "Next", "actions": ["Log consistently"] },
+          "planReview": {
+            "headline": "Keep the next session high quality",
+            "dataSummary": "The available data is sparse but internally consistent.",
+            "goalFit": "There is not enough plan history to judge specialization.",
+            "deload": {
+              "verdict": "No deload",
+              "rationale": "There is no repeated fatigue signal.",
+              "prescription": "Continue normally and monitor RPE."
+            },
+            "loadProgression": {
+              "verdict": "Hold",
+              "rationale": "One session is not a trend.",
+              "prescription": "Hold load until another clean exposure is logged."
+            },
+            "rpeGuidance": "Log actual RPE on every working set.",
+            "volumeGuidance": "Keep current volume until recovery can be assessed.",
+            "priorities": ["Complete the next planned session without make-up work."]
+          }
         }
         """;
 

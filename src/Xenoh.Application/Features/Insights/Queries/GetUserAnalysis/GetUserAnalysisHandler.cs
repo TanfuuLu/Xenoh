@@ -17,7 +17,7 @@ public sealed class GetUserAnalysisHandler(
     IUserAnalysisAi ai
 ) : IRequestHandler<GetUserAnalysisQuery, UserAnalysisResponse>
 {
-    private const int AnalysisPromptVersion = 7;
+    private const int AnalysisPromptVersion = 8;
     private const int MaxAiAttempts = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -98,8 +98,8 @@ public sealed class GetUserAnalysisHandler(
     /// The model occasionally returns syntactically valid JSON that still leaves required
     /// sections null (e.g. only trainingAdherence filled in). That deserializes fine but is
     /// unusable, so treat it as a failed attempt rather than caching a sparse analysis.
-    /// planReview is intentionally excluded: it's optional by design (null when the plan has
-    /// no notable mistakes).
+    /// The detailed plan review is required because it carries the deload, progression, RPE,
+    /// and volume decisions. Reject older or truncated shapes instead of caching them.
     /// </summary>
     private static bool IsComplete(AnalysisContent content) =>
         content.TrainingAdherence is not null &&
@@ -107,11 +107,25 @@ public sealed class GetUserAnalysisHandler(
         content.VolumeStrength is not null &&
         content.MuscleBalance is not null &&
         content.EffortGap is not null &&
-        content.Recommendation is not null;
+        content.Recommendation is not null &&
+        content.PlanReview is not null &&
+        IsComplete(content.PlanReview);
+
+    private static bool IsComplete(AnalysisPlanReview review) =>
+        !string.IsNullOrWhiteSpace(review.Headline) &&
+         !string.IsNullOrWhiteSpace(review.DataSummary) &&
+         !string.IsNullOrWhiteSpace(review.GoalFit) &&
+         review.Deload is not null &&
+         review.LoadProgression is not null &&
+         !string.IsNullOrWhiteSpace(review.RpeGuidance) &&
+         !string.IsNullOrWhiteSpace(review.VolumeGuidance) &&
+         review.Priorities is not null;
 
     private static AnalysisMetrics BuildMetrics(Snapshot snapshot)
     {
-        var planCompletionPercent = Percent(snapshot.Plan?.CompletedDays ?? 0, snapshot.Plan?.TotalDays ?? 0);
+        var planCompletionPercent = Percent(
+            snapshot.Plan?.CompletedScheduledDaysToDate ?? 0,
+            snapshot.Plan?.ScheduledDaysToDate ?? 0);
         var bodyweightPoints = snapshot.RecentBodyweight
             .OrderBy(p => p.Date)
             .Select(p => new AnalysisBodyweightPoint(p.Date, p.Weight))
@@ -140,7 +154,7 @@ public sealed class GetUserAnalysisHandler(
                 snapshot.Plan?.StartDate,
                 snapshot.Plan?.EndDate,
                 snapshot.Plan?.TotalDays ?? 0,
-                snapshot.Plan?.CompletedDays ?? 0,
+                snapshot.Plan?.CompletedScheduledDaysToDate ?? 0,
                 planCompletionPercent,
                 ToWeekComparison(snapshot.CurrentWeek, snapshot.CurrentWeekVolume),
                 ToWeekComparison(snapshot.PreviousWeek, snapshot.PreviousWeekVolume)
@@ -177,15 +191,20 @@ public sealed class GetUserAnalysisHandler(
     {
         if (week is null) return null;
 
+        var totalDays = week.IsPartial ? week.ScheduledDaysToDate : week.TotalDays;
+        var completedDays = week.IsPartial ? week.CompletedScheduledDaysToDate : week.CompletedDays;
+        var totalExercises = week.IsPartial ? week.ScheduledExercisesToDate : week.TotalExercises;
+        var completedExercises = week.IsPartial ? week.CompletedExercisesToDate : week.CompletedExercises;
+
         return new AnalysisWeekComparison(
             week.WeekNumber,
             week.StartDate,
             week.EndDate,
-            week.TotalDays,
-            week.CompletedDays,
-            Percent(week.CompletedDays, week.TotalDays),
-            week.TotalExercises,
-            week.CompletedExercises,
+            totalDays,
+            completedDays,
+            Percent(completedDays, totalDays),
+            totalExercises,
+            completedExercises,
             Math.Round(volume, 1)
         );
     }
@@ -246,13 +265,17 @@ public sealed class GetUserAnalysisHandler(
 
             int totalDays = weeks.Sum(w => w.Days.Count);
             int completedDays = weeks.Sum(w => w.Days.Count(d => d.IsCompleted));
+            int scheduledDaysToDate = weeks.Sum(w => w.Days.Count(d => d.Date <= today));
+            int completedScheduledDaysToDate = weeks.Sum(w => w.Days.Count(d => d.Date <= today && d.IsCompleted));
 
             planSnap = new PlanSnapshot(
                 activePlan.Name,
                 activePlan.StartDate,
                 activePlan.EndDate,
                 totalDays,
-                completedDays
+                completedDays,
+                scheduledDaysToDate,
+                completedScheduledDaysToDate
             );
 
             var current = weeks.FirstOrDefault(w => w.StartDate <= today && today <= w.EndDate);
@@ -267,7 +290,12 @@ public sealed class GetUserAnalysisHandler(
                     current.Days.Count,
                     current.Days.Count(d => d.IsCompleted),
                     current.Days.Sum(d => d.Total),
-                    current.Days.Sum(d => d.Completed)
+                    current.Days.Sum(d => d.Completed),
+                    IsPartial: today < current.EndDate,
+                    ScheduledDaysToDate: current.Days.Count(d => d.Date <= today),
+                    CompletedScheduledDaysToDate: current.Days.Count(d => d.Date <= today && d.IsCompleted),
+                    ScheduledExercisesToDate: current.Days.Where(d => d.Date <= today).Sum(d => d.Total),
+                    CompletedExercisesToDate: current.Days.Where(d => d.Date <= today).Sum(d => d.Completed)
                 );
 
                 var prev = weeks.LastOrDefault(w => w.WeekNumber == current.WeekNumber - 1);
@@ -280,7 +308,12 @@ public sealed class GetUserAnalysisHandler(
                         prev.Days.Count,
                         prev.Days.Count(d => d.IsCompleted),
                         prev.Days.Sum(d => d.Total),
-                        prev.Days.Sum(d => d.Completed)
+                        prev.Days.Sum(d => d.Completed),
+                        IsPartial: false,
+                        ScheduledDaysToDate: prev.Days.Count,
+                        CompletedScheduledDaysToDate: prev.Days.Count(d => d.IsCompleted),
+                        ScheduledExercisesToDate: prev.Days.Sum(d => d.Total),
+                        CompletedExercisesToDate: prev.Days.Sum(d => d.Completed)
                     );
                 }
             }
@@ -486,7 +519,9 @@ public sealed class GetUserAnalysisHandler(
         DateOnly StartDate,
         DateOnly EndDate,
         int TotalDays,
-        int CompletedDays
+        int CompletedDays,
+        int ScheduledDaysToDate,
+        int CompletedScheduledDaysToDate
     );
 
     private sealed record WeekSnapshot(
@@ -496,7 +531,12 @@ public sealed class GetUserAnalysisHandler(
         int TotalDays,
         int CompletedDays,
         int TotalExercises,
-        int CompletedExercises
+        int CompletedExercises,
+        bool IsPartial,
+        int ScheduledDaysToDate,
+        int CompletedScheduledDaysToDate,
+        int ScheduledExercisesToDate,
+        int CompletedExercisesToDate
     );
 
     private sealed record BodyweightPoint(DateOnly Date, decimal Weight);

@@ -314,8 +314,11 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             {
                 w.WeekNumber,
                 w.Name,
+                w.StartDate,
+                w.EndDate,
                 Days = w.DailyWorkouts.Select(d => new
                 {
+                    d.Date,
                     d.IsCompleted,
                     d.Status,
                     IsRest = d.Status == DayStatus.Rest,
@@ -328,6 +331,9 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                         .Where(e => e.IsCompleted && e.DurationSeconds != null)
                         .Select(e => e.DurationSeconds!.Value)
                         .ToList(),
+                    PlannedVolume = d.Exercises
+                        .SelectMany(e => e.Sets)
+                        .Sum(s => s.PlannedReps * (s.PlannedWeight ?? 0m)),
                     Sets = d.Exercises.SelectMany(e => e.Sets
                         .Where(s => s.IsCompleted)
                         .Select(s => new
@@ -344,20 +350,41 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .AsSplitQuery()
             .ToListAsync(ct);
 
-        var weeklyCompliance = weeks.Select(w => new WeekCompliancePoint(
-            w.WeekNumber, w.Name,
-            w.Days.Count(d => d.IsCompleted),
-            w.Days.Count(d => !d.IsRest)
-        )).ToList();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var reachedWeeks = weeks
+            .Where(w => w.StartDate <= today)
+            .ToList();
 
-        var weeklyVolume = weeks.Select(w => new WeekVolumePoint(
-            w.WeekNumber, w.Name,
-            w.Days.SelectMany(d => d.Sets)
-                  .Sum(s => (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m))
-        )).ToList();
+        var weeklyCompliance = reachedWeeks
+            .Select(w =>
+            {
+                var scheduledDays = w.Days.Where(d => d.Date <= today && !d.IsRest).ToList();
+                return new WeekCompliancePoint(
+                    w.WeekNumber,
+                    w.Name,
+                    scheduledDays.Count(d => d.IsCompleted),
+                    scheduledDays.Count);
+            })
+            .ToList();
 
-        var weightedEntries = weeks
-            .SelectMany(w => w.Days.SelectMany(d => d.Sets.SelectMany(s =>
+        var weeklyVolume = reachedWeeks
+            .Select(w => new WeekVolumePoint(
+                w.WeekNumber,
+                w.Name,
+                w.Days
+                    .Where(d => d.Date <= today)
+                    .SelectMany(d => d.Sets)
+                    .Sum(s => (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m)),
+                IsPartial: w.EndDate > today,
+                PlannedVolume: w.Days
+                    .Where(d => d.Date <= today)
+                    .Sum(d => d.PlannedVolume)))
+            .ToList();
+
+        var weightedEntries = reachedWeeks
+            .SelectMany(w => w.Days
+                .Where(d => d.Date <= today)
+                .SelectMany(d => d.Sets.SelectMany(s =>
             {
                 var setVolume = (s.ActualReps ?? 0) * (s.ActualWeight ?? 0m);
                 var entries = new List<WeightedMuscleEntry>
@@ -404,7 +431,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             .Select(g => new MuscleGroupHeatmapPoint(
                 g.Key.ToString(),
                 g.Sum(e => e.TotalVolume),
-                weeks.Select(w => new MuscleGroupHeatmapWeekPoint(
+                reachedWeeks.Select(w => new MuscleGroupHeatmapWeekPoint(
                     w.WeekNumber,
                     w.Name,
                     g.Where(e => e.WeekNumber == w.WeekNumber).Sum(e => e.TotalVolume)
@@ -414,18 +441,22 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 
         var muscleGroupBalance = BuildMuscleGroupBalance(weightedEntries);
 
-        var totalCompleted = weeks.SelectMany(w => w.Days).Count(d => d.IsCompleted);
-        var nonRestDays = weeks.SelectMany(w => w.Days).Count(d => !d.IsRest);
-        var missedDays = weeks.SelectMany(w => w.Days).Count(d => d.IsMissed);
-        var warningDays = weeks.SelectMany(w => w.Days).Count(d => d.HasWarning);
-        var completedSets = weeks.SelectMany(w => w.Days).SelectMany(d => d.Sets).ToList();
+        var reachedDays = reachedWeeks
+            .SelectMany(w => w.Days)
+            .Where(d => d.Date <= today)
+            .ToList();
+        var totalCompleted = reachedDays.Count(d => !d.IsRest && d.IsCompleted);
+        var nonRestDays = reachedDays.Count(d => !d.IsRest);
+        var missedDays = reachedDays.Count(d => d.IsMissed);
+        var warningDays = reachedDays.Count(d => d.HasWarning);
+        var completedSets = reachedDays.SelectMany(d => d.Sets).ToList();
         var rpeValues = completedSets.Where(s => s.Rpe is not null).Select(s => s.Rpe!.Value).ToList();
         var avgRpe = rpeValues.Count == 0 ? (decimal?)null : Math.Round(rpeValues.Average(), 1);
         var highRpeSets = rpeValues.Count(r => r >= 9m);
-        var totalDurationSeconds = weeks.SelectMany(w => w.Days).SelectMany(d => d.CompletedExerciseDurations).Sum();
+        var totalDurationSeconds = reachedDays.SelectMany(d => d.CompletedExerciseDurations).Sum();
         var totalVolume = weeklyVolume.Sum(w => w.TotalVolume);
         var consistency = nonRestDays == 0 ? 0m : Math.Round((decimal)totalCompleted / nonRestDays * 100, 1);
-        var avgPerWeek = weeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / weeks.Count, 1);
+        var avgPerWeek = reachedWeeks.Count == 0 ? 0m : Math.Round((decimal)totalCompleted / reachedWeeks.Count, 1);
         var insightResult = TrainingInsightAnalyzer.Analyze(new TrainingInsightInput(
             consistency,
             nonRestDays,
@@ -433,8 +464,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
             warningDays,
             avgRpe,
             highRpeSets,
-            weeklyVolume,
-            muscleGroups));
+            weeklyVolume));
 
         return new PlanAnalyticsResponse(totalCompleted, totalVolume, consistency, avgPerWeek,
             completedSets.Count, avgRpe, highRpeSets, warningDays, totalDurationSeconds,

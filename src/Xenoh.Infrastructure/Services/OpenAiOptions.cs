@@ -10,6 +10,7 @@ public sealed class OpenAiOptions
     public int TimeoutSeconds { get; init; } = 60;
     public int MaxChatCompletionTokens { get; init; } = 450;
     public int MaxJsonCompletionTokens { get; init; } = 1800;
+    public int MaxAnalysisCompletionTokens { get; init; } = 3200;
 
     /// <summary>
     /// Larger budget for the AI starter-plan call, whose JSON (multiple days × exercises × notes)

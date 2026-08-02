@@ -21,14 +21,15 @@ public sealed class CreatePaymentOrderHandler(
     public async ValueTask<PaymentOrderResponse> Handle(
         CreatePaymentOrderCommand request, CancellationToken cancellationToken)
     {
+        SubscriptionContract.EnsureCurrentTermsAccepted(request.AcceptedTerms, request.TermsVersion);
+
         if (request.RequestedTier == PlanTier.Free)
             throw new InvalidOperationException("Cannot create a payment order for the Free tier.");
         if (request.RequestedTier == PlanTier.Organizer)
             throw new InvalidOperationException("Organizer plans are activated by an administrator after contacting Xenoh support.");
 
-        decimal amount;
-        try { amount = SubscriptionLimits.GetPrice(request.RequestedTier, request.DurationMonths); }
-        catch { throw new InvalidOperationException("Invalid tier/duration combination."); }
+        var offer = SubscriptionCatalog.GetRequired(request.RequestedTier, request.DurationMonths);
+        var amount = offer.Price;
 
         ValidateBankInfo();
 
@@ -96,6 +97,15 @@ public sealed class CreatePaymentOrderHandler(
         // No special chars — MBBank and most Vietnamese banks only allow alphanumeric + spaces
         var transferCode = $"XENOH{userId.ToString("N")[..8].ToUpper()}{order.Id.ToString("N")[..8].ToUpper()}";
         order.TransferCode = transferCode;
+
+        db.LegalAcceptances.Add(new LegalAcceptance
+        {
+            UserId = userId,
+            DocumentType = LegalDocumentType.TermsOfService,
+            DocumentVersion = SubscriptionContract.CurrentTermsVersion,
+            AcceptedAt = DateTime.UtcNow,
+            PaymentOrderId = order.Id
+        });
 
         await paymentOrderRepo.AddAsync(order, cancellationToken);
         await paymentOrderRepo.SaveChangesAsync(cancellationToken);
