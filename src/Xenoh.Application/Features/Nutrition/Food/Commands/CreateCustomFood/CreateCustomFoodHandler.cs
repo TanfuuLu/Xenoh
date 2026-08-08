@@ -16,6 +16,15 @@ public sealed class CreateCustomFoodHandler(
     {
         var userId = currentUser.UserId;
 
+        // Physical limits only. These numbers were typed deliberately, so an impossible value is
+        // rejected and reported rather than silently rewritten the way an AI estimate would be.
+        FoodMacroValidator.ValidatePhysical(
+            request.NameVi.Trim(),
+            request.CaloriesPer100g,
+            request.ProteinPer100g,
+            request.CarbsPer100g,
+            request.FatPer100g);
+
         var food = new FoodItem
         {
             NameVi = request.NameVi.Trim(),
@@ -57,7 +66,9 @@ public sealed class CreateCustomFoodHandler(
             saved.ProteinPer100g,
             saved.CarbsPer100g,
             saved.FatPer100g,
-            saved.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList()
+            saved.Servings.Select(s => new FoodServingResponse(s.Id, s.LabelVi, s.LabelEn, s.Grams)).ToList(),
+            saved.Source,
+            saved.IsVerified
         );
     }
 }

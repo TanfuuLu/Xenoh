@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Domain.Enums;
 
 namespace Xenoh.Application.Features.Nutrition.Food.Queries.SearchFood;
 
@@ -14,5 +15,7 @@ public sealed record FoodItemResponse(
     decimal ProteinPer100g,
     decimal CarbsPer100g,
     decimal FatPer100g,
-    List<FoodServingResponse> Servings
+    List<FoodServingResponse> Servings,
+    FoodItemSource Source,
+    bool IsVerified
 );
