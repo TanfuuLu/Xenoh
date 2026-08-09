@@ -21,7 +21,8 @@ public sealed record CompetitionEventDto(Guid Id, string Slug, string Title, str
     string PowerliftingFormulaVersion, DateTime? ResultsPublishedAt, string? CancellationReason,
     int ConfirmedCount, bool CanManage, CompetitionStaffPermission Permissions, IReadOnlyList<CompetitionCategoryDto> Categories);
 
-public sealed record CompetitionRegistrationDto(Guid Id, Guid EventId, string EventTitle, string EventSlug, Guid CategoryId,
+public sealed record CompetitionRegistrationDto(Guid Id, Guid EventId, string EventTitle, string EventSlug,
+    CompetitionEventStatus EventStatus, DateTime EventEndsAtUtc, Guid CategoryId,
     string CategoryName, Guid? UserId, string AthleteName, string ContactEmail, string? ContactPhone, string? ContactFacebook, DateOnly? DateOfBirth,
     string? Sex, decimal? DeclaredWeightKg, decimal? DeclaredHeightCm, CompetitionRegistrationStatus Status, CompetitionPaymentStatus PaymentStatus, bool IsConfirmed,
     decimal ExpectedFee, string Currency, DateTime SubmittedAt, string? DecisionReason,
@@ -34,6 +35,16 @@ public sealed record CompetitionResultDto(Guid RegistrationId, string AthleteNam
     CompetitionResultState State, int? Place, decimal? BodyweightKg, decimal? BestSquatKg, decimal? BestBenchKg,
     decimal? BestDeadliftKg, decimal? TotalKg, decimal? Score, PowerliftingScoringFormula? Formula,
     string? FormulaVersion, string? Notes);
+
+public sealed record AdminCompetitionSummaryDto(Guid Id, string Slug, string Title, CompetitionDiscipline Discipline,
+    CompetitionEventStatus Status, DateTime StartsAtUtc, DateTime EndsAtUtc, DateTime RegistrationClosesAtUtc,
+    int Capacity, int ConfirmedCount, string OrganizerName, string OrganizerEmail, DateTime? ResultsPublishedAt, string? CancellationReason);
+
+// Wraps the shared summary rather than widening it: CompetitionEventSummaryDto also serves the public list.
+public sealed record ManagedCompetitionSummaryDto(CompetitionEventSummaryDto Event, bool IsOwner, CompetitionStaffPermission Permissions);
+
+public sealed record CompetitionStaffCandidateDto(Guid UserId, string FullName, string Email, string? AvatarUrl,
+    bool IsOwner, bool IsStaff, CompetitionStaffPermission Permissions);
 
 public sealed record CompetitionPageDto<T>(IReadOnlyList<T> Items, string? NextCursor);
 public sealed record DownloadUrlDto(string Url);

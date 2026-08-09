@@ -161,6 +161,113 @@ public sealed class CompetitionEventTests : HandlerTestBase
         result.ConfirmedCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task LifecycleScan_ClosesRegistrationWhenItsWindowEnds()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category()); e.RegistrationClosesAtUtc = DateTime.UtcNow.AddHours(-1);
+        db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
+
+        var changed = await new AdvanceCompetitionLifecycleHandler(db).Handle(new AdvanceCompetitionLifecycleCommand(), CancellationToken.None);
+
+        changed.Should().Be(1);
+        db.CompetitionEvents.Single().Status.Should().Be(CompetitionEventStatus.RegistrationClosed);
+    }
+
+    [Fact]
+    public async Task LifecycleScan_CompletesEventOnceItsEndDatePasses()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category()); e.Status = CompetitionEventStatus.RegistrationClosed;
+        e.StartsAtUtc = DateTime.UtcNow.AddDays(-2); e.EndsAtUtc = DateTime.UtcNow.AddDays(-1);
+        e.RegistrationClosesAtUtc = DateTime.UtcNow.AddDays(-5);
+        db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
+
+        var changed = await new AdvanceCompetitionLifecycleHandler(db).Handle(new AdvanceCompetitionLifecycleCommand(), CancellationToken.None);
+
+        changed.Should().Be(1);
+        db.CompetitionEvents.Single().Status.Should().Be(CompetitionEventStatus.Completed);
+    }
+
+    [Fact]
+    public async Task LifecycleScan_LeavesDraftAndCancelledEventsAlone()
+    {
+        await using var db = CreateContext();
+        var draft = Event(Category()); draft.Status = CompetitionEventStatus.Draft; draft.EndsAtUtc = DateTime.UtcNow.AddDays(-1);
+        var cancelled = Event(Category()); cancelled.Status = CompetitionEventStatus.Cancelled; cancelled.EndsAtUtc = DateTime.UtcNow.AddDays(-1);
+        db.CompetitionEvents.AddRange(draft, cancelled); await db.SaveChangesAsync();
+
+        var changed = await new AdvanceCompetitionLifecycleHandler(db).Handle(new AdvanceCompetitionLifecycleCommand(), CancellationToken.None);
+
+        changed.Should().Be(0);
+        db.CompetitionEvents.Single(x => x.Id == draft.Id).Status.Should().Be(CompetitionEventStatus.Draft);
+        db.CompetitionEvents.Single(x => x.Id == cancelled.Id).Status.Should().Be(CompetitionEventStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task LifecycleScan_IsIdempotent()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category()); e.EndsAtUtc = DateTime.UtcNow.AddDays(-1); e.RegistrationClosesAtUtc = DateTime.UtcNow.AddDays(-3);
+        db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
+
+        var handler = new AdvanceCompetitionLifecycleHandler(db);
+        (await handler.Handle(new AdvanceCompetitionLifecycleCommand(), CancellationToken.None)).Should().Be(1);
+        (await handler.Handle(new AdvanceCompetitionLifecycleCommand(), CancellationToken.None)).Should().Be(0);
+        db.CompetitionEvents.Single().Status.Should().Be(CompetitionEventStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Owner_EndsPublishedEventWithoutPublishingResults()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category()); e.OwnerId = UserId;
+        db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
+        var handler = new EndCompetitionEventHandler(db, CurrentUser(), new FakeNotifications());
+
+        await handler.Handle(new EndCompetitionEventCommand(e.Id, "Meet finished."), CancellationToken.None);
+
+        db.CompetitionEvents.Single().Status.Should().Be(CompetitionEventStatus.Completed);
+        db.CompetitionAuditLogs.Single().Action.Should().Be("EventEnded");
+    }
+
+    [Fact]
+    public async Task StaffWithoutPublishPermission_CannotEndEvent()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category());
+        db.CompetitionEvents.Add(e);
+        db.CompetitionEventStaff.Add(new CompetitionEventStaff { EventId = e.Id, UserId = UserId, Permissions = CompetitionStaffPermission.ManageResults });
+        await db.SaveChangesAsync();
+        var handler = new EndCompetitionEventHandler(db, CurrentUser(), new FakeNotifications());
+
+        var act = () => handler.Handle(new EndCompetitionEventCommand(e.Id, null), CancellationToken.None).AsTask();
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        db.CompetitionEvents.Single().Status.Should().Be(CompetitionEventStatus.Published);
+    }
+
+    [Fact]
+    public async Task DraftEvent_CannotBeEnded()
+    {
+        await using var db = CreateContext();
+        var e = Event(Category()); e.OwnerId = UserId; e.Status = CompetitionEventStatus.Draft;
+        db.CompetitionEvents.Add(e); await db.SaveChangesAsync();
+        var handler = new EndCompetitionEventHandler(db, CurrentUser(), new FakeNotifications());
+
+        var act = () => handler.Handle(new EndCompetitionEventCommand(e.Id, null), CancellationToken.None).AsTask();
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    private sealed class FakeNotifications : INotificationService
+    {
+        public Task NotifyAsync(Guid recipientId, string type, string message, Guid? relatedEntityId = null,
+            string? relatedEntityType = null, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private static CompetitionCategory Category() => new() { Code = "PL-M-66", Name = "Men under 66kg", Capacity = 5, DisplayOrder = 1 };
+
     private static CompetitionEventInput Input(CompetitionDiscipline discipline)
     {
         var starts = DateTime.UtcNow.AddDays(40);

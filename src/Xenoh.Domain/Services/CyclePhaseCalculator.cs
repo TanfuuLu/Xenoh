@@ -11,7 +11,7 @@ public readonly record struct CycleFlowDay(DateOnly Date, FlowIntensity Flow);
 /// <summary>A predicted upcoming period span.</summary>
 public sealed record PredictedPeriod(DateOnly Start, DateOnly End);
 
-/// <summary>A predicted fertile window (ovulation − 5 … ovulation + 1).</summary>
+/// <summary>A predicted fertile window, normally ovulation minus five days through ovulation.</summary>
 public sealed record FertileWindow(DateOnly Start, DateOnly End);
 
 /// <summary>
@@ -22,6 +22,8 @@ public sealed record CyclePrediction(
     int? CycleDay,
     int EffectiveCycleLengthDays,
     int EffectivePeriodLengthDays,
+    bool CycleLengthIsOverridden,
+    bool PeriodLengthIsOverridden,
     int? AverageCycleLengthDays,
     int? AveragePeriodLengthDays,
     bool IsRegular,
@@ -69,6 +71,7 @@ public static class CyclePhaseCalculator
             .Select(g => g.OrderByDescending(x => x.Flow).First())
             .OrderBy(f => f.Date)
             .ToList();
+        var noFlowDates = noFlowLogDates?.ToHashSet() ?? [];
 
         // Detect period start dates and their lengths.
         var periods = DetectPeriods(ordered);
@@ -91,13 +94,26 @@ public static class CyclePhaseCalculator
             ? (int)Math.Round(recentCycleLengths.Average())
             : null;
 
-        var recentPeriodLengths = periods.TakeLast(6).Select(p => p.Length).ToList();
+        // Do not let partial flow logs from the current period lower their own average.
+        // A later period start proves prior periods complete; an explicit no-flow log can
+        // also complete the latest period before the next cycle begins.
+        var completedPeriods = periods.Take(periods.Count - 1).ToList();
+        var latestPeriod = periods[^1];
+        var latestFlowEnd = latestPeriod.Start.AddDays(latestPeriod.Length - 1);
+        if (noFlowDates.Any(date => date > latestFlowEnd && date <= today))
+            completedPeriods.Add(latestPeriod);
+
+        var recentPeriodLengths = completedPeriods.TakeLast(6).Select(p => p.Length).ToList();
         int? computedPeriod = recentPeriodLengths.Count > 0
             ? (int)Math.Round(recentPeriodLengths.Average())
             : null;
 
-        var effectiveCycle = Clamp(cycleLengthOverride ?? computedCycle ?? DefaultCycleLength, MinPlausibleCycle, MaxPlausibleCycle);
-        var effectivePeriod = Clamp(periodLengthOverride ?? computedPeriod ?? DefaultPeriodLength, 1, 10);
+        // Manual settings are one prediction input, not a replacement for observed history.
+        // Source: https://help.flo.health/hc/en-us/articles/360015106232
+        var cycleLengthUsesManualSetting = computedCycle is null && cycleLengthOverride.HasValue;
+        var periodLengthUsesManualSetting = computedPeriod is null && periodLengthOverride.HasValue;
+        var effectiveCycle = Clamp(computedCycle ?? cycleLengthOverride ?? DefaultCycleLength, MinPlausibleCycle, MaxPlausibleCycle);
+        var effectivePeriod = Clamp(computedPeriod ?? periodLengthOverride ?? DefaultPeriodLength, 1, 10);
 
         // Regularity / variability from observed cycle lengths.
         bool isRegular;
@@ -134,6 +150,8 @@ public static class CyclePhaseCalculator
                 CycleDay: null,
                 EffectiveCycleLengthDays: effectiveCycle,
                 EffectivePeriodLengthDays: effectivePeriod,
+                CycleLengthIsOverridden: cycleLengthUsesManualSetting,
+                PeriodLengthIsOverridden: periodLengthUsesManualSetting,
                 AverageCycleLengthDays: computedCycle,
                 AveragePeriodLengthDays: computedPeriod,
                 IsRegular: isRegular,
@@ -159,25 +177,25 @@ public static class CyclePhaseCalculator
         var avgPeriodEnd = lastStart.AddDays(effectivePeriod - 1);
         var currentPeriodPredictedEnd = avgPeriodEnd > currentFlowEnd ? avgPeriodEnd : currentFlowEnd;
 
-        if (noFlowLogDates is not null && currentFlowEnd < avgPeriodEnd)
+        if (currentFlowEnd < avgPeriodEnd)
         {
-            var endedEarly = noFlowLogDates.Any(d => d > currentFlowEnd && d <= avgPeriodEnd);
+            var endedEarly = noFlowDates.Any(d => d > currentFlowEnd && d <= avgPeriodEnd);
             if (endedEarly)
                 currentPeriodPredictedEnd = currentFlowEnd;
         }
 
-        // Re-predict the rest of the cycle from the ACTUAL current period rather than only its
-        // start: anchor ovulation to the real period end plus a fixed follicular gap, so a
-        // shorter/longer-than-predicted period shifts ovulation, the fertile window, and the
-        // next period. The gap is chosen so a normal-length period reproduces the standard
-        // calendar estimate (ovulation ≈ start + cycle − 14, next period ≈ start + cycle).
-        var follicularGap = Math.Max(2, effectiveCycle - 13 - effectivePeriod);
-        var currentOvulation = currentPeriodPredictedEnd.AddDays(follicularGap);
-        var firstNextStart = currentOvulation.AddDays(14);
+        // Actual period STARTS define cycle length. Bleeding duration only controls the
+        // menstrual phase and must not move ovulation or the next-period prediction.
+        var firstNextStart = lastStart.AddDays(effectiveCycle);
+        // Cycle days are one-based. For example, 28 - 14 = cycle day 14, whose
+        // zero-based date offset from the period start is 13 days.
+        var currentOvulation = firstNextStart.AddDays(-15);
 
         var predictedPeriods = new List<PredictedPeriod>();
         var ovulationDates = new List<DateOnly>();
         var fertileWindows = new List<FertileWindow>();
+        var isDelayed = today >= firstNextStart;
+        var canPredictOvulation = effectiveCycle is >= 21 and <= 60 && !isDelayed;
 
         DateOnly? nextStart = null;
         for (var n = 0; n < 4; n++)
@@ -186,9 +204,15 @@ public static class CyclePhaseCalculator
             var end = start.AddDays(effectivePeriod - 1);
             predictedPeriods.Add(new PredictedPeriod(start, end));
 
-            var ovulation = start.AddDays(-14);
-            ovulationDates.Add(ovulation);
-            fertileWindows.Add(new FertileWindow(ovulation.AddDays(-5), ovulation.AddDays(1)));
+            if (canPredictOvulation)
+            {
+                var ovulation = start.AddDays(-15);
+                ovulationDates.Add(ovulation);
+
+                // Keep the calendar window compact and predictable: the five days before
+                // ovulation plus the estimated ovulation day itself.
+                fertileWindows.Add(new FertileWindow(ovulation.AddDays(-5), ovulation));
+            }
 
             if (start > today && nextStart is null)
                 nextStart = start;
@@ -213,11 +237,11 @@ public static class CyclePhaseCalculator
             phase = CyclePhase.Luteal;
             daysLate = today.DayNumber - firstNextStart.DayNumber + 1;
         }
-        else if (today < currentOvulation.AddDays(-1))
+        else if (today < currentOvulation)
         {
             phase = CyclePhase.Follicular;
         }
-        else if (today <= currentOvulation.AddDays(1))
+        else if (today == currentOvulation)
         {
             phase = CyclePhase.Ovulation;
         }
@@ -234,6 +258,8 @@ public static class CyclePhaseCalculator
             CycleDay: cycleDay,
             EffectiveCycleLengthDays: effectiveCycle,
             EffectivePeriodLengthDays: effectivePeriod,
+            CycleLengthIsOverridden: cycleLengthUsesManualSetting,
+            PeriodLengthIsOverridden: periodLengthUsesManualSetting,
             AverageCycleLengthDays: computedCycle,
             AveragePeriodLengthDays: computedPeriod,
             IsRegular: isRegular,
@@ -283,6 +309,8 @@ public static class CyclePhaseCalculator
             CycleDay: null,
             EffectiveCycleLengthDays: Clamp(cycleOverride ?? DefaultCycleLength, MinPlausibleCycle, MaxPlausibleCycle),
             EffectivePeriodLengthDays: Clamp(periodOverride ?? DefaultPeriodLength, 1, 10),
+            CycleLengthIsOverridden: cycleOverride.HasValue,
+            PeriodLengthIsOverridden: periodOverride.HasValue,
             AverageCycleLengthDays: null,
             AveragePeriodLengthDays: null,
             IsRegular: true,

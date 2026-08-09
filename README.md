@@ -183,7 +183,7 @@ Both commands refuse to run outside Development. The seed recreates these accoun
 
 The data covers active self and coach-authored plans, completed/upcoming/missed
 workouts, bodyweight and PR history, nutrition, cycle tracking, coaching and chat,
-friendships, community shares and challenges, billing and promotions, AI usage,
+friendships, community shares, billing and promotions, AI usage,
 notifications, moderation, bug reports, website analytics, supplements, and a
 published competition with an approved registration. The SQL is embedded into the
 Infrastructure assembly from `docs/seeds/clean-seed.sql` and runs in one transaction.

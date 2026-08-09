@@ -39,9 +39,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TrainingDayShareSet> TrainingDayShareSets => Set<TrainingDayShareSet>();
     public DbSet<TrainingDayShareLove> TrainingDayShareLoves => Set<TrainingDayShareLove>();
     public DbSet<CommunitySettings> CommunitySettings => Set<CommunitySettings>();
-    public DbSet<FitnessChallenge> FitnessChallenges => Set<FitnessChallenge>();
-    public DbSet<FitnessChallengeMember> FitnessChallengeMembers => Set<FitnessChallengeMember>();
-    public DbSet<FitnessChallengeCheckIn> FitnessChallengeCheckIns => Set<FitnessChallengeCheckIn>();
     public DbSet<OrganizerProfile> OrganizerProfiles => Set<OrganizerProfile>();
     public DbSet<CompetitionEvent> CompetitionEvents => Set<CompetitionEvent>();
     public DbSet<CompetitionEventStaff> CompetitionEventStaff => Set<CompetitionEventStaff>();

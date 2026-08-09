@@ -68,7 +68,6 @@ public sealed class SubscriptionAuthorizationTests
 
     [Theory]
     [InlineData(typeof(OrganizersController))]
-    [InlineData(typeof(CompetitionManagementController))]
     public void OrganizerControllers_RequireOrganizerPolicy(Type controllerType)
     {
         var policies = controllerType.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
@@ -76,6 +75,21 @@ public sealed class SubscriptionAuthorizationTests
             .Select(attribute => attribute.Policy);
 
         policies.Should().Contain(SubscriptionPolicies.RequireOrganizer);
+    }
+
+    // Competition management is authorized per event so an owner's staff can operate the event
+    // without their own subscription; only creating a new event still needs the Organizer plan.
+    [Fact]
+    public void CompetitionManagement_RequiresOrganizerPlanOnlyToCreateAnEvent()
+    {
+        typeof(CompetitionManagementController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>().Select(attribute => attribute.Policy)
+            .Should().NotContain(SubscriptionPolicies.RequireOrganizer);
+
+        typeof(CompetitionManagementController).GetMethod(nameof(CompetitionManagementController.Create))!
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>().Select(attribute => attribute.Policy)
+            .Should().Contain(SubscriptionPolicies.RequireOrganizer);
     }
 
     [Theory]

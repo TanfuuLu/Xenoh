@@ -20,7 +20,7 @@ public sealed record UpdateCompetitionEventCommand(Guid EventId, CompetitionEven
 public sealed record GetPublicCompetitionEventsQuery(CompetitionDiscipline? Discipline, CompetitionEventStatus? Status,
     DateTime? StartsAfterUtc, string? Location, string? Cursor, int PageSize = 20) : IRequest<CompetitionPageDto<CompetitionEventSummaryDto>>;
 public sealed record GetCompetitionEventBySlugQuery(string Slug) : IRequest<CompetitionEventDto>;
-public sealed record GetManagedCompetitionEventsQuery : IRequest<IReadOnlyList<CompetitionEventSummaryDto>>;
+public sealed record GetManagedCompetitionEventsQuery : IRequest<IReadOnlyList<ManagedCompetitionSummaryDto>>;
 public sealed record PublishCompetitionEventCommand(Guid EventId) : IRequest<CompetitionEventDto>;
 public sealed record CloseCompetitionRegistrationCommand(Guid EventId) : IRequest;
 public sealed record CancelCompetitionEventCommand(Guid EventId, string Reason) : IRequest;
@@ -34,6 +34,12 @@ public sealed record DeleteCompetitionCategoryCommand(Guid EventId, Guid Categor
 public sealed record ClearCompetitionCategoriesCommand(Guid EventId) : IRequest;
 public sealed record SetCompetitionStaffCommand(Guid EventId, Guid UserId, CompetitionStaffPermission Permissions) : IRequest;
 public sealed record RemoveCompetitionStaffCommand(Guid EventId, Guid UserId) : IRequest;
+public sealed record FindCompetitionStaffCandidateQuery(Guid EventId, string Email) : IRequest<CompetitionStaffCandidateDto>;
+public sealed record AdvanceCompetitionLifecycleCommand : IRequest<int>;
+public sealed record EndCompetitionEventCommand(Guid EventId, string? Reason) : IRequest;
+public sealed record AdminEndCompetitionEventCommand(Guid EventId, string? Reason) : IRequest;
+public sealed record AdminCancelCompetitionEventCommand(Guid EventId, string Reason) : IRequest;
+public sealed record GetAdminCompetitionEventsQuery(CompetitionEventStatus? Status) : IRequest<IReadOnlyList<AdminCompetitionSummaryDto>>;
 
 internal static class CompetitionEventMapping
 {
@@ -49,7 +55,7 @@ internal static class CompetitionEventMapping
         x.VenueName, x.Address, x.StartsAtUtc, x.EndsAtUtc, x.RegistrationFee, x.Currency, x.Capacity,
         ConfirmedCount(x), x.BannerUrl);
 
-    private static int ConfirmedCount(CompetitionEvent x) => x.Registrations.Count(r =>
+    internal static int ConfirmedCount(CompetitionEvent x) => x.Registrations.Count(r =>
         r.Status == CompetitionRegistrationStatus.Approved &&
         (r.PaymentStatus == CompetitionPaymentStatus.Paid || r.PaymentStatus == CompetitionPaymentStatus.NotRequired));
 }
@@ -179,18 +185,25 @@ public sealed class GetCompetitionEventBySlugHandler(IApplicationDbContext db, I
 }
 
 public sealed class GetManagedCompetitionEventsHandler(IApplicationDbContext db, ICurrentUserService currentUser)
-    : IRequestHandler<GetManagedCompetitionEventsQuery, IReadOnlyList<CompetitionEventSummaryDto>>
+    : IRequestHandler<GetManagedCompetitionEventsQuery, IReadOnlyList<ManagedCompetitionSummaryDto>>
 {
-    public async ValueTask<IReadOnlyList<CompetitionEventSummaryDto>> Handle(GetManagedCompetitionEventsQuery request, CancellationToken ct)
+    public async ValueTask<IReadOnlyList<ManagedCompetitionSummaryDto>> Handle(GetManagedCompetitionEventsQuery request, CancellationToken ct)
     {
         var items = await db.CompetitionEvents.AsNoTracking().Include(x => x.Registrations)
             .Where(x => x.OwnerId == currentUser.UserId || x.Staff.Any(s => s.UserId == currentUser.UserId))
-            .OrderByDescending(x => x.StartsAtUtc).ToListAsync(ct);
-        return items.Select(CompetitionEventMapping.Summary).ToList();
+            .Select(x => new
+            {
+                Event = x,
+                IsOwner = x.OwnerId == currentUser.UserId,
+                Permissions = x.Staff.Where(s => s.UserId == currentUser.UserId).Select(s => s.Permissions).FirstOrDefault(),
+            })
+            .OrderByDescending(x => x.Event.StartsAtUtc).ToListAsync(ct);
+        return items.Select(x => new ManagedCompetitionSummaryDto(CompetitionEventMapping.Summary(x.Event), x.IsOwner,
+            x.IsOwner ? CompetitionStaffPermission.All : x.Permissions)).ToList();
     }
 }
 
-public sealed class PublishCompetitionEventHandler(IApplicationDbContext db, ICurrentUserService currentUser)
+public sealed class PublishCompetitionEventHandler(IApplicationDbContext db, ICurrentUserService currentUser, ISubscriptionService subscriptions)
     : IRequestHandler<PublishCompetitionEventCommand, CompetitionEventDto>
 {
     public async ValueTask<CompetitionEventDto> Handle(PublishCompetitionEventCommand request, CancellationToken ct)
@@ -198,6 +211,9 @@ public sealed class PublishCompetitionEventHandler(IApplicationDbContext db, ICu
         await CompetitionAccess.RequireAsync(db, request.EventId, currentUser.UserId, CompetitionStaffPermission.PublishEvent, ct);
         var e = await db.CompetitionEvents.Include(x => x.Categories).Include(x => x.Registrations).FirstAsync(x => x.Id == request.EventId, ct);
         await CompetitionAccess.RequireApprovedOrganizerAsync(db, e.OwnerId, ct);
+        // Staff may publish on the owner's behalf, but only while the owner's Organizer plan is active.
+        if (await subscriptions.GetActiveTierAsync(e.OwnerId, ct) != PlanTier.Organizer)
+            throw new UnauthorizedAccessException("The event owner needs an active Organizer plan to publish this event.");
         if (e.Status != CompetitionEventStatus.Draft) throw new InvalidOperationException("Only draft events can be published.");
         if (e.Categories.Count == 0) throw new InvalidOperationException("Add at least one competition category.");
         if (e.RegistrationFee > 0 && (string.IsNullOrWhiteSpace(e.BankName) || string.IsNullOrWhiteSpace(e.BankAccountNumber) || string.IsNullOrWhiteSpace(e.BankAccountName)))
@@ -325,6 +341,142 @@ public sealed class SetCompetitionStaffHandler(IApplicationDbContext db, ICurren
         staff.Permissions = request.Permissions; staff.UpdatedAt = DateTime.UtcNow;
         CompetitionAccess.Audit(db, request.EventId, currentUser.UserId, "StaffPermissionsChanged", "CompetitionEventStaff", staff.Id, request.Permissions.ToString());
         await db.SaveChangesAsync(ct); return Unit.Value;
+    }
+}
+
+/// <summary>
+/// Clock-driven lifecycle: the registration window closing stops new entries, and the event's end
+/// date closes the whole event. Publishing results still completes an event early.
+/// </summary>
+public sealed class AdvanceCompetitionLifecycleHandler(IApplicationDbContext db) : IRequestHandler<AdvanceCompetitionLifecycleCommand, int>
+{
+    public async ValueTask<int> Handle(AdvanceCompetitionLifecycleCommand request, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var changed = 0;
+
+        var toClose = await db.CompetitionEvents
+            .Where(x => x.Status == CompetitionEventStatus.Published && now > x.RegistrationClosesAtUtc && now <= x.EndsAtUtc)
+            .ToListAsync(ct);
+        foreach (var e in toClose)
+        {
+            e.Status = CompetitionEventStatus.RegistrationClosed; e.UpdatedAt = now;
+            CompetitionAccess.Audit(db, e.Id, Guid.Empty, "RegistrationClosedAutomatically", "CompetitionEvent", e.Id,
+                $"Registration window ended {e.RegistrationClosesAtUtc:O}.");
+            changed++;
+        }
+
+        var toComplete = await db.CompetitionEvents
+            .Where(x => (x.Status == CompetitionEventStatus.Published || x.Status == CompetitionEventStatus.RegistrationClosed) && now > x.EndsAtUtc)
+            .ToListAsync(ct);
+        foreach (var e in toComplete)
+        {
+            e.Status = CompetitionEventStatus.Completed; e.UpdatedAt = now;
+            CompetitionAccess.Audit(db, e.Id, Guid.Empty, "EventCompletedAutomatically", "CompetitionEvent", e.Id,
+                $"Event ended {e.EndsAtUtc:O}.");
+            changed++;
+        }
+
+        if (changed > 0) await db.SaveChangesAsync(ct);
+        return changed;
+    }
+}
+
+public sealed class GetAdminCompetitionEventsHandler(IApplicationDbContext db)
+    : IRequestHandler<GetAdminCompetitionEventsQuery, IReadOnlyList<AdminCompetitionSummaryDto>>
+{
+    public async ValueTask<IReadOnlyList<AdminCompetitionSummaryDto>> Handle(GetAdminCompetitionEventsQuery request, CancellationToken ct)
+    {
+        var query = db.CompetitionEvents.AsNoTracking().Include(x => x.Owner).Include(x => x.Registrations).AsQueryable();
+        if (request.Status.HasValue) query = query.Where(x => x.Status == request.Status);
+        var items = await query.OrderByDescending(x => x.StartsAtUtc).Take(200).ToListAsync(ct);
+        return items.Select(x => new AdminCompetitionSummaryDto(x.Id, x.Slug, x.Title, x.Discipline, x.Status, x.StartsAtUtc,
+            x.EndsAtUtc, x.RegistrationClosesAtUtc, x.Capacity, CompetitionEventMapping.ConfirmedCount(x),
+            $"{x.Owner.FirstName} {x.Owner.LastName}".Trim(), x.Owner.Email ?? string.Empty, x.ResultsPublishedAt, x.CancellationReason)).ToList();
+    }
+}
+
+internal static class CompetitionCompletion
+{
+    /// <summary>Closes an event for good. Used by the organizer's own "End event" and by the admin override.</summary>
+    public static async Task CompleteAsync(IApplicationDbContext db, INotificationService notifications, CompetitionEvent e,
+        Guid actorId, string action, string? reason, CancellationToken ct)
+    {
+        if (e.Status is CompetitionEventStatus.Completed or CompetitionEventStatus.Cancelled)
+            throw new InvalidOperationException("This event has already finished.");
+        if (e.Status == CompetitionEventStatus.Draft)
+            throw new InvalidOperationException("A draft event has not started. Delete or cancel it instead.");
+        e.Status = CompetitionEventStatus.Completed; e.UpdatedAt = DateTime.UtcNow;
+        CompetitionAccess.Audit(db, e.Id, actorId, action, "CompetitionEvent", e.Id, reason?.Trim());
+        await db.SaveChangesAsync(ct);
+        foreach (var userId in e.Registrations.Where(x => x.UserId.HasValue && x.Status == CompetitionRegistrationStatus.Approved)
+            .Select(x => x.UserId!.Value).Distinct())
+            await notifications.NotifyAsync(userId, "CompetitionEventCompleted", $"{e.Title} has been closed.", e.Id, "CompetitionEvent", ct);
+    }
+}
+
+public sealed class EndCompetitionEventHandler(IApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    : IRequestHandler<EndCompetitionEventCommand>
+{
+    public async ValueTask<Unit> Handle(EndCompetitionEventCommand request, CancellationToken ct)
+    {
+        await CompetitionAccess.RequireAsync(db, request.EventId, currentUser.UserId, CompetitionStaffPermission.PublishEvent, ct);
+        var e = await db.CompetitionEvents.Include(x => x.Registrations).FirstAsync(x => x.Id == request.EventId, ct);
+        await CompetitionCompletion.CompleteAsync(db, notifications, e, currentUser.UserId, "EventEnded", request.Reason, ct);
+        return Unit.Value;
+    }
+}
+
+public sealed class AdminEndCompetitionEventHandler(IApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    : IRequestHandler<AdminEndCompetitionEventCommand>
+{
+    public async ValueTask<Unit> Handle(AdminEndCompetitionEventCommand request, CancellationToken ct)
+    {
+        var e = await db.CompetitionEvents.Include(x => x.Registrations).FirstOrDefaultAsync(x => x.Id == request.EventId, ct)
+            ?? throw new KeyNotFoundException("Competition event not found.");
+        await CompetitionCompletion.CompleteAsync(db, notifications, e, currentUser.UserId, "EventEndedByAdmin", request.Reason, ct);
+        return Unit.Value;
+    }
+}
+
+public sealed class AdminCancelCompetitionEventHandler(IApplicationDbContext db, ICurrentUserService currentUser, INotificationService notifications)
+    : IRequestHandler<AdminCancelCompetitionEventCommand>
+{
+    public async ValueTask<Unit> Handle(AdminCancelCompetitionEventCommand request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason)) throw new InvalidOperationException("A cancellation reason is required.");
+        var e = await db.CompetitionEvents.Include(x => x.Registrations).FirstOrDefaultAsync(x => x.Id == request.EventId, ct)
+            ?? throw new KeyNotFoundException("Competition event not found.");
+        if (e.Status is CompetitionEventStatus.Completed or CompetitionEventStatus.Cancelled)
+            throw new InvalidOperationException("This event has already finished.");
+        e.Status = CompetitionEventStatus.Cancelled; e.CancellationReason = request.Reason.Trim(); e.UpdatedAt = DateTime.UtcNow;
+        CompetitionAccess.Audit(db, e.Id, currentUser.UserId, "EventCancelledByAdmin", "CompetitionEvent", e.Id, e.CancellationReason);
+        await db.SaveChangesAsync(ct);
+        foreach (var userId in e.Registrations.Where(x => x.UserId.HasValue && x.Status != CompetitionRegistrationStatus.Withdrawn)
+            .Select(x => x.UserId!.Value).Distinct())
+            await notifications.NotifyAsync(userId, "CompetitionEventCancelled", $"{e.Title} was cancelled: {e.CancellationReason}", e.Id, "CompetitionEvent", ct);
+        return Unit.Value;
+    }
+}
+
+public sealed class FindCompetitionStaffCandidateHandler(IApplicationDbContext db, ICurrentUserService currentUser)
+    : IRequestHandler<FindCompetitionStaffCandidateQuery, CompetitionStaffCandidateDto>
+{
+    public async ValueTask<CompetitionStaffCandidateDto> Handle(FindCompetitionStaffCandidateQuery request, CancellationToken ct)
+    {
+        await CompetitionAccess.RequireAsync(db, request.EventId, currentUser.UserId, CompetitionStaffPermission.ManageStaff, ct);
+        var email = (request.Email ?? string.Empty).Trim();
+        if (email.Length == 0) throw new InvalidOperationException("An email address is required.");
+        var normalized = email.ToUpperInvariant();
+        var user = await db.ApplicationUsers.AsNoTracking()
+            .Where(x => x.NormalizedEmail == normalized)
+            .Select(x => new { x.Id, x.FirstName, x.LastName, x.Email, x.AvatarUrl })
+            .FirstOrDefaultAsync(ct) ?? throw new KeyNotFoundException("No Xenoh account uses this email address.");
+        var ownerId = await db.CompetitionEvents.AsNoTracking().Where(x => x.Id == request.EventId).Select(x => x.OwnerId).FirstAsync(ct);
+        var staff = await db.CompetitionEventStaff.AsNoTracking().Where(x => x.EventId == request.EventId && x.UserId == user.Id)
+            .Select(x => (CompetitionStaffPermission?)x.Permissions).FirstOrDefaultAsync(ct);
+        return new CompetitionStaffCandidateDto(user.Id, $"{user.FirstName} {user.LastName}".Trim(), user.Email ?? email,
+            user.AvatarUrl, user.Id == ownerId, staff.HasValue, staff ?? CompetitionStaffPermission.None);
     }
 }
 

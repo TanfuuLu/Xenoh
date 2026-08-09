@@ -20,3 +20,17 @@ public sealed class AdminOrganizersController(IMediator mediator) : CompetitionC
     public Task<IActionResult> Receipt(Guid eventId, Guid receiptId) => Send(() => mediator.Send(new GetCompetitionReceiptUrlQuery(eventId, receiptId, true)));
     public sealed record DecisionBody(OrganizerProfileStatus Decision, string Reason);
 }
+
+// Admins do not run competitions; they can only force one to finish when an organizer abandons it.
+[ApiController, Authorize(Roles = "Admin"), Route("api/admin/competitions")]
+public sealed class AdminCompetitionsController(IMediator mediator) : CompetitionControllerBase
+{
+    [HttpGet]
+    public Task<IActionResult> List([FromQuery] CompetitionEventStatus? status) => Send(() => mediator.Send(new GetAdminCompetitionEventsQuery(status)));
+    [HttpPost("{eventId:guid}/end")]
+    public Task<IActionResult> End(Guid eventId, [FromBody] NoteBody? body) => Send(() => mediator.Send(new AdminEndCompetitionEventCommand(eventId, body?.Note)));
+    [HttpPost("{eventId:guid}/cancel")]
+    public Task<IActionResult> Cancel(Guid eventId, [FromBody] ReasonBody body) => Send(() => mediator.Send(new AdminCancelCompetitionEventCommand(eventId, body.Reason)));
+    public sealed record ReasonBody(string Reason);
+    public sealed record NoteBody(string? Note);
+}

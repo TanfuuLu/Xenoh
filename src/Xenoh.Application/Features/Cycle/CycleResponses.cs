@@ -25,6 +25,8 @@ public sealed record CycleOverviewResponse(
     IReadOnlyList<FertileWindowResponse> FertileWindows,
     int EffectiveCycleLengthDays,
     int EffectivePeriodLengthDays,
+    bool CycleLengthIsOverridden,
+    bool PeriodLengthIsOverridden,
     int? AvgCycleLengthDays,
     int? AvgPeriodLengthDays,
     bool IsRegular,

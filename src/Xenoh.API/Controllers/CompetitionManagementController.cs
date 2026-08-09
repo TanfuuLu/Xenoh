@@ -7,12 +7,16 @@ using Xenoh.Domain.Enums;
 
 namespace Xenoh.API.Controllers;
 
-[ApiController, Authorize(Policy = SubscriptionPolicies.RequireOrganizer), Route("api/competition-management")]
+// Authorization is per event, not per subscription: every action below resolves the caller's
+// CompetitionStaffPermission flags for the target event inside its handler. Only event creation
+// requires an active Organizer plan, so an owner's staff can operate the event for free and a
+// lapsed owner can still service events that already have registered athletes.
+[ApiController, Authorize, Route("api/competition-management")]
 public sealed class CompetitionManagementController(IMediator mediator) : CompetitionControllerBase
 {
     [HttpGet("events")]
     public Task<IActionResult> Events() => Send(() => mediator.Send(new GetManagedCompetitionEventsQuery()));
-    [HttpPost("events")]
+    [Authorize(Policy = SubscriptionPolicies.RequireOrganizer), HttpPost("events")]
     public Task<IActionResult> Create([FromBody] CompetitionEventInput input) => Send(() => mediator.Send(new CreateCompetitionEventCommand(input)), StatusCodes.Status201Created);
     [HttpPut("events/{eventId:guid}")]
     public Task<IActionResult> Update(Guid eventId, [FromBody] CompetitionEventInput input) => Send(() => mediator.Send(new UpdateCompetitionEventCommand(eventId, input)));
@@ -22,6 +26,9 @@ public sealed class CompetitionManagementController(IMediator mediator) : Compet
     public Task<IActionResult> Publish(Guid eventId) => Send(() => mediator.Send(new PublishCompetitionEventCommand(eventId)));
     [HttpPost("events/{eventId:guid}/close-registration")]
     public Task<IActionResult> Close(Guid eventId) => Send(() => mediator.Send(new CloseCompetitionRegistrationCommand(eventId)));
+    // Ending needs no justification, so the note is optional — unlike cancelling.
+    [HttpPost("events/{eventId:guid}/end")]
+    public Task<IActionResult> End(Guid eventId, [FromBody] NoteBody? body) => Send(() => mediator.Send(new EndCompetitionEventCommand(eventId, body?.Note)));
     [HttpPost("events/{eventId:guid}/cancel")]
     public Task<IActionResult> Cancel(Guid eventId, [FromBody] ReasonBody body) => Send(() => mediator.Send(new CancelCompetitionEventCommand(eventId, body.Reason)));
 
@@ -34,6 +41,8 @@ public sealed class CompetitionManagementController(IMediator mediator) : Compet
     [HttpDelete("events/{eventId:guid}/categories")]
     public Task<IActionResult> ClearCategories(Guid eventId) => Send(() => mediator.Send(new ClearCompetitionCategoriesCommand(eventId)));
 
+    [HttpGet("events/{eventId:guid}/staff/lookup")]
+    public Task<IActionResult> LookupStaff(Guid eventId, [FromQuery] string email) => Send(() => mediator.Send(new FindCompetitionStaffCandidateQuery(eventId, email)));
     [HttpPut("events/{eventId:guid}/staff/{userId:guid}")]
     public Task<IActionResult> SetStaff(Guid eventId, Guid userId, [FromBody] StaffBody body) => Send(() => mediator.Send(new SetCompetitionStaffCommand(eventId, userId, body.Permissions)));
     [HttpDelete("events/{eventId:guid}/staff/{userId:guid}")]
@@ -67,6 +76,7 @@ public sealed class CompetitionManagementController(IMediator mediator) : Compet
     public Task<IActionResult> PublishResults(Guid eventId) => Send(() => mediator.Send(new PublishCompetitionResultsCommand(eventId)));
 
     public sealed record ReasonBody(string Reason);
+    public sealed record NoteBody(string? Note);
     public sealed record StaffBody(CompetitionStaffPermission Permissions);
     public sealed record DecisionBody(bool Approve, string? Reason);
     public sealed record GuestBody(Guid CategoryId, string AthleteName, string ContactEmail, string ContactPhone, string? ContactFacebook);

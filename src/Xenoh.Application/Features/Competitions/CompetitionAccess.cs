@@ -22,6 +22,12 @@ internal static class CompetitionAccess
         if ((actual & required) != required) throw new UnauthorizedAccessException("You do not have permission for this event operation.");
     }
 
+    public static async Task RequireAnyAsync(IApplicationDbContext db, Guid eventId, Guid userId, CompetitionStaffPermission anyOf, CancellationToken ct)
+    {
+        var actual = await GetPermissionsAsync(db, eventId, userId, ct);
+        if ((actual & anyOf) == 0) throw new UnauthorizedAccessException("You do not have permission for this event operation.");
+    }
+
     public static async Task RequireApprovedOrganizerAsync(IApplicationDbContext db, Guid userId, CancellationToken ct)
     {
         var approved = await db.OrganizerProfiles.AsNoTracking().AnyAsync(x => x.UserId == userId && x.Status == OrganizerProfileStatus.Approved, ct);
@@ -33,7 +39,7 @@ internal static class CompetitionAccess
         x.MinHeightCm, x.MaxHeightCm, x.EquipmentDivision, x.BodybuildingDivision);
 
     public static CompetitionRegistrationDto MapRegistration(CompetitionRegistration x) => new(x.Id, x.EventId, x.Event.Title,
-        x.Event.Slug, x.CategoryId, x.Category.Name, x.UserId, x.AthleteName, x.ContactEmail, x.ContactPhone, x.ContactFacebook, x.DateOfBirth, x.Sex,
+        x.Event.Slug, x.Event.Status, x.Event.EndsAtUtc, x.CategoryId, x.Category.Name, x.UserId, x.AthleteName, x.ContactEmail, x.ContactPhone, x.ContactFacebook, x.DateOfBirth, x.Sex,
         x.DeclaredWeightKg, x.DeclaredHeightCm, x.Status, x.PaymentStatus, x.IsConfirmed, x.ExpectedFee, x.Currency, x.SubmittedAt, x.DecisionReason,
         x.Receipts.OrderByDescending(r => r.CreatedAt).Select(r => new CompetitionReceiptDto(r.Id, r.FileName, r.ContentType,
             r.SizeBytes, r.Status, r.CreatedAt, r.ReviewedAt, r.RejectionReason)).ToList());

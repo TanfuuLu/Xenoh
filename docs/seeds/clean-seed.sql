@@ -82,9 +82,6 @@ BEGIN
     WHERE "EventId" IN (SELECT "Id" FROM "CompetitionEvents" WHERE "OwnerId"=ANY(uids));
   DELETE FROM "CompetitionEvents" WHERE "OwnerId"=ANY(uids);
   DELETE FROM "OrganizerProfiles" WHERE "UserId"=ANY(uids);
-  DELETE FROM "FitnessChallengeCheckIns" WHERE "UserId"=ANY(uids);
-  DELETE FROM "FitnessChallengeMembers" WHERE "UserId"=ANY(uids);
-  DELETE FROM "FitnessChallenges" WHERE "CreatorId"=ANY(uids);
   DELETE FROM "SupplementIntakeLogs" WHERE "UserId"=ANY(uids);
   DELETE FROM "SupplementRegimens" WHERE "UserId"=ANY(uids);
   DELETE FROM "WebsiteActivityEvents" WHERE "UserId"=ANY(uids);
@@ -308,10 +305,6 @@ DECLARE
   coach_id uuid := gen_random_uuid();
   free_id  uuid := gen_random_uuid();
   rel_id uuid := gen_random_uuid();
-  challenge_id uuid := gen_random_uuid();
-  streak_challenge_id uuid := gen_random_uuid();
-  custom_challenge_id uuid := gen_random_uuid();
-  sbd_challenge_id uuid := gen_random_uuid();
   regimen_id uuid := gen_random_uuid();
   schedule_id uuid := gen_random_uuid();
   creatine_slot_id uuid := gen_random_uuid();
@@ -498,45 +491,9 @@ BEGIN
   PERFORM pg_temp.gen_shares(demo_id, coach_id, 3);
   PERFORM pg_temp.gen_shares(coach_id, demo_id, 2);
 
-  -- ----- Community privacy + flexible challenge lifecycle/metric coverage -----
+  -- ----- Community privacy -----
   INSERT INTO "CommunitySettings"("UserId","StatsVisibility") VALUES
     (demo_id,'Friends'),(coach_id,'Friends'),(free_id,'OnlyMe');
-
-  INSERT INTO "FitnessChallenges"("Id","CreatorId","Title","Description","MetricType","AccessType",
-    "TargetSessionsPerWeek","SelectedLifts","CheckInPrompt","Capacity","TimeZoneId","StartsAtUtc","EndsAtUtc",
-    "Status","CreatedAt","UpdatedAt") VALUES
-    (challenge_id,coach_id,'Four-session momentum','Complete four training days each week and keep the whole group moving.',
-     'TrainingSessions','InviteOnly',4,'[]'::jsonb,NULL,10,'Asia/Ho_Chi_Minh',now()-interval '14 days',now()+interval '14 days',
-     'Active',now()-interval '18 days',now()),
-    (streak_challenge_id,demo_id,'Longest trained streak','Build the longest run of consecutive training days. One completed workout keeps the streak alive.',
-     'TrainingStreak','Community',0,'[]'::jsonb,NULL,10,'Asia/Ho_Chi_Minh',now()+interval '5 days',now()+interval '26 days',
-     'Upcoming',now()-interval '2 days',now()),
-    (custom_challenge_id,coach_id,'Daily mobility reset','Check in after completing at least ten minutes of focused mobility work.',
-     'CustomCheckIns','Connections',0,'[]'::jsonb,'I completed my 10-minute mobility reset',25,'Asia/Ho_Chi_Minh',
-     now()-interval '6 days',now()+interval '8 days','Active',now()-interval '10 days',now()),
-    (sbd_challenge_id,coach_id,'Big three progress block','Improve your combined estimated 1RM across squat, bench press, and deadlift.',
-     'SbdImprovement','Community',0,'[0,1,2]'::jsonb,NULL,25,'Asia/Ho_Chi_Minh',
-     now()-interval '70 days',now()-interval '8 days','Completed',now()-interval '80 days',now());
-
-  INSERT INTO "FitnessChallengeMembers"("Id","ChallengeId","UserId","Status","RespondedAt","CreatedAt","UpdatedAt") VALUES
-    (gen_random_uuid(),challenge_id,coach_id,'Accepted',now()-interval '18 days',now()-interval '18 days',now()),
-    (gen_random_uuid(),challenge_id,demo_id,'Accepted',now()-interval '16 days',now()-interval '17 days',now()),
-    (gen_random_uuid(),challenge_id,free_id,'Invited',NULL,now()-interval '2 days',now()),
-    (gen_random_uuid(),streak_challenge_id,demo_id,'Accepted',now()-interval '2 days',now()-interval '2 days',now()),
-    (gen_random_uuid(),custom_challenge_id,coach_id,'Accepted',now()-interval '10 days',now()-interval '10 days',now()),
-    (gen_random_uuid(),custom_challenge_id,demo_id,'Accepted',now()-interval '9 days',now()-interval '9 days',now()),
-    (gen_random_uuid(),sbd_challenge_id,coach_id,'Accepted',now()-interval '80 days',now()-interval '80 days',now()),
-    (gen_random_uuid(),sbd_challenge_id,demo_id,'Accepted',now()-interval '78 days',now()-interval '78 days',now());
-
-  FOR i IN 0..5 LOOP
-    INSERT INTO "FitnessChallengeCheckIns"("Id","ChallengeId","UserId","LocalDate","Note","CreatedAt","UpdatedAt")
-    VALUES (gen_random_uuid(),custom_challenge_id,demo_id,today-i,
-      CASE WHEN i=0 THEN 'Hips and ankles done before squats.' ELSE NULL END,now()-make_interval(days=>i),now());
-    IF i <> 2 THEN
-      INSERT INTO "FitnessChallengeCheckIns"("Id","ChallengeId","UserId","LocalDate","Note","CreatedAt","UpdatedAt")
-      VALUES (gen_random_uuid(),custom_challenge_id,coach_id,today-i,NULL,now()-make_interval(days=>i),now());
-    END IF;
-  END LOOP;
 
   -- ----- Supplements with adherence history -----
   INSERT INTO "SupplementRegimens"("Id","UserId","CreatedByUserId","Name","Brand","Form","Instructions","Notes",
@@ -567,7 +524,6 @@ BEGIN
     (gen_random_uuid(),coach_id,date_trunc('month',today)::date,18,'CoachChat',now()-interval '30 minutes',now(),now());
 
   INSERT INTO "Notifications"("Id","RecipientId","Type","Message","IsRead","RelatedEntityId","RelatedEntityType","CreatedAt","UpdatedAt") VALUES
-    (gen_random_uuid(),demo_id,'Challenge','You are on track for Summer Strength Streak.',false,challenge_id,'FitnessChallenge',now()-interval '1 hour',now()),
     (gen_random_uuid(),demo_id,'CoachMessage','Your coach sent a new message.',true,rel_id,'CoachClientRelationship',now()-interval '1 day',now()),
     (gen_random_uuid(),coach_id,'ClientPR','Demo Athlete achieved a new squat PR.',false,demo_id,'ApplicationUser',now()-interval '2 days',now());
 

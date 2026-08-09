@@ -99,6 +99,36 @@ public class CyclePhaseCalculatorTests
         result.Phase.Should().Be(CyclePhase.Ovulation);
     }
 
+    [Theory]
+    [InlineData(21, 7)]
+    [InlineData(28, 14)]
+    [InlineData(30, 16)]
+    public void OvulationDate_UsesOneBasedCycleDayMinusFourteen(
+        int cycleLength,
+        int expectedCycleDay)
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = BuildHistory(lastStart, cycleLength, periodLength: 5, count: 4);
+
+        var result = CyclePhaseCalculator.Calculate(days, null, null, lastStart.AddDays(5));
+
+        result.OvulationDates[0].Should().Be(lastStart.AddDays(expectedCycleDay - 1));
+    }
+
+    [Theory]
+    [InlineData(12, CyclePhase.Follicular)] // cycle day 13
+    [InlineData(13, CyclePhase.Ovulation)]  // cycle day 14
+    [InlineData(14, CyclePhase.Luteal)]     // cycle day 15
+    public void OvulationPhase_IsOnlyTheEstimatedOvulationDay(int offset, CyclePhase expected)
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = BuildHistory(lastStart, cycleLength: 28, periodLength: 5, count: 4);
+
+        var result = CyclePhaseCalculator.Calculate(days, null, null, lastStart.AddDays(offset));
+
+        result.Phase.Should().Be(expected);
+    }
+
     [Fact]
     public void RegularHistory_FollicularBeforeOvulation()
     {
@@ -123,6 +153,8 @@ public class CyclePhaseCalculatorTests
 
         result.Phase.Should().Be(CyclePhase.Luteal);
         result.DaysLate.Should().Be(4); // cycleDay 32 - cycleLength 28
+        result.OvulationDates.Should().BeEmpty();
+        result.FertileWindows.Should().BeEmpty();
     }
 
     [Fact]
@@ -197,7 +229,7 @@ public class CyclePhaseCalculatorTests
     }
 
     [Fact]
-    public void Overrides_TakePrecedenceOverComputedValues()
+    public void LoggedHistory_TakesPrecedenceOverManualSettings()
     {
         var lastStart = new DateOnly(2026, 6, 1);
         var days = BuildHistory(lastStart, cycleLength: 28, periodLength: 5, count: 4);
@@ -205,9 +237,11 @@ public class CyclePhaseCalculatorTests
 
         var result = CyclePhaseCalculator.Calculate(days, cycleLengthOverride: 30, periodLengthOverride: 6, today);
 
-        result.EffectiveCycleLengthDays.Should().Be(30);
-        result.EffectivePeriodLengthDays.Should().Be(6);
-        result.NextPeriodStart.Should().Be(lastStart.AddDays(30)); // uses override
+        result.EffectiveCycleLengthDays.Should().Be(28);
+        result.EffectivePeriodLengthDays.Should().Be(5);
+        result.CycleLengthIsOverridden.Should().BeFalse();
+        result.PeriodLengthIsOverridden.Should().BeFalse();
+        result.NextPeriodStart.Should().Be(lastStart.AddDays(28));
     }
 
     [Fact]
@@ -222,9 +256,43 @@ public class CyclePhaseCalculatorTests
         result.PredictedPeriods.Should().NotBeEmpty();
         result.OvulationDates.Should().NotBeEmpty();
         result.FertileWindows.Should().NotBeEmpty();
-        // First predicted period's ovulation is 14 days before its start.
+        // Cycle days are one-based: a 28-day cycle predicts ovulation on cycle day 14.
         var firstPeriod = result.PredictedPeriods[0];
-        result.OvulationDates[0].Should().Be(firstPeriod.Start.AddDays(-14));
+        result.OvulationDates[0].Should().Be(firstPeriod.Start.AddDays(-15));
+        result.FertileWindows[0].Start.Should().Be(result.OvulationDates[0].AddDays(-5));
+        result.FertileWindows[0].End.Should().Be(result.OvulationDates[0]);
+        (result.FertileWindows[0].End.DayNumber - result.FertileWindows[0].Start.DayNumber + 1)
+            .Should().Be(6);
+    }
+
+    [Fact]
+    public void LowConfidence_KeepsStandardSixDayFertileWindow()
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = BuildHistory(lastStart, cycleLength: 28, periodLength: 5, count: 2);
+        var today = lastStart.AddDays(10);
+
+        var result = CyclePhaseCalculator.Calculate(days, null, null, today);
+
+        result.Confidence.Should().Be("Low");
+        var fertile = result.FertileWindows[0];
+        (fertile.End.DayNumber - fertile.Start.DayNumber + 1).Should().Be(6);
+        fertile.Should().Be(new FertileWindow(
+            result.OvulationDates[0].AddDays(-5),
+            result.OvulationDates[0]));
+    }
+
+    [Fact]
+    public void CycleShorterThanTwentyOneDays_HidesOvulationPredictions()
+    {
+        var lastStart = new DateOnly(2026, 6, 1);
+        var days = BuildHistory(lastStart, cycleLength: 20, periodLength: 5, count: 2);
+        var today = lastStart.AddDays(8);
+
+        var result = CyclePhaseCalculator.Calculate(days, 20, null, today);
+
+        result.OvulationDates.Should().BeEmpty();
+        result.FertileWindows.Should().BeEmpty();
     }
 
     // Builds 5 past 5-day periods + a current period with only `currentFlowDays` days logged.
@@ -258,7 +326,7 @@ public class CyclePhaseCalculatorTests
     }
 
     [Fact]
-    public void EarlyEndedPeriod_LoggedNormal_RepredictsAsFollicular()
+    public void EarlyEndedPeriod_LoggedNormal_UpdatesPhaseWithoutMovingCycleDates()
     {
         var lastStart = new DateOnly(2026, 6, 1);
         var days = HistoryWithShortCurrentPeriod(lastStart, currentFlowDays: 3);
@@ -267,16 +335,16 @@ public class CyclePhaseCalculatorTests
 
         var result = CyclePhaseCalculator.Calculate(days, null, null, today, normalDays);
 
-        // Period ended at the last logged flow day → remaining days re-predict as follicular,
-        // and ovulation / next period shift EARLIER than the start-only estimate.
+        // The explicit no-flow log ends menstruation, but bleeding duration does not change
+        // the cycle anchor. Ovulation and the next period remain based on actual start dates.
         result.CurrentPeriodPredictedEnd.Should().Be(lastStart.AddDays(2));
         result.Phase.Should().Be(CyclePhase.Follicular);
-        result.OvulationDates[0].Should().Be(lastStart.AddDays(12));   // vs 14 for a normal period
-        result.NextPeriodStart.Should().Be(lastStart.AddDays(26));     // vs 28 for a normal period
+        result.OvulationDates[0].Should().Be(lastStart.AddDays(13));
+        result.NextPeriodStart.Should().Be(lastStart.AddDays(28));
     }
 
     [Fact]
-    public void LongerPeriodThanPredicted_PushesOvulationAndNextPeriodLater()
+    public void LongerPeriodThanPredicted_ExtendsMenstruationWithoutMovingCycleDates()
     {
         var lastStart = new DateOnly(2026, 6, 1);
         // 5 past 5-day periods + a current period still bleeding on day 8 (longer than avg).
@@ -291,11 +359,57 @@ public class CyclePhaseCalculatorTests
             days.Add(new CycleFlowDay(lastStart.AddDays(d), FlowIntensity.Medium));
         var today = lastStart.AddDays(8); // day 9, just after the long period
 
-        // Override period length to 5 so the average doesn't absorb the long current period.
+        // The current period is not folded into its own historical average before it is
+        // completed by a later cycle start.
         var result = CyclePhaseCalculator.Calculate(days, cycleLengthOverride: 28, periodLengthOverride: 5, today);
 
         result.CurrentPeriodPredictedEnd.Should().Be(lastStart.AddDays(7)); // follows actual flow
-        result.OvulationDates[0].Should().Be(lastStart.AddDays(17));        // vs 14 for a normal period
-        result.NextPeriodStart.Should().Be(lastStart.AddDays(31));          // vs 28 for a normal period
+        result.EffectivePeriodLengthDays.Should().Be(5);
+        result.PeriodLengthIsOverridden.Should().BeFalse();
+        result.OvulationDates[0].Should().Be(lastStart.AddDays(13));
+        result.NextPeriodStart.Should().Be(lastStart.AddDays(28));
+    }
+
+    [Fact]
+    public void FirstFlowLog_DoesNotTurnOneObservedDayIntoPeriodAverage()
+    {
+        var start = new DateOnly(2026, 6, 1);
+
+        var result = CyclePhaseCalculator.Calculate(
+            [new CycleFlowDay(start, FlowIntensity.Medium)],
+            cycleLengthOverride: 30,
+            periodLengthOverride: 5,
+            today: start);
+
+        result.EffectivePeriodLengthDays.Should().Be(5);
+        result.PeriodLengthIsOverridden.Should().BeTrue();
+        result.CurrentPeriodPredictedEnd.Should().Be(start.AddDays(4));
+    }
+
+    [Fact]
+    public void EarlyActualPeriodStart_RecalculatesFutureCycleFromObservedStarts()
+    {
+        var starts = new[]
+        {
+            new DateOnly(2026, 5, 1),
+            new DateOnly(2026, 5, 29),
+            new DateOnly(2026, 6, 26),
+            new DateOnly(2026, 7, 22), // arrived two days earlier than the prior 28-day pattern
+        };
+        var days = starts
+            .SelectMany(start => Enumerable.Range(0, 5)
+                .Select(offset => new CycleFlowDay(start.AddDays(offset), FlowIntensity.Medium)))
+            .ToList();
+
+        var result = CyclePhaseCalculator.Calculate(
+            days,
+            cycleLengthOverride: 30,
+            periodLengthOverride: 5,
+            today: starts[^1]);
+
+        result.EffectiveCycleLengthDays.Should().Be(27); // average of 28, 28, 26
+        result.CycleLengthIsOverridden.Should().BeFalse();
+        result.NextPeriodStart.Should().Be(starts[^1].AddDays(27));
+        result.OvulationDates[0].Should().Be(starts[^1].AddDays(12));
     }
 }

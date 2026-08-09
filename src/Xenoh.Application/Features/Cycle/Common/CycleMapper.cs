@@ -53,6 +53,8 @@ public static class CycleMapper
             FertileWindows: p.FertileWindows.Select(x => new FertileWindowResponse(x.Start, x.End)).ToList(),
             EffectiveCycleLengthDays: p.EffectiveCycleLengthDays,
             EffectivePeriodLengthDays: p.EffectivePeriodLengthDays,
+            CycleLengthIsOverridden: p.CycleLengthIsOverridden,
+            PeriodLengthIsOverridden: p.PeriodLengthIsOverridden,
             AvgCycleLengthDays: p.AverageCycleLengthDays,
             AvgPeriodLengthDays: p.AveragePeriodLengthDays,
             IsRegular: p.IsRegular,

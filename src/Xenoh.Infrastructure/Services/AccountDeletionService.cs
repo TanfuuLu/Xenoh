@@ -199,10 +199,6 @@ public sealed class AccountDeletionService(
             .Where(f => f.CreatedByUserId == userId)
             .Select(f => f.Id)
             .ToListAsync(ct);
-        var createdChallengeIds = await db.FitnessChallenges
-            .Where(c => c.CreatorId == userId)
-            .Select(c => c.Id)
-            .ToListAsync(ct);
         var competitionRegistrationIds = await db.CompetitionRegistrations
             .Where(r => r.UserId == userId)
             .Select(r => r.Id)
@@ -272,16 +268,6 @@ public sealed class AccountDeletionService(
 
         await db.CycleDailyLogs.Where(l => l.UserId == userId).ExecuteDeleteAsync(ct);
         await db.CycleSettings.Where(s => s.UserId == userId).ExecuteDeleteAsync(ct);
-
-        await db.FitnessChallengeCheckIns
-            .Where(c => c.UserId == userId || createdChallengeIds.Contains(c.ChallengeId))
-            .ExecuteDeleteAsync(ct);
-        await db.FitnessChallengeMembers
-            .Where(m => m.UserId == userId || createdChallengeIds.Contains(m.ChallengeId))
-            .ExecuteDeleteAsync(ct);
-        await db.FitnessChallenges
-            .Where(c => createdChallengeIds.Contains(c.Id))
-            .ExecuteDeleteAsync(ct);
 
         await db.CompetitionPaymentReceipts
             .Where(r => r.UploadedById == userId || competitionRegistrationIds.Contains(r.RegistrationId))

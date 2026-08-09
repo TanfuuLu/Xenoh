@@ -38,9 +38,6 @@ public interface IApplicationDbContext
     DbSet<TrainingDayShareSet> TrainingDayShareSets { get; }
     DbSet<TrainingDayShareLove> TrainingDayShareLoves { get; }
     DbSet<CommunitySettings> CommunitySettings { get; }
-    DbSet<FitnessChallenge> FitnessChallenges { get; }
-    DbSet<FitnessChallengeMember> FitnessChallengeMembers { get; }
-    DbSet<FitnessChallengeCheckIn> FitnessChallengeCheckIns { get; }
     DbSet<OrganizerProfile> OrganizerProfiles { get; }
     DbSet<CompetitionEvent> CompetitionEvents { get; }
     DbSet<CompetitionEventStaff> CompetitionEventStaff { get; }

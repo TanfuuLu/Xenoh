@@ -135,7 +135,8 @@ public sealed class GetCompetitionRosterHandler(IApplicationDbContext db, ICurre
 {
     public async ValueTask<IReadOnlyList<CompetitionRegistrationDto>> Handle(GetCompetitionRosterQuery request, CancellationToken ct)
     {
-        await CompetitionAccess.RequireAsync(db, request.EventId, currentUser.UserId, CompetitionStaffPermission.ManageRegistrations, ct);
+        await CompetitionAccess.RequireAnyAsync(db, request.EventId, currentUser.UserId, CompetitionStaffPermission.ManageRegistrations
+            | CompetitionStaffPermission.ReviewPayments | CompetitionStaffPermission.ManageResults, ct);
         var query = CompetitionRegistrationRules.IncludeAll(db).AsNoTracking().Where(x => x.EventId == request.EventId);
         if (request.Status.HasValue) query = query.Where(x => x.Status == request.Status);
         if (request.PaymentStatus.HasValue) query = query.Where(x => x.PaymentStatus == request.PaymentStatus);

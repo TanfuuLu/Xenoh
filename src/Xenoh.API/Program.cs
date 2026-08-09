@@ -144,7 +144,7 @@ if (builder.Configuration.GetValue("Redis:Enabled", false) &&
 
 builder.Services.AddHostedService<ContractExpiryService>();
 builder.Services.AddHostedService<SubscriptionExpiryService>();
-builder.Services.AddHostedService<FitnessChallengeNotificationService>();
+builder.Services.AddHostedService<CompetitionLifecycleService>();
 
 builder.Services.AddXenohRateLimiting(builder.Configuration);
 
