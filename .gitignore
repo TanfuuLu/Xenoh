@@ -35,3 +35,4 @@ Thumbs.db
 /src/Xenoh.API/appsettings.Development.json
 /src/Xenoh.API/appsettings.Development.example.json
 /docs/API_ENDPOINTS.md
+/tasks
