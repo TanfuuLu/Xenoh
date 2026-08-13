@@ -31,6 +31,28 @@ internal static class MealPlanQueryLoader
         BaseMealPlanQuery(db)
             .FirstOrDefaultAsync(d => d.Id == dayId, ct);
 
+    public static Task<List<MealPlanDay>> LoadTrackedByUserDateRangeAsync(
+        IApplicationDbContext db,
+        Guid userId,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken ct) =>
+        db.MealPlanDays
+            .Include(d => d.Meals)
+                .ThenInclude(m => m.Items)
+            .Where(d => d.UserId == userId && d.Date >= startDate && d.Date <= endDate)
+            .ToListAsync(ct);
+
+    public static Task<List<MealPlanDay>> LoadAsNoTrackingByUserDateRangeAsync(
+        IApplicationDbContext db,
+        Guid userId,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken ct) =>
+        BaseMealPlanQuery(db)
+            .Where(d => d.UserId == userId && d.Date >= startDate && d.Date <= endDate)
+            .ToListAsync(ct);
+
     private static IQueryable<MealPlanDay> BaseMealPlanQuery(IApplicationDbContext db) =>
         db.MealPlanDays
             .AsNoTracking()

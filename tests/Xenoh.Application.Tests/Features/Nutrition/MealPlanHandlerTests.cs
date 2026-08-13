@@ -33,6 +33,34 @@ public sealed class MealPlanHandlerTests : HandlerTestBase
     }
 
     [Fact]
+    public async Task Upsert_WhenDateAlreadyHasUncheckedMeals_ReplacesMealPlan()
+    {
+        var foodId = await SeedBaseDataAsync();
+        await using (var setup = CreateContext())
+            await CreateUpsertHandler(setup, UserId).Handle(CreateCommand(foodId), CancellationToken.None);
+
+        var replacement = new UpsertMealPlanForDateCommand(
+            Date,
+            null,
+            [
+                new UpsertMealPlanMealRequest(
+                    null,
+                    "Lunch",
+                    0,
+                    [new UpsertMealPlanItemRequest(null, foodId, 0, 200m, null, null)])
+            ]);
+
+        await using var ctx = CreateContext();
+        var result = await CreateUpsertHandler(ctx, UserId).Handle(replacement, CancellationToken.None);
+
+        result.Meals.Should().ContainSingle();
+        result.Meals.Single().Name.Should().Be("Lunch");
+        result.PlannedTotals.Calories.Should().Be(200);
+        (await ctx.MealPlanMeals.CountAsync()).Should().Be(1);
+        (await ctx.MealPlanItems.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Upsert_WhenActiveCoachEditsClient_CreatesDailyMealPlan()
     {
         var foodId = await SeedBaseDataAsync(withCoachRelationship: true);

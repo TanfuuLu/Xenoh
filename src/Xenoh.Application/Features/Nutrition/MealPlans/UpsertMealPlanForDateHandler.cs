@@ -18,7 +18,7 @@ public sealed class UpsertMealPlanForDateHandler(
         var callerId = currentUser.UserId;
         var userId = request.UserId ?? callerId;
         await EnsureAccessAsync(callerId, userId, cancellationToken);
-        Validate(request);
+        MealPlanDayBuilder.Validate(request.Notes, request.Meals);
 
         var day = await MealPlanQueryLoader.LoadTrackedByUserDateAsync(db, userId, request.Date, cancellationToken);
         if (day is null)
@@ -30,51 +30,23 @@ public sealed class UpsertMealPlanForDateHandler(
         {
             throw new InvalidOperationException("Uncheck meal plan items before editing this date.");
         }
-        else
-        {
-            db.MealPlanMeals.RemoveRange(day.Meals);
-        }
 
         day.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         day.UpdatedAt = DateTime.UtcNow;
-        day.Meals = [];
+        day.Meals.Clear();
 
-        foreach (var mealRequest in request.Meals.OrderBy(m => m.SortOrder))
+        var meals = await MealPlanDayBuilder.BuildMealsAsync(
+            foodLogService,
+            userId,
+            request.Date,
+            request.Meals,
+            cancellationToken);
+
+        foreach (var meal in meals)
         {
-            var meal = new MealPlanMeal
-            {
-                MealPlanDayId = day.Id,
-                Name = mealRequest.Name.Trim(),
-                SortOrder = mealRequest.SortOrder
-            };
-
-            foreach (var itemRequest in mealRequest.Items.OrderBy(i => i.SortOrder))
-            {
-                var snapshot = await foodLogService.BuildFoodLogAsync(
-                    userId,
-                    request.Date,
-                    itemRequest.FoodItemId,
-                    itemRequest.Grams,
-                    itemRequest.ServingLabel,
-                    itemRequest.ServingCount,
-                    cancellationToken);
-
-                meal.Items.Add(new MealPlanItem
-                {
-                    FoodItemId = snapshot.FoodItemId,
-                    SortOrder = itemRequest.SortOrder,
-                    Grams = snapshot.Grams,
-                    ServingLabelVi = snapshot.ServingLabelVi,
-                    ServingLabelEn = snapshot.ServingLabelEn,
-                    ServingCount = snapshot.ServingCount,
-                    PlannedCalories = snapshot.ComputedCalories,
-                    PlannedProteinG = snapshot.ComputedProteinG,
-                    PlannedCarbsG = snapshot.ComputedCarbsG,
-                    PlannedFatG = snapshot.ComputedFatG
-                });
-            }
-
+            meal.MealPlanDayId = day.Id;
             day.Meals.Add(meal);
+            await db.MealPlanMeals.AddAsync(meal, cancellationToken);
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -83,24 +55,6 @@ public sealed class UpsertMealPlanForDateHandler(
             ?? throw new InvalidOperationException("Meal plan could not be loaded after saving.");
 
         return MealPlanResponseMapper.ToResponse(saved);
-    }
-
-    private static void Validate(UpsertMealPlanForDateCommand request)
-    {
-        if (request.Meals.Count > 12)
-            throw new InvalidOperationException("Meal plan can contain at most 12 meals per day.");
-
-        foreach (var meal in request.Meals)
-        {
-            if (string.IsNullOrWhiteSpace(meal.Name))
-                throw new InvalidOperationException("Meal name is required.");
-
-            if (meal.Name.Length > 100)
-                throw new InvalidOperationException("Meal name must be 100 characters or less.");
-
-            if (meal.Items.Count > 30)
-                throw new InvalidOperationException("A meal can contain at most 30 items.");
-        }
     }
 
     private async Task EnsureAccessAsync(Guid callerId, Guid userId, CancellationToken ct)

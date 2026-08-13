@@ -100,6 +100,42 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
 
     // Meal plan endpoints
 
+    [HttpGet("meal-plans/weeks/{startDate}")]
+    public async Task<IActionResult> GetMealPlanWeek(DateOnly startDate, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetMealPlanWeekQuery(startDate), ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPut("meal-plans/ranges")]
+    public async Task<IActionResult> ApplyMealPlanTemplate(
+        [FromBody] ApplyMealPlanTemplateCommand command,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(command with { UserId = null }, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     [HttpGet("meal-plans/{date}")]
     public async Task<IActionResult> GetMealPlan(DateOnly date, CancellationToken ct)
     {
@@ -229,6 +265,48 @@ public sealed class NutritionController(IMediator mediator) : ControllerBase
         try
         {
             return Ok(await mediator.Send(new GetMealPlanForDateQuery(date, clientId), ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpGet("clients/{clientId:guid}/meal-plans/weeks/{startDate}")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> GetClientMealPlanWeek(
+        Guid clientId,
+        DateOnly startDate,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetMealPlanWeekQuery(startDate, clientId), ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPut("clients/{clientId:guid}/meal-plans/ranges")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public async Task<IActionResult> ApplyClientMealPlanTemplate(
+        Guid clientId,
+        [FromBody] ApplyMealPlanTemplateCommand command,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await mediator.Send(command with { UserId = clientId }, ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (UnauthorizedAccessException)
         {

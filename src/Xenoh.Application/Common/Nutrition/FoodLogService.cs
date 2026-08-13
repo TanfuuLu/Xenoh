@@ -19,9 +19,16 @@ public sealed class FoodLogService(
         decimal? servingCount,
         CancellationToken ct = default)
     {
-        var food = await db.FoodItems
-            .Include(f => f.Servings)
-            .FirstOrDefaultAsync(f => f.Id == foodItemId, ct)
+        var trackedFood = db.FoodItems.Local.FirstOrDefault(f => f.Id == foodItemId);
+        var trackedFoodEntry = db.ChangeTracker.Entries<FoodItem>()
+            .FirstOrDefault(entry => entry.Entity.Id == foodItemId);
+        var food = trackedFood is not null
+                   && trackedFoodEntry is not null
+                   && trackedFoodEntry.Collection(f => f.Servings).IsLoaded
+            ? trackedFood
+            : await db.FoodItems
+                .Include(f => f.Servings)
+                .FirstOrDefaultAsync(f => f.Id == foodItemId, ct)
             ?? throw new InvalidOperationException($"FoodItem {foodItemId} not found.");
 
         decimal computedGrams;
@@ -29,15 +36,21 @@ public sealed class FoodLogService(
         string? servingLabelEn = null;
         decimal? computedServingCount = null;
 
-        if (servingLabel is not null && servingCount is not null)
+        var hasServingLabel = !string.IsNullOrWhiteSpace(servingLabel);
+        var hasServingCount = servingCount.HasValue;
+
+        if (hasServingLabel || hasServingCount)
         {
+            if (!hasServingLabel || !hasServingCount || servingCount <= 0)
+                throw new InvalidOperationException("ServingLabel and a positive ServingCount must be provided together.");
+
             var serving = food.Servings.FirstOrDefault(s =>
                 string.Equals(s.LabelVi, servingLabel, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException($"Serving '{servingLabel}' not found for food item.");
 
             servingLabelVi = serving.LabelVi;
             servingLabelEn = serving.LabelEn;
-            computedServingCount = servingCount.Value;
+            computedServingCount = servingCount!.Value;
             computedGrams = serving.Grams * servingCount.Value;
         }
         else if (grams is not null and > 0)
