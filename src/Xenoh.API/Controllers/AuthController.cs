@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Xenoh.API.Security;
+using Xenoh.API.Auth;
 using Xenoh.Application.Features.Auth.Commands.ChangePassword;
 using Xenoh.Application.Features.Auth.Commands.ExternalLogin;
 using Xenoh.Application.Features.Auth.Commands.ForgotPassword;
@@ -176,7 +177,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
 
     [HttpGet("external/{provider}")]
     [EnableRateLimiting(RateLimitPolicyNames.ExternalAuth)]
-    public IActionResult ExternalLogin([FromRoute] string provider)
+    public IActionResult ExternalLogin([FromRoute] string provider, [FromQuery] string? client)
     {
         var scheme = provider.ToLowerInvariant() switch
         {
@@ -189,6 +190,9 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
             return BadRequest(new { message = "Unsupported external login provider." });
 
         var properties = new AuthenticationProperties();
+        if (!ExternalAuthReturnTargets.TrySetReturnTarget(properties, client))
+            return BadRequest(new { message = "Unsupported external login client." });
+
         if (scheme == GoogleDefaults.AuthenticationScheme)
         {
             properties.Parameters["prompt"] = "select_account";

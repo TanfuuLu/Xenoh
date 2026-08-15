@@ -73,7 +73,10 @@ internal static class ExternalAuthHelpers
                     principal.FindFirstValue("picture")
                 ), context.HttpContext.RequestAborted);
 
-                var redirectUrl = BuildFrontendRedirectUrl(configuration, "auth/social-callback", ("ticket", ticket.Ticket));
+                var redirectUrl = ExternalAuthReturnTargets.BuildSuccessRedirect(
+                    configuration,
+                    context.Properties,
+                    ticket.Ticket);
                 await context.HttpContext.SignOutAsync("External");
                 context.Response.Redirect(redirectUrl);
                 context.HandleResponse();
@@ -89,23 +92,14 @@ internal static class ExternalAuthHelpers
                     provider,
                     configuration["Authentication:BackendUrl"]);
 
-                var redirectUrl = BuildFrontendRedirectUrl(configuration, "login", ("externalError", "External login failed."));
+                var redirectUrl = ExternalAuthReturnTargets.BuildFailureRedirect(
+                    configuration,
+                    context.Properties);
                 context.Response.Redirect(redirectUrl);
                 context.HandleResponse();
                 return Task.CompletedTask;
             }
         };
-    }
-
-    internal static string BuildFrontendRedirectUrl(IConfiguration configuration, string path, params (string Key, string Value)[] query)
-    {
-        var frontendUrl = (configuration["Authentication:FrontendUrl"] ?? "http://localhost:5173").TrimEnd('/');
-        var url = $"{frontendUrl}/{path.TrimStart('/')}";
-        if (query.Length == 0)
-            return url;
-
-        var queryString = string.Join("&", query.Select(q => $"{Uri.EscapeDataString(q.Key)}={Uri.EscapeDataString(q.Value)}"));
-        return $"{url}?{queryString}";
     }
 
     private static string ReplaceQueryValue(string url, string key, string value)
@@ -153,6 +147,7 @@ internal static class ExternalAuthHelpers
             "Smtp:Password",
             "Authentication:BackendUrl",
             "Authentication:FrontendUrl",
+            "Authentication:MobileCallbackUrl",
             "Authentication:Google:ClientId",
             "Authentication:Google:ClientSecret",
             "Authentication:Facebook:AppId",
@@ -185,6 +180,11 @@ internal static class ExternalAuthHelpers
 
         if ((configuration["Jwt:Key"]?.Length ?? 0) < 32)
             throw new InvalidOperationException("Production JWT signing key must be at least 32 characters.");
+
+        if (!ExternalAuthReturnTargets.IsValidMobileCallback(
+                configuration["Authentication:MobileCallbackUrl"]))
+            throw new InvalidOperationException(
+                "Authentication:MobileCallbackUrl must be xenoh://auth/social-callback.");
 
         if (configuration.GetValue("Redis:Enabled", false) && IsPlaceholder(configuration["Redis:ConnectionString"]))
             throw new InvalidOperationException("Redis:ConnectionString is required when Redis is enabled.");
