@@ -17,6 +17,8 @@ public sealed class UserReportRepository(ApplicationDbContext db) : IUserReportR
 
     public Task<List<UserReportResponse>> GetReportsAsync(ReportStatus? status = null, ReportReason? reason = null, CancellationToken ct = default)
     {
+        // Same rule as the admin user list: any live lockout counts as suspended.
+        var now = DateTimeOffset.UtcNow;
         var query = db.UserReports
             .AsNoTracking()
             .Include(r => r.Reporter)
@@ -47,7 +49,8 @@ public sealed class UserReportRepository(ApplicationDbContext db) : IUserReportR
                 r.ReviewedAtUtc,
                 r.CreatedAt,
                 r.RelatedEntityId,
-                r.RelatedEntityType))
+                r.RelatedEntityType,
+                r.ReportedUser.LockoutEnd.HasValue && r.ReportedUser.LockoutEnd.Value > now))
             .ToListAsync(ct);
     }
 

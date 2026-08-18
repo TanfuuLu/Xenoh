@@ -62,6 +62,7 @@ public sealed class ReviewReportHandler(
             report.ReviewedAtUtc,
             report.CreatedAt,
             report.RelatedEntityId,
-            report.RelatedEntityType);
+            report.RelatedEntityType,
+            report.ReportedUser.LockoutEnd.HasValue && report.ReportedUser.LockoutEnd.Value > DateTimeOffset.UtcNow);
     }
 }

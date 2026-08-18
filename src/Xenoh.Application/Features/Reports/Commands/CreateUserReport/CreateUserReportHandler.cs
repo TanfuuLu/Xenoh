@@ -56,6 +56,7 @@ public sealed class CreateUserReportHandler(
             null,
             report.CreatedAt,
             null,
-            null);
+            null,
+            reported.LockoutEnd.HasValue && reported.LockoutEnd.Value > DateTimeOffset.UtcNow);
     }
 }

@@ -18,5 +18,6 @@ public sealed record UserReportResponse(
     DateTime? ReviewedAtUtc,
     DateTime CreatedAt,
     Guid? RelatedEntityId,
-    string? RelatedEntityType
+    string? RelatedEntityType,
+    bool IsReportedUserSuspended
 );
