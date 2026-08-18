@@ -6,14 +6,12 @@ using Xenoh.API.Security;
 using Xenoh.API.Auth;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRenewal;
 using Xenoh.Application.Features.CoachClient.Commands.AcceptRequest;
-using Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
 using Xenoh.Application.Features.CoachClient.Commands.ConnectByInviteCode;
 using Xenoh.Application.Features.CoachClient.Commands.DeleteInviteCode;
+using Xenoh.Application.Features.CoachClient.Commands.EndRelationship;
 using Xenoh.Application.Features.CoachClient.Commands.GenerateInviteCode;
 using Xenoh.Application.Features.CoachClient.Commands.RejectRenewal;
-using Xenoh.Application.Features.CoachClient.Commands.RejectTermination;
 using Xenoh.Application.Features.CoachClient.Commands.RequestRenewal;
-using Xenoh.Application.Features.CoachClient.Commands.RequestTermination;
 using Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
 using Xenoh.Application.Features.CoachClient.Queries.GetCoachClientAiBrief;
 using Xenoh.Application.Features.CoachClient.Queries.GetClientPowerlifting;
@@ -78,47 +76,38 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Ends the relationship immediately. Either participant may call it; the other
+    /// party is notified, not asked to approve.
+    /// </summary>
+    [HttpPost("{relationshipId:guid}/end")]
+    public async Task<IActionResult> End(Guid relationshipId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new EndRelationshipCommand { RelationshipId = relationshipId }, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>Deprecated alias for <see cref="End"/>, kept for clients released before
+    /// disconnecting became one-sided. Remove once web and mobile are both updated.</summary>
     [HttpPost("{relationshipId:guid}/request-termination")]
-    public async Task<IActionResult> RequestTermination(Guid relationshipId, CancellationToken ct)
-    {
-        try
-        {
-            await mediator.Send(new RequestTerminationCommand { RelationshipId = relationshipId }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
     [HttpPost("{relationshipId:guid}/accept-termination")]
-    public async Task<IActionResult> AcceptTermination(Guid relationshipId, CancellationToken ct)
-    {
-        try
-        {
-            await mediator.Send(new AcceptTerminationCommand { RelationshipId = relationshipId }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    public Task<IActionResult> EndLegacy(Guid relationshipId, CancellationToken ct)
+        => End(relationshipId, ct);
 
+    /// <summary>Deprecated. There is no termination request to reject any more.</summary>
     [HttpPost("{relationshipId:guid}/reject-termination")]
-    public async Task<IActionResult> RejectTermination(Guid relationshipId, CancellationToken ct)
-    {
-        try
+    public IActionResult RejectTermination(Guid relationshipId)
+        => StatusCode(StatusCodes.Status410Gone, new
         {
-            await mediator.Send(new RejectTerminationCommand { RelationshipId = relationshipId }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+            message = "Disconnecting no longer needs approval, so there is nothing to reject."
+        });
 
     public sealed record RequestRenewalRequest(DateOnly ProposedEndDate);
 

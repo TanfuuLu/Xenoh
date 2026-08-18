@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Mediator;
 
-namespace Xenoh.Application.Features.CoachClient.Commands.AcceptTermination;
+namespace Xenoh.Application.Features.CoachClient.Commands.EndRelationship;
 
-public sealed record AcceptTerminationCommand : IRequest
+public sealed record EndRelationshipCommand : IRequest
 {
     [Required]
     public required Guid RelationshipId { get; init; }
