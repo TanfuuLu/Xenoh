@@ -19,7 +19,7 @@ public sealed class TerminateRelationshipHandler(
             ?? throw new InvalidOperationException("Relationship not found.");
 
         if (relationship.Status != RelationshipStatus.Pending)
-            throw new InvalidOperationException("Only pending join requests can be declined this way. Use the termination request flow to disconnect an active relationship.");
+            throw new InvalidOperationException("Only pending join requests can be declined this way. Use POST /api/coach-client/{id}/end to disconnect an established relationship.");
 
         coachClientRepo.Remove(relationship);
 

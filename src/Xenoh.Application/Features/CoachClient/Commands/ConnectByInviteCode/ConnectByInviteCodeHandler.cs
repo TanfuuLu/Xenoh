@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 
@@ -9,6 +10,8 @@ namespace Xenoh.Application.Features.CoachClient.Commands.ConnectByInviteCode;
 
 public sealed class ConnectByInviteCodeHandler(
     IApplicationDbContext db,
+    IPlanRepository planRepo,
+    ISupplementRepository supplementRepo,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager
 ) : IRequestHandler<ConnectByInviteCodeCommand, CoachRelationshipResponse>
@@ -47,6 +50,27 @@ public sealed class ConnectByInviteCodeHandler(
 
         if (existingRelationship is not null)
             throw new InvalidOperationException("You already have an active coach or a pending request.");
+
+        // Expired contracts do not block a new connection, but "my coach" resolves the
+        // client's first non-Ended relationship — leaving them behind would keep pointing
+        // the client at the old coach. Close them out as the new one starts.
+        var expired = await db.CoachClientRelationships
+            .Where(r => r.ClientId == clientId && r.Status == RelationshipStatus.Expired)
+            .ToListAsync(cancellationToken);
+
+        foreach (var stale in expired)
+        {
+            stale.Status = RelationshipStatus.Ended;
+            stale.RenewalRequestedBy = null;
+            stale.ProposedEndDate = null;
+            stale.UpdatedAt = DateTime.UtcNow;
+
+            // This path ends the relationship without going through EndRelationshipHandler,
+            // so it has to run the same teardown - otherwise the previous coach's work
+            // outlives the contract and follows the client to their new coach.
+            await CoachResourceCleanup.StageAsync(
+                db, planRepo, supplementRepo, clientId, stale.CoachId, cancellationToken);
+        }
 
         // 6. Load client info
         var client = await userManager.FindByIdAsync(clientId.ToString())

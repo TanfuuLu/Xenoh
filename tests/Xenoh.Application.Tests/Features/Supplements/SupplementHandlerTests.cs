@@ -265,6 +265,127 @@ public sealed class SupplementHandlerTests : HandlerTestBase
     }
 
     [Fact]
+    public async Task Delete_RemovesRegimenAndItsIntakeHistory()
+    {
+        await SeedUsersAsync();
+        Guid regimenId;
+        await using (var create = CreateContext())
+        {
+            var regimen = await CreateHandler(create, UserId).Handle(
+                new CreateSupplementRegimenCommand(CreateRequest()),
+                CancellationToken.None);
+            regimenId = regimen.Id;
+
+            await RecordHandler(create, UserId).Handle(
+                new RecordSupplementDoseCommand(
+                    regimen.DoseSlots.Single().Id,
+                    Today,
+                    new RecordSupplementDoseRequest(SupplementIntakeStatus.Taken, null, null)),
+                CancellationToken.None);
+        }
+
+        await using (var delete = CreateContext())
+        {
+            await DeleteHandler(delete, UserId).Handle(
+                new DeleteSupplementRegimenCommand(regimenId),
+                CancellationToken.None);
+        }
+
+        await using var verify = CreateContext();
+        (await verify.SupplementRegimens.AnyAsync()).Should().BeFalse();
+        (await verify.SupplementScheduleVersions.AnyAsync()).Should().BeFalse();
+        (await verify.SupplementDoseSlots.AnyAsync()).Should().BeFalse();
+        (await verify.SupplementIntakeLogs.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Delete_SucceedsOnAnArchivedRegimen()
+    {
+        await SeedUsersAsync();
+        Guid regimenId;
+        await using (var create = CreateContext())
+        {
+            regimenId = (await CreateHandler(create, UserId).Handle(
+                new CreateSupplementRegimenCommand(CreateRequest()),
+                CancellationToken.None)).Id;
+        }
+
+        await using (var archive = CreateContext())
+        {
+            await ArchiveHandler(archive, UserId).Handle(
+                new ArchiveSupplementRegimenCommand(regimenId),
+                CancellationToken.None);
+        }
+
+        await using (var delete = CreateContext())
+        {
+            await DeleteHandler(delete, UserId).Handle(
+                new DeleteSupplementRegimenCommand(regimenId),
+                CancellationToken.None);
+        }
+
+        await using var verify = CreateContext();
+        (await verify.SupplementRegimens.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Delete_ByAnUnrelatedUser_LeavesTheRegimenInPlace()
+    {
+        await SeedUsersAsync();
+        Guid regimenId;
+        await using (var create = CreateContext())
+        {
+            regimenId = (await CreateHandler(create, UserId).Handle(
+                new CreateSupplementRegimenCommand(CreateRequest()),
+                CancellationToken.None)).Id;
+        }
+
+        await using (var delete = CreateContext())
+        {
+            var act = () => DeleteHandler(delete, StrangerId)
+                .Handle(new DeleteSupplementRegimenCommand(regimenId), CancellationToken.None)
+                .AsTask();
+
+            await act.Should().ThrowAsync<KeyNotFoundException>();
+        }
+
+        await using var verify = CreateContext();
+        (await verify.SupplementRegimens.AnyAsync(x => x.Id == regimenId)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteCoachRegimens_RemovesOnlyTheCoachAuthoredOnes()
+    {
+        await SeedUsersAsync(withRelationship: true);
+        await using (var seed = CreateContext())
+        {
+            await CreateHandler(seed, CoachId).Handle(
+                new CreateSupplementRegimenCommand(CreateRequest(), UserId),
+                CancellationToken.None);
+        }
+
+        await using (var seed = CreateContext())
+        {
+            await CreateHandler(seed, UserId).Handle(
+                new CreateSupplementRegimenCommand(CreateRequest() with { Name = "Own vitamin" }),
+                CancellationToken.None);
+        }
+
+        await using (var cleanup = CreateContext())
+        {
+            await new SupplementRepository(cleanup)
+                .DeleteCoachRegimensForClientAsync(UserId, CoachId, CancellationToken.None);
+            await cleanup.SaveChangesAsync();
+        }
+
+        await using var verify = CreateContext();
+        var remaining = await verify.SupplementRegimens.ToListAsync();
+        remaining.Should().ContainSingle();
+        remaining[0].Name.Should().Be("Own vitamin");
+        remaining[0].CreatedByUserId.Should().Be(UserId);
+    }
+
+    [Fact]
     public void PersistenceModel_EnforcesUniqueDoseOccurrenceAndUserDateIndex()
     {
         using var context = CreateContext();
@@ -288,6 +409,9 @@ public sealed class SupplementHandlerTests : HandlerTestBase
         new(new SupplementRepository(context), new CoachClientRepository(context), new FakeCurrentUserService(callerId));
 
     private ArchiveSupplementRegimenHandler ArchiveHandler(ApplicationDbContext context, Guid callerId) =>
+        new(new SupplementRepository(context), new CoachClientRepository(context), new FakeCurrentUserService(callerId));
+
+    private DeleteSupplementRegimenHandler DeleteHandler(ApplicationDbContext context, Guid callerId) =>
         new(new SupplementRepository(context), new CoachClientRepository(context), new FakeCurrentUserService(callerId));
 
     private GetSupplementRegimensHandler RegimensHandler(ApplicationDbContext context, Guid callerId) =>

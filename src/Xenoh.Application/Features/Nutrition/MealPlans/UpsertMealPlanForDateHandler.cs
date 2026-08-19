@@ -32,6 +32,9 @@ public sealed class UpsertMealPlanForDateHandler(
         }
 
         day.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        // Whoever writes the day owns it: a client editing their coach's plan takes it over,
+        // so a later disconnect leaves their version alone.
+        day.CreatedByUserId = callerId;
         day.UpdatedAt = DateTime.UtcNow;
         day.Meals.Clear();
 

@@ -70,6 +70,21 @@ public sealed class MealPlanHandlerTests : HandlerTestBase
 
         result.UserId.Should().Be(UserId);
         result.Meals.Should().ContainSingle();
+        // Authorship is what lets a disconnect tell the coach's planning from the client's.
+        (await ctx.MealPlanDays.SingleAsync()).CreatedByUserId.Should().Be(CoachId);
+    }
+
+    [Fact]
+    public async Task Upsert_WhenClientEditsTheirCoachsPlan_TakesOverAuthorship()
+    {
+        var foodId = await SeedBaseDataAsync(withCoachRelationship: true);
+        await using (var setup = CreateContext())
+            await CreateUpsertHandler(setup, CoachId).Handle(CreateCommand(foodId, UserId), CancellationToken.None);
+
+        await using var ctx = CreateContext();
+        await CreateUpsertHandler(ctx, UserId).Handle(CreateCommand(foodId), CancellationToken.None);
+
+        (await ctx.MealPlanDays.SingleAsync()).CreatedByUserId.Should().Be(UserId);
     }
 
     [Fact]

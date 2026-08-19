@@ -52,6 +52,15 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
                 new ArchiveSupplementRegimenCommand(regimenId),
                 cancellationToken));
 
+    [HttpDelete("regimens/{regimenId:guid}/permanent")]
+    public Task<IActionResult> DeleteRegimen(
+        Guid regimenId,
+        CancellationToken cancellationToken) =>
+        ExecuteNoContentAsync(
+            () => mediator.Send(
+                new DeleteSupplementRegimenCommand(regimenId),
+                cancellationToken));
+
     [HttpGet("daily")]
     public Task<IActionResult> GetDaily(
         [FromQuery] DateOnly date,
@@ -136,6 +145,17 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
         ExecuteNoContentAsync(
             () => mediator.Send(
                 new ArchiveSupplementRegimenCommand(regimenId, clientId),
+                cancellationToken));
+
+    [HttpDelete("clients/{clientId:guid}/regimens/{regimenId:guid}/permanent")]
+    [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
+    public Task<IActionResult> DeleteClientRegimen(
+        Guid clientId,
+        Guid regimenId,
+        CancellationToken cancellationToken) =>
+        ExecuteNoContentAsync(
+            () => mediator.Send(
+                new DeleteSupplementRegimenCommand(regimenId, clientId),
                 cancellationToken));
 
     [HttpGet("clients/{clientId:guid}/daily")]

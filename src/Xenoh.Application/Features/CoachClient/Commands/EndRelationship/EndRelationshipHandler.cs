@@ -14,6 +14,8 @@ namespace Xenoh.Application.Features.CoachClient.Commands.EndRelationship;
 public sealed class EndRelationshipHandler(
     ICoachClientRepository coachClientRepo,
     IPlanRepository planRepo,
+    ISupplementRepository supplementRepo,
+    IApplicationDbContext db,
     ICurrentUserService currentUser,
     INotificationService notificationService,
     UserManager<ApplicationUser> userManager
@@ -27,18 +29,27 @@ public sealed class EndRelationshipHandler(
             request.RelationshipId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Relationship not found.");
 
-        if (relationship.Status != RelationshipStatus.Active &&
-            relationship.Status != RelationshipStatus.Expired &&
-            relationship.Status != RelationshipStatus.PendingRenewal &&
-            relationship.Status != RelationshipStatus.PendingTermination)
-            throw new InvalidOperationException("Only an established relationship can be ended.");
+        if (relationship.Status == RelationshipStatus.Ended)
+            throw new InvalidOperationException("This relationship has already ended.");
+
+        var wasPending = relationship.Status == RelationshipStatus.Pending;
 
         var otherPartyId = userId == relationship.ClientId
             ? relationship.CoachId
             : relationship.ClientId;
 
-        await planRepo.DeleteCoachPlansForClientAsync(
-            relationship.ClientId, relationship.CoachId, cancellationToken);
+        // A request that was never accepted has no coaching work behind it, so there is
+        // nothing to tear down — only established relationships own plans and shares.
+        if (!wasPending)
+        {
+            await CoachResourceCleanup.StageAsync(
+                db,
+                planRepo,
+                supplementRepo,
+                relationship.ClientId,
+                relationship.CoachId,
+                cancellationToken);
+        }
 
         relationship.Status = RelationshipStatus.Ended;
         relationship.TerminationRequestedBy = null;
@@ -53,8 +64,10 @@ public sealed class EndRelationshipHandler(
 
         await notificationService.NotifyAsync(
             otherPartyId,
-            "DisconnectCompleted",
-            $"{initiatorName} đã ngắt kết nối với bạn.",
+            wasPending ? "ConnectionRequestCancelled" : "DisconnectCompleted",
+            wasPending
+                ? $"{initiatorName} đã hủy yêu cầu kết nối."
+                : $"{initiatorName} đã ngắt kết nối với bạn.",
             relationship.Id,
             "CoachRequest",
             cancellationToken);

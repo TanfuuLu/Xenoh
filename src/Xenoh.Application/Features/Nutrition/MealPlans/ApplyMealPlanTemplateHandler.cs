@@ -66,6 +66,8 @@ public sealed class ApplyMealPlanTemplateHandler(
             }
 
             day.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+            // See UpsertMealPlanForDateHandler: the last writer owns the day.
+            day.CreatedByUserId = callerId;
             day.UpdatedAt = DateTime.UtcNow;
 
             foreach (var meal in prepared.Meals)

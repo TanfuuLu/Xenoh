@@ -7,7 +7,6 @@ namespace Xenoh.Application.Features.Nutrition.Queries.GetNutritionHistory;
 public sealed class GetNutritionHistoryHandler(
     INutritionRepository nutritionRepo,
     ICoachClientRepository coachClientRepo,
-    ISubscriptionService subscriptionService,
     ICurrentUserService currentUser
 ) : IRequestHandler<GetNutritionHistoryQuery, List<NutritionHistoryItemResponse>>
 {
@@ -17,9 +16,6 @@ public sealed class GetNutritionHistoryHandler(
         var callerId = currentUser.UserId;
         var userId = request.UserId ?? callerId;
         await EnsureAccessAsync(callerId, userId, cancellationToken);
-
-        if (!await subscriptionService.CanUseAdvancedAnalyticsAsync(callerId, cancellationToken))
-            throw new UnauthorizedAccessException("Advanced nutrition history requires an active paid subscription.");
 
         if (request.To < request.From)
             throw new InvalidOperationException("The end date must be after the start date.");

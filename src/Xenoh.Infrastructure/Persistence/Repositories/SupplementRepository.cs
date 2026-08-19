@@ -83,6 +83,52 @@ public sealed class SupplementRepository(ApplicationDbContext db) : ISupplementR
                 x.ScheduledDate <= to)
             .ToListAsync(cancellationToken);
 
+    public async Task DeleteCoachRegimensForClientAsync(
+        Guid clientId,
+        Guid coachId,
+        CancellationToken cancellationToken)
+    {
+        var regimens = await db.SupplementRegimens
+            .Where(x => x.UserId == clientId && x.CreatedByUserId == coachId)
+            .Include(x => x.ScheduleVersions)
+                .ThenInclude(x => x.DoseSlots)
+            .ToListAsync(cancellationToken);
+
+        await RemoveIntakeLogsAsync(regimens, cancellationToken);
+        db.SupplementRegimens.RemoveRange(regimens);
+    }
+
+    public async Task RemoveRegimenAsync(
+        SupplementRegimen regimen,
+        CancellationToken cancellationToken)
+    {
+        await RemoveIntakeLogsAsync([regimen], cancellationToken);
+        db.SupplementRegimens.Remove(regimen);
+    }
+
+    /// <summary>
+    /// Intake logs hang off dose slots rather than the regimen, and are never loaded with
+    /// it, so they are removed explicitly instead of leaning on the database cascade.
+    /// </summary>
+    private async Task RemoveIntakeLogsAsync(
+        IReadOnlyCollection<SupplementRegimen> regimens,
+        CancellationToken cancellationToken)
+    {
+        var slotIds = regimens
+            .SelectMany(x => x.ScheduleVersions)
+            .SelectMany(x => x.DoseSlots)
+            .Select(x => x.Id)
+            .ToList();
+        if (slotIds.Count == 0)
+            return;
+
+        var logs = await db.SupplementIntakeLogs
+            .Where(x => slotIds.Contains(x.DoseSlotId))
+            .ToListAsync(cancellationToken);
+
+        db.SupplementIntakeLogs.RemoveRange(logs);
+    }
+
     public void AddRegimen(SupplementRegimen regimen) => db.SupplementRegimens.Add(regimen);
     public void AddScheduleVersion(SupplementScheduleVersion version) =>
         db.SupplementScheduleVersions.Add(version);

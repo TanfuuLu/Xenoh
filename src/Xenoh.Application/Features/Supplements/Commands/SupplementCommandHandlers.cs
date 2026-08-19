@@ -180,6 +180,35 @@ public sealed class ArchiveSupplementRegimenHandler(
     }
 }
 
+public sealed class DeleteSupplementRegimenHandler(
+    ISupplementRepository supplementRepository,
+    ICoachClientRepository coachClientRepository,
+    ICurrentUserService currentUser)
+    : IRequestHandler<DeleteSupplementRegimenCommand, Unit>
+{
+    public async ValueTask<Unit> Handle(
+        DeleteSupplementRegimenCommand command,
+        CancellationToken cancellationToken)
+    {
+        var userId = await SupplementAccess.ResolveTargetUserAsync(
+            currentUser.UserId,
+            command.UserId,
+            coachClientRepository,
+            cancellationToken);
+        var regimen = await supplementRepository.GetRegimenForUpdateAsync(
+            command.RegimenId,
+            userId,
+            cancellationToken)
+            ?? throw new KeyNotFoundException("Supplement regimen was not found.");
+
+        // Archived regimens are the common case here — removing one is how a user
+        // clears out something they never should have created, so there is no guard.
+        await supplementRepository.RemoveRegimenAsync(regimen, cancellationToken);
+        await supplementRepository.SaveChangesAsync(cancellationToken);
+        return Unit.Value;
+    }
+}
+
 public sealed class RecordSupplementDoseHandler(
     ISupplementRepository supplementRepository,
     ICurrentUserService currentUser)
