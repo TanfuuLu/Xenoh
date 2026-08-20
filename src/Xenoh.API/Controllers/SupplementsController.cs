@@ -1,4 +1,4 @@
-using Mediator;
+﻿using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.API.Auth;
@@ -11,7 +11,7 @@ namespace Xenoh.API.Controllers;
 
 [ApiController]
 [Route("api/supplements")]
-[Authorize(Policy = SubscriptionPolicies.RequirePro)]
+[Authorize]
 public sealed class SupplementsController(IMediator mediator) : ControllerBase
 {
     [HttpGet("regimens")]
