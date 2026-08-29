@@ -51,6 +51,9 @@ public static class PromotionEvaluation
 
     public static decimal ComputeDiscount(PromotionCode promo, decimal amount)
     {
+        if (promo.DiscountType == PromotionDiscountType.Percent && promo.DiscountValue == 100m)
+            return Math.Max(0m, amount);
+
         var discount = promo.DiscountType == PromotionDiscountType.Percent
             ? Math.Round(amount * promo.DiscountValue / 100m, 0, MidpointRounding.AwayFromZero)
             : promo.DiscountValue;

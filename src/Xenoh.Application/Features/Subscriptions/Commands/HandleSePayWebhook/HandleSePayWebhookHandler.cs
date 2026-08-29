@@ -1,18 +1,14 @@
 using System.Text.RegularExpressions;
 using Mediator;
-using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
-using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 
 namespace Xenoh.Application.Features.Subscriptions.Commands.HandleSePayWebhook;
 
 public sealed class HandleSePayWebhookHandler(
     IPaymentOrderRepository paymentOrderRepo,
-    ISubscriptionRepository subscriptionRepo,
-    UserManager<ApplicationUser> userManager,
-    INotificationService notificationService
+    ISubscriptionActivationService subscriptionActivation
 ) : IRequestHandler<HandleSePayWebhookCommand, WebhookResult>
 {
     private static readonly Regex TransferCodePattern =
@@ -63,48 +59,7 @@ public sealed class HandleSePayWebhookHandler(
         order.PaidAt = DateTime.UtcNow;
         order.UpdatedAt = DateTime.UtcNow;
 
-        var subscription = await subscriptionRepo.FindByUserIdAsync(order.UserId, cancellationToken)
-            ?? throw new InvalidOperationException($"Subscription not found for user {order.UserId}.");
-
-        var now = DateTime.UtcNow;
-
-        // Same-tier renewal stacks onto remaining time; switching tier (upgrade/downgrade)
-        // starts a fresh term from payment time — remaining days do not carry over.
-        var isSameTierRenewal = subscription.Tier == order.RequestedTier
-            && subscription.ExpiresAt.HasValue
-            && subscription.ExpiresAt > now;
-        var baseDate = isSameTierRenewal ? subscription.ExpiresAt!.Value : now;
-
-        subscription.Tier = order.RequestedTier;
-        subscription.ExpiresAt = baseDate.AddMonths(order.DurationMonths);
-        subscription.ExpiryReminderSentAt = null;
-        subscription.UpdatedAt = DateTime.UtcNow;
-
-        await subscriptionRepo.SaveChangesAsync(cancellationToken);
-
-        // Sync Coach role: grant when ProCoach activates, revoke on any other tier
-        var user = await userManager.FindByIdAsync(order.UserId.ToString());
-        if (user is not null)
-        {
-            if (order.RequestedTier == PlanTier.ProCoach)
-            {
-                if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
-                    await userManager.AddToRoleAsync(user, UserRole.Coach);
-            }
-            else
-            {
-                if (await userManager.IsInRoleAsync(user, UserRole.Coach))
-                    await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
-            }
-        }
-
-        await notificationService.NotifyAsync(
-            order.UserId,
-            "SubscriptionActivated",
-            $"Đăng ký gói {order.RequestedTier} đã được kích hoạt thành công. Hết hạn vào {subscription.ExpiresAt:dd/MM/yyyy}.",
-            subscription.Id,
-            "Subscription",
-            cancellationToken);
+        await subscriptionActivation.ActivateAsync(order, cancellationToken);
 
         return new WebhookResult(true, "Subscription activated.");
     }

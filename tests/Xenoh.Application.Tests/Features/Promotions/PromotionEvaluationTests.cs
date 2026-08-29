@@ -52,4 +52,14 @@ public sealed class PromotionEvaluationTests
 
         (149_000m - discount).Should().BeGreaterThanOrEqualTo(PromotionEvaluation.MinimumPayableVnd);
     }
+
+    [Fact]
+    public void ComputeDiscount_FullPercent_CoversEntireAmount()
+    {
+        var promo = new PromotionCode { DiscountType = PromotionDiscountType.Percent, DiscountValue = 100 };
+
+        var discount = PromotionEvaluation.ComputeDiscount(promo, 149_000m);
+
+        discount.Should().Be(149_000m);
+    }
 }

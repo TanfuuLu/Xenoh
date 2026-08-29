@@ -57,8 +57,8 @@ internal static class PromotionCodeRules
 
         switch (payload.DiscountType)
         {
-            case PromotionDiscountType.Percent when payload.DiscountValue is < 1 or > 99:
-                throw new InvalidOperationException("Percent discount must be between 1 and 99.");
+            case PromotionDiscountType.Percent when payload.DiscountValue is < 1 or > 100:
+                throw new InvalidOperationException("Percent discount must be between 1 and 100.");
             case PromotionDiscountType.FixedAmount when payload.DiscountValue < 1_000:
                 throw new InvalidOperationException("Fixed discount must be at least 1,000 VND.");
         }

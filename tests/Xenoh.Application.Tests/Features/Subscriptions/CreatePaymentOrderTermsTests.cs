@@ -4,7 +4,9 @@ using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Subscriptions;
 using Xenoh.Application.Features.Subscriptions.Commands.CreatePaymentOrder;
 using Xenoh.Application.Tests.Common;
+using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
+using Xenoh.Infrastructure.Persistence;
 using Xenoh.Infrastructure.Persistence.Repositories;
 using Xunit;
 
@@ -22,7 +24,9 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             db,
             CurrentUser(),
             new FakeBankInfo(),
-            new HealthyPreflight());
+            new HealthyPreflight(),
+            new FakeSubscriptionActivation(db),
+            new AvailableLock());
 
         var response = await handler.Handle(new CreatePaymentOrderCommand
         {
@@ -50,7 +54,9 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             db,
             CurrentUser(),
             new FakeBankInfo(),
-            new HealthyPreflight());
+            new HealthyPreflight(),
+            new FakeSubscriptionActivation(db),
+            new AvailableLock());
 
         var act = () => handler.Handle(new CreatePaymentOrderCommand
         {
@@ -61,6 +67,93 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
         }, CancellationToken.None).AsTask();
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+        db.PaymentOrders.Should().BeEmpty();
+        db.UserSubscriptions.Should().BeEmpty();
+        db.LegalAcceptances.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WithFullDiscount_CompletesOrderAndActivatesSubscriptionImmediately()
+    {
+        await using var db = CreateContext();
+        db.PromotionCodes.Add(new PromotionCode
+        {
+            Code = "FREE100",
+            DiscountType = PromotionDiscountType.Percent,
+            DiscountValue = 100m,
+            AppliesToTier = PlanTier.ProIndividual,
+            MaxRedemptionsPerUser = 1,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new CreatePaymentOrderHandler(
+            new SubscriptionRepository(db),
+            new PaymentOrderRepository(db),
+            db,
+            CurrentUser(),
+            new FakeBankInfo(),
+            new UnexpectedPreflight(),
+            new FakeSubscriptionActivation(db),
+            new AvailableLock());
+
+        var response = await handler.Handle(new CreatePaymentOrderCommand
+        {
+            RequestedTier = PlanTier.ProIndividual,
+            DurationMonths = 1,
+            PromotionCode = "FREE100",
+            AcceptedTerms = true,
+            TermsVersion = SubscriptionContract.CurrentTermsVersion
+        }, CancellationToken.None);
+
+        response.Amount.Should().Be(0m);
+        response.DiscountAmount.Should().Be(response.OriginalAmount);
+        response.PaymentRequired.Should().BeFalse();
+
+        var order = await db.PaymentOrders.SingleAsync();
+        order.Status.Should().Be(PaymentStatus.Completed);
+        order.PaidAt.Should().NotBeNull();
+
+        var subscription = await db.UserSubscriptions.SingleAsync();
+        subscription.Tier.Should().Be(PlanTier.ProIndividual);
+        subscription.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task Handle_WithFullDiscountAndContendedLock_DoesNotCreateOrActivateState()
+    {
+        await using var db = CreateContext();
+        db.PromotionCodes.Add(new PromotionCode
+        {
+            Code = "FREE100",
+            DiscountType = PromotionDiscountType.Percent,
+            DiscountValue = 100m,
+            MaxRedemptionsPerUser = 1,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new CreatePaymentOrderHandler(
+            new SubscriptionRepository(db),
+            new PaymentOrderRepository(db),
+            db,
+            CurrentUser(),
+            new FakeBankInfo(),
+            new UnexpectedPreflight(),
+            new FakeSubscriptionActivation(db),
+            new UnavailableLock());
+
+        var act = () => handler.Handle(new CreatePaymentOrderCommand
+        {
+            RequestedTier = PlanTier.ProIndividual,
+            DurationMonths = 1,
+            PromotionCode = "FREE100",
+            AcceptedTerms = true,
+            TermsVersion = SubscriptionContract.CurrentTermsVersion
+        }, CancellationToken.None).AsTask();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Another complimentary promotion is being redeemed for this account. Please try again.");
         db.PaymentOrders.Should().BeEmpty();
         db.UserSubscriptions.Should().BeEmpty();
         db.LegalAcceptances.Should().BeEmpty();
@@ -77,5 +170,59 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
     {
         public Task<PaymentPreflightResult> CheckAsync(CancellationToken ct) =>
             Task.FromResult(PaymentPreflightResult.Ok());
+    }
+
+    private sealed class UnexpectedPreflight : IPaymentPreflightService
+    {
+        public Task<PaymentPreflightResult> CheckAsync(CancellationToken ct) =>
+            throw new InvalidOperationException("Payment preflight must not run for a free order.");
+    }
+
+    private sealed class FakeSubscriptionActivation(ApplicationDbContext db) : ISubscriptionActivationService
+    {
+        public async Task ActivateAsync(PaymentOrder order, CancellationToken ct = default)
+        {
+            var subscription = await db.UserSubscriptions.SingleAsync(s => s.UserId == order.UserId, ct);
+            subscription.Tier = order.RequestedTier;
+            subscription.ExpiresAt = DateTime.UtcNow.AddMonths(order.DurationMonths);
+            await db.SaveChangesAsync(ct);
+        }
+
+        public async Task ActivateComplimentaryAsync(
+            PaymentOrder order,
+            LegalAcceptance legalAcceptance,
+            CancellationToken ct = default)
+        {
+            var subscription = new UserSubscription { UserId = order.UserId, Tier = order.RequestedTier };
+            subscription.ExpiresAt = DateTime.UtcNow.AddMonths(order.DurationMonths);
+            order.SubscriptionId = subscription.Id;
+            db.UserSubscriptions.Add(subscription);
+            db.PaymentOrders.Add(order);
+            db.LegalAcceptances.Add(legalAcceptance);
+            await db.SaveChangesAsync(ct);
+        }
+    }
+
+    private sealed class AvailableLock : IDistributedLock
+    {
+        public Task<IAsyncDisposable?> TryAcquireAsync(
+            string name,
+            TimeSpan leaseTime,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IAsyncDisposable?>(new Lease());
+
+        private sealed class Lease : IAsyncDisposable
+        {
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class UnavailableLock : IDistributedLock
+    {
+        public Task<IAsyncDisposable?> TryAcquireAsync(
+            string name,
+            TimeSpan leaseTime,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IAsyncDisposable?>(null);
     }
 }

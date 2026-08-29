@@ -1,9 +1,7 @@
 using Mediator;
-using Microsoft.AspNetCore.Identity;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
-using ApplicationUser = Xenoh.Domain.Entities.ApplicationUser;
 
 namespace Xenoh.Application.Features.Subscriptions.Commands.DevActivateSubscription;
 
@@ -11,8 +9,7 @@ public sealed class DevActivateSubscriptionHandler(
     IPaymentOrderRepository paymentOrderRepo,
     ISubscriptionRepository subscriptionRepo,
     ICurrentUserService currentUser,
-    UserManager<ApplicationUser> userManager,
-    INotificationService notificationService
+    ISubscriptionActivationService subscriptionActivation
 ) : IRequestHandler<DevActivateSubscriptionCommand, DevActivateResult>
 {
     public async ValueTask<DevActivateResult> Handle(
@@ -34,45 +31,10 @@ public sealed class DevActivateSubscriptionHandler(
         order.PaidAt = DateTime.UtcNow;
         order.UpdatedAt = DateTime.UtcNow;
 
-        // Activate/extend subscription
+        await subscriptionActivation.ActivateAsync(order, cancellationToken);
+
         var subscription = await subscriptionRepo.FindByUserIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException($"Subscription row not found for user {userId}.");
-
-        var now = DateTime.UtcNow;
-        var currentExpiry = (subscription.ExpiresAt.HasValue && subscription.ExpiresAt > now)
-            ? subscription.ExpiresAt.Value
-            : now;
-
-        subscription.Tier = order.RequestedTier;
-        subscription.ExpiresAt = currentExpiry.AddMonths(order.DurationMonths);
-        subscription.ExpiryReminderSentAt = null;
-        subscription.UpdatedAt = DateTime.UtcNow;
-
-        await subscriptionRepo.SaveChangesAsync(cancellationToken);
-
-        // Sync Coach role: grant when ProCoach activates, revoke on any other tier
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is not null)
-        {
-            if (order.RequestedTier == PlanTier.ProCoach)
-            {
-                if (!await userManager.IsInRoleAsync(user, UserRole.Coach))
-                    await userManager.AddToRoleAsync(user, UserRole.Coach);
-            }
-            else
-            {
-                if (await userManager.IsInRoleAsync(user, UserRole.Coach))
-                    await userManager.RemoveFromRoleAsync(user, UserRole.Coach);
-            }
-        }
-
-        await notificationService.NotifyAsync(
-            userId,
-            "SubscriptionActivated",
-            $"Đăng ký gói {order.RequestedTier} đã được kích hoạt thành công. Hết hạn vào {subscription.ExpiresAt:dd/MM/yyyy}.",
-            subscription.Id,
-            "Subscription",
-            cancellationToken);
 
         return new DevActivateResult(
             true,

@@ -123,6 +123,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentStorageService, DocumentStorageService>();
         services.AddScoped<ICompetitionDocumentStorageService, CompetitionDocumentStorageService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<ISubscriptionActivationService, SubscriptionActivationService>();
         services.AddScoped<IAiQuotaService, AiQuotaService>();
         services.AddSingleton<ISePayWebhookVerifier, SePayWebhookVerifier>();
         services.AddSingleton<ISePayBankInfo, SePayBankInfo>();

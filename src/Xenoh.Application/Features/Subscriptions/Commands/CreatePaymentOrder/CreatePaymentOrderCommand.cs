@@ -35,5 +35,6 @@ public sealed record PaymentOrderResponse(
     string BankAccountNumber,
     string BankAccountName,
     string BankName,
-    string TransferDescription
+    string TransferDescription,
+    bool PaymentRequired
 );
