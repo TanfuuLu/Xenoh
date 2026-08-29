@@ -24,9 +24,11 @@ public sealed class ComplimentarySubscriptionActivationTests : HandlerTestBase
         };
         db.Roles.Add(coachRole);
         db.ApplicationUsers.Add(CreateUser());
+        var promotion = CreatePromotion();
+        db.PromotionCodes.Add(promotion);
         await db.SaveChangesAsync();
 
-        var order = CreateOrder();
+        var order = CreateOrder(promotion.Id);
         var acceptance = CreateAcceptance(order.Id);
         var service = new SubscriptionActivationService(
             db,
@@ -53,9 +55,11 @@ public sealed class ComplimentarySubscriptionActivationTests : HandlerTestBase
     {
         await using var db = CreateContext();
         db.ApplicationUsers.Add(CreateUser());
+        var promotion = CreatePromotion();
+        db.PromotionCodes.Add(promotion);
         await db.SaveChangesAsync();
 
-        var order = CreateOrder();
+        var order = CreateOrder(promotion.Id);
         var service = new SubscriptionActivationService(
             db,
             new FakeNotificationService(),
@@ -84,9 +88,20 @@ public sealed class ComplimentarySubscriptionActivationTests : HandlerTestBase
         LastName = "User"
     };
 
-    private PaymentOrder CreateOrder() => new()
+    private static PromotionCode CreatePromotion() => new()
+    {
+        Code = $"FREE{Guid.NewGuid():N}",
+        Description = "Complimentary test promotion",
+        DiscountType = PromotionDiscountType.Percent,
+        DiscountValue = 100m,
+        MaxRedemptionsPerUser = 1,
+        IsActive = true
+    };
+
+    private PaymentOrder CreateOrder(Guid promotionCodeId) => new()
     {
         UserId = UserId,
+        PromotionCodeId = promotionCodeId,
         RequestedTier = PlanTier.ProCoach,
         TransferCode = $"FREE{Guid.NewGuid():N}",
         Amount = 0m,

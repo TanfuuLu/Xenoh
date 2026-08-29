@@ -25,8 +25,7 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             CurrentUser(),
             new FakeBankInfo(),
             new HealthyPreflight(),
-            new FakeSubscriptionActivation(db),
-            new AvailableLock());
+            new FakeSubscriptionActivation(db));
 
         var response = await handler.Handle(new CreatePaymentOrderCommand
         {
@@ -55,8 +54,7 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             CurrentUser(),
             new FakeBankInfo(),
             new HealthyPreflight(),
-            new FakeSubscriptionActivation(db),
-            new AvailableLock());
+            new FakeSubscriptionActivation(db));
 
         var act = () => handler.Handle(new CreatePaymentOrderCommand
         {
@@ -94,8 +92,7 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             CurrentUser(),
             new FakeBankInfo(),
             new UnexpectedPreflight(),
-            new FakeSubscriptionActivation(db),
-            new AvailableLock());
+            new FakeSubscriptionActivation(db));
 
         var response = await handler.Handle(new CreatePaymentOrderCommand
         {
@@ -120,7 +117,7 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
     }
 
     [Fact]
-    public async Task Handle_WithFullDiscountAndContendedLock_DoesNotCreateOrActivateState()
+    public async Task Handle_WithFullDiscount_DoesNotDependOnRedisAvailability()
     {
         await using var db = CreateContext();
         db.PromotionCodes.Add(new PromotionCode
@@ -140,23 +137,22 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
             CurrentUser(),
             new FakeBankInfo(),
             new UnexpectedPreflight(),
-            new FakeSubscriptionActivation(db),
-            new UnavailableLock());
+            new FakeSubscriptionActivation(db));
 
-        var act = () => handler.Handle(new CreatePaymentOrderCommand
+        var response = await handler.Handle(new CreatePaymentOrderCommand
         {
             RequestedTier = PlanTier.ProIndividual,
             DurationMonths = 1,
             PromotionCode = "FREE100",
             AcceptedTerms = true,
             TermsVersion = SubscriptionContract.CurrentTermsVersion
-        }, CancellationToken.None).AsTask();
+        }, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Another complimentary promotion is being redeemed for this account. Please try again.");
-        db.PaymentOrders.Should().BeEmpty();
-        db.UserSubscriptions.Should().BeEmpty();
-        db.LegalAcceptances.Should().BeEmpty();
+        response.Amount.Should().Be(0m);
+        response.PaymentRequired.Should().BeFalse();
+        (await db.PaymentOrders.SingleAsync()).Status.Should().Be(PaymentStatus.Completed);
+        (await db.UserSubscriptions.SingleAsync()).Tier.Should().Be(PlanTier.ProIndividual);
+        await db.LegalAcceptances.SingleAsync();
     }
 
     private sealed class FakeBankInfo : ISePayBankInfo
@@ -203,26 +199,4 @@ public sealed class CreatePaymentOrderTermsTests : HandlerTestBase
         }
     }
 
-    private sealed class AvailableLock : IDistributedLock
-    {
-        public Task<IAsyncDisposable?> TryAcquireAsync(
-            string name,
-            TimeSpan leaseTime,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IAsyncDisposable?>(new Lease());
-
-        private sealed class Lease : IAsyncDisposable
-        {
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-        }
-    }
-
-    private sealed class UnavailableLock : IDistributedLock
-    {
-        public Task<IAsyncDisposable?> TryAcquireAsync(
-            string name,
-            TimeSpan leaseTime,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IAsyncDisposable?>(null);
-    }
 }

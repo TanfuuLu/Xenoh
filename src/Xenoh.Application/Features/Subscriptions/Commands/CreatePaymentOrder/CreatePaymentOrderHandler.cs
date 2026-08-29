@@ -16,8 +16,7 @@ public sealed class CreatePaymentOrderHandler(
     ICurrentUserService currentUser,
     ISePayBankInfo bankInfo,
     IPaymentPreflightService preflight,
-    ISubscriptionActivationService subscriptionActivation,
-    IDistributedLock distributedLock
+    ISubscriptionActivationService subscriptionActivation
 ) : IRequestHandler<CreatePaymentOrderCommand, PaymentOrderResponse>
 {
     public async ValueTask<PaymentOrderResponse> Handle(
@@ -46,26 +45,6 @@ public sealed class CreatePaymentOrderHandler(
                 .FirstOrDefaultAsync(p => p.Code == code, cancellationToken)
                 ?? throw new InvalidOperationException("Invalid promotion code.");
         }
-
-        var isComplimentaryPromotion = promo is
-        {
-            DiscountType: PromotionDiscountType.Percent,
-            DiscountValue: 100m
-        };
-
-        await using var userLease = isComplimentaryPromotion
-            ? await distributedLock.TryAcquireAsync(
-                $"promotion-redemption:user:{userId:N}", TimeSpan.FromSeconds(30), cancellationToken)
-            : null;
-        if (isComplimentaryPromotion && userLease is null)
-            throw new InvalidOperationException("Another complimentary promotion is being redeemed for this account. Please try again.");
-
-        await using var promotionLease = isComplimentaryPromotion
-            ? await distributedLock.TryAcquireAsync(
-                $"promotion-redemption:code:{promo!.Id:N}", TimeSpan.FromSeconds(30), cancellationToken)
-            : null;
-        if (isComplimentaryPromotion && promotionLease is null)
-            throw new InvalidOperationException("This promotion code is being redeemed. Please try again.");
 
         if (promo is not null)
         {

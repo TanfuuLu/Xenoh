@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.Promotions;
 using Xenoh.Domain.Entities;
 using Xenoh.Domain.Enums;
 using Xenoh.Infrastructure.Persistence;
@@ -27,7 +28,7 @@ public sealed class SubscriptionActivationService(
 
             await ApplyActivationAsync(order, subscription, ct);
             await db.SaveChangesAsync(ct);
-        }, ct);
+        }, IsolationLevel.Serializable, ct);
 
         await NotifySafelyAsync(order, subscription!, ct);
     }
@@ -41,6 +42,27 @@ public sealed class SubscriptionActivationService(
 
         await ExecuteAtomicallyAsync(async () =>
         {
+            var promotionCodeId = order.PromotionCodeId
+                ?? throw new InvalidOperationException("A complimentary activation requires a promotion code.");
+
+            // The database is the source of truth for redemption limits. Lock the user first and
+            // promotion second so concurrent requests cannot grant two plans or oversubscribe a code,
+            // even when the optional Redis cache is disabled or unavailable.
+            await LockRedemptionRowsAsync(order.UserId, promotionCodeId, ct);
+
+            var promotion = await db.PromotionCodes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == promotionCodeId, ct)
+                ?? throw new InvalidOperationException("Invalid promotion code.");
+
+            if (promotion.DiscountType != PromotionDiscountType.Percent || promotion.DiscountValue != 100m)
+                throw new InvalidOperationException("The promotion code does not provide a complimentary activation.");
+
+            var promotionError = await PromotionEvaluation.CheckEligibilityAsync(
+                db, promotion, order.UserId, order.RequestedTier, ct);
+            if (promotionError is not null)
+                throw new InvalidOperationException(promotionError);
+
             subscription = await db.UserSubscriptions
                 .FirstOrDefaultAsync(s => s.UserId == order.UserId, ct);
 
@@ -57,7 +79,7 @@ public sealed class SubscriptionActivationService(
 
             await ApplyActivationAsync(order, subscription, ct);
             await db.SaveChangesAsync(ct);
-        }, ct);
+        }, IsolationLevel.ReadCommitted, ct);
 
         await NotifySafelyAsync(order, subscription!, ct);
     }
@@ -103,7 +125,10 @@ public sealed class SubscriptionActivationService(
         }
     }
 
-    private async Task ExecuteAtomicallyAsync(Func<Task> operation, CancellationToken ct)
+    private async Task ExecuteAtomicallyAsync(
+        Func<Task> operation,
+        IsolationLevel isolationLevel,
+        CancellationToken ct)
     {
         if (!db.Database.IsRelational())
         {
@@ -111,9 +136,25 @@ public sealed class SubscriptionActivationService(
             return;
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(isolationLevel, ct);
         await operation();
         await transaction.CommitAsync(ct);
+    }
+
+    private async Task LockRedemptionRowsAsync(
+        Guid userId,
+        Guid promotionCodeId,
+        CancellationToken ct)
+    {
+        if (!db.Database.IsRelational())
+            return;
+
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT 1 FROM "AspNetUsers" WHERE "Id" = {userId} FOR UPDATE""",
+            ct);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT 1 FROM "PromotionCodes" WHERE "Id" = {promotionCodeId} FOR UPDATE""",
+            ct);
     }
 
     private async Task NotifySafelyAsync(
