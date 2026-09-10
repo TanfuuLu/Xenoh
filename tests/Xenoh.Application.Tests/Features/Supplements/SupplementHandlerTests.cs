@@ -354,7 +354,7 @@ public sealed class SupplementHandlerTests : HandlerTestBase
     }
 
     [Fact]
-    public async Task DeleteCoachRegimens_RemovesOnlyTheCoachAuthoredOnes()
+    public async Task EndingCoachRegimens_ArchivesCoachAuthoredOnesWithoutDeletingHistory()
     {
         await SeedUsersAsync(withRelationship: true);
         await using (var seed = CreateContext())
@@ -374,15 +374,15 @@ public sealed class SupplementHandlerTests : HandlerTestBase
         await using (var cleanup = CreateContext())
         {
             await new SupplementRepository(cleanup)
-                .DeleteCoachRegimensForClientAsync(UserId, CoachId, CancellationToken.None);
+                .ArchiveCoachRegimensForClientAsync(UserId, CoachId, CancellationToken.None);
             await cleanup.SaveChangesAsync();
         }
 
         await using var verify = CreateContext();
         var remaining = await verify.SupplementRegimens.ToListAsync();
-        remaining.Should().ContainSingle();
-        remaining[0].Name.Should().Be("Own vitamin");
-        remaining[0].CreatedByUserId.Should().Be(UserId);
+        remaining.Should().HaveCount(2);
+        remaining.Single(x => x.CreatedByUserId == CoachId).IsArchived.Should().BeTrue();
+        remaining.Single(x => x.CreatedByUserId == UserId).IsArchived.Should().BeFalse();
     }
 
     [Fact]

@@ -13,7 +13,7 @@ public sealed class ContractExpiryService(
     ILogger<ContractExpiryService> logger
 ) : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

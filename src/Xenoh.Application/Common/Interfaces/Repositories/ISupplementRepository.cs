@@ -38,11 +38,11 @@ public interface ISupplementRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Stages removal of every regimen the coach authored for the client, for the
-    /// caller to commit. Mirrors <c>IPlanRepository.DeleteCoachPlansForClientAsync</c>
-    /// so a disconnect tears down all of the coach's work in one transaction.
+    /// Stages archival of every regimen the coach authored for the client, for the
+    /// caller to commit. Mirrors <c>IPlanRepository.ArchiveCoachPlansForClientAsync</c>
+    /// so ending stops prescriptions without deleting intake history.
     /// </summary>
-    Task DeleteCoachRegimensForClientAsync(Guid clientId, Guid coachId, CancellationToken cancellationToken);
+    Task ArchiveCoachRegimensForClientAsync(Guid clientId, Guid coachId, CancellationToken cancellationToken);
 
     /// <summary>Stages removal of a regimen along with its schedule and intake history.</summary>
     Task RemoveRegimenAsync(SupplementRegimen regimen, CancellationToken cancellationToken);

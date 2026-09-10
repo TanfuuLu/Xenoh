@@ -18,7 +18,7 @@ public sealed class EndRelationshipHandlerTests : IdentityHandlerTestBase
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
 
     [Fact]
-    public async Task Ending_AnActiveRelationship_RemovesOnlyTheCoachAuthoredRegimens()
+    public async Task Ending_AnActiveRelationship_ArchivesCoachRegimensAndKeepsPersonalRegimens()
     {
         var relationshipId = await SeedRelationshipAsync(RelationshipStatus.Active);
         await SeedRegimenAsync(authorId: CoachId);
@@ -33,9 +33,9 @@ public sealed class EndRelationshipHandlerTests : IdentityHandlerTestBase
 
         await using var verify = CreateContext();
         var remaining = await verify.SupplementRegimens.ToListAsync();
-        remaining.Should().ContainSingle();
-        remaining[0].Name.Should().Be("Own vitamin");
-        remaining[0].CreatedByUserId.Should().Be(UserId);
+        remaining.Should().HaveCount(2);
+        remaining.Single(x => x.CreatedByUserId == CoachId).IsArchived.Should().BeTrue();
+        remaining.Single(x => x.CreatedByUserId == UserId).IsArchived.Should().BeFalse();
 
         (await verify.CoachClientRelationships.SingleAsync()).Status
             .Should().Be(RelationshipStatus.Ended);
@@ -79,6 +79,45 @@ public sealed class EndRelationshipHandlerTests : IdentityHandlerTestBase
 
         await using var verify = CreateContext();
         (await verify.SupplementRegimens.SingleAsync()).Name.Should().Be("Own vitamin");
+    }
+
+    [Fact]
+    public async Task Coach_cannot_end_an_established_relationship_immediately()
+    {
+        var id = await SeedRelationshipAsync(RelationshipStatus.Active);
+        await using var db = CreateContext();
+        var act = async () => await Handler(db, CoachId).Handle(
+            new EndRelationshipCommand { RelationshipId = id, Immediate = true }, default);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await db.CoachClientRelationships.SingleAsync()).Status.Should().Be(RelationshipStatus.Active);
+    }
+
+    [Fact]
+    public async Task Coach_can_decline_a_pending_connection_request()
+    {
+        var id = await SeedRelationshipAsync(RelationshipStatus.Pending);
+        await using var db = CreateContext();
+
+        await Handler(db, CoachId).Handle(new EndRelationshipCommand { RelationshipId = id }, default);
+
+        (await db.CoachClientRelationships.SingleAsync()).Status.Should().Be(RelationshipStatus.Ended);
+    }
+
+    [Fact]
+    public async Task Coach_request_keeps_access_and_does_not_start_notice_or_cleanup()
+    {
+        var id = await SeedRelationshipAsync(RelationshipStatus.Active);
+        await SeedRegimenAsync(CoachId);
+        await using var db = CreateContext();
+        await Handler(db, CoachId).Handle(new EndRelationshipCommand { RelationshipId = id }, default);
+        var r = await db.CoachClientRelationships.SingleAsync();
+        r.Status.Should().Be(RelationshipStatus.Active);
+        r.TerminationRequestedBy.Should().Be(CoachId);
+        r.NoticeEndsAtUtc.Should().BeNull();
+        (await db.SupplementRegimens.SingleAsync()).IsArchived.Should().BeFalse();
+        (await new CoachClientRepository(db).HasActiveRelationshipAsync(CoachId, UserId, default)).Should().BeTrue();
+        await Handler(db, CoachId).Handle(new EndRelationshipCommand { RelationshipId = id }, default);
+        (await db.CoachingAgreementEvents.CountAsync(x => x.Kind == "EndingApprovalRequested")).Should().Be(1);
     }
 
     private EndRelationshipHandler Handler(ApplicationDbContext context, Guid callerId) =>

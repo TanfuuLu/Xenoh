@@ -262,6 +262,8 @@ public sealed class CompetitionEventTests : HandlerTestBase
 
     private sealed class FakeNotifications : INotificationService
     {
+    public Task DeliverPendingAgreementNotificationsAsync(CancellationToken ct = default) => Task.CompletedTask;
+
         public Task NotifyAsync(Guid recipientId, string type, string message, Guid? relatedEntityId = null,
             string? relatedEntityType = null, CancellationToken ct = default) => Task.CompletedTask;
     }

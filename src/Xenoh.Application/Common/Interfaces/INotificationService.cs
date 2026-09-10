@@ -2,6 +2,7 @@ namespace Xenoh.Application.Common.Interfaces;
 
 public interface INotificationService
 {
+    Task DeliverPendingAgreementNotificationsAsync(CancellationToken ct = default);
     Task NotifyAsync(
         Guid recipientId,
         string type,

@@ -47,7 +47,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -63,7 +63,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -77,7 +77,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -95,7 +95,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -124,7 +124,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -138,7 +138,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -152,7 +152,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -172,8 +172,8 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return ex.Message == "Plan not found."
-                ? NotFound(new { message = ex.Message })
-                : BadRequest(new { message = ex.Message });
+                ? NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") })
+                : BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -192,7 +192,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -207,7 +207,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -226,7 +226,7 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -241,8 +241,8 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return ex.Message.Contains("not found") || ex.Message.Contains("access denied")
-                ? NotFound(new { message = ex.Message })
-                : BadRequest(new { message = ex.Message });
+                ? NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") })
+                : BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -257,8 +257,8 @@ public sealed class PlansController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return ex.Message == "Plan not found."
-                ? NotFound(new { message = ex.Message })
-                : BadRequest(new { message = ex.Message });
+                ? NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") })
+                : BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

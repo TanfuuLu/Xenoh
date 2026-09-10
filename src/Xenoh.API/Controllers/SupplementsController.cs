@@ -1,4 +1,4 @@
-﻿using Mediator;
+using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xenoh.API.Auth;
@@ -192,11 +192,11 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
         }
         catch (SupplementConflictException ex)
         {
-            return Conflict(new { message = ex.Message });
+            return Conflict(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
         catch (UnauthorizedAccessException)
         {
@@ -204,7 +204,7 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -218,11 +218,11 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
         }
         catch (SupplementConflictException ex)
         {
-            return Conflict(new { message = ex.Message });
+            return Conflict(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
         catch (UnauthorizedAccessException)
         {
@@ -230,7 +230,7 @@ public sealed class SupplementsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Pagination;
@@ -12,7 +13,7 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
         db.WeeklyWorkouts
           .AsNoTracking()
           .AnyAsync(w => w.Id == weeklyWorkoutId &&
-              (w.Plan.OwnerId == userId || w.Plan.CreatedByCoachId == userId), ct);
+              (w.Plan.OwnerId == userId || (w.Plan.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == w.Plan.Id))), ct);
 
     // Eager load: returns every day in the week in one response (no pagination).
     // pageNumber/pageSize are accepted for API compatibility but ignored.
@@ -44,7 +45,7 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
               .ThenInclude(w => w.DailyWorkouts)
           .Include(d => d.WeeklyWorkout)
               .ThenInclude(w => w.Plan)
-          .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId, ct);
+          .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == d.WeeklyWorkout.PlanId), ct);
 
     public Task<DailyWorkout?> FindWithExercisesAndPlanAsync(Guid dailyWorkoutId, CancellationToken ct) =>
         db.DailyWorkouts
@@ -54,7 +55,7 @@ public sealed class DailyWorkoutRepository(ApplicationDbContext db) : IDailyWork
               .ThenInclude(e => e.Sets)
           // Two nested collections (exercises x sets) — split avoids a cartesian JOIN.
           .AsSplitQuery()
-          .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId, ct);
+          .FirstOrDefaultAsync(d => d.Id == dailyWorkoutId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == d.WeeklyWorkout.PlanId), ct);
 
     public Task<int> SaveChangesAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 }

@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Files.Dtos;
@@ -21,7 +22,8 @@ public sealed class GetFileDownloadUrlHandler(
             .FirstOrDefaultAsync(
                 f => f.Id == request.FileId
                      && (f.OwnerId == userId
-                         || f.Shares.Any(s => s.SharedWithUserId == userId)),
+                         || f.Shares.Any(s => s.SharedWithUserId == userId && db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).Any(r =>
+                            (r.CoachId == s.SharedByUserId && r.ClientId == userId) || (r.ClientId == s.SharedByUserId && r.CoachId == userId)))),
                 cancellationToken)
             ?? throw new InvalidOperationException("File not found or access denied.");
 

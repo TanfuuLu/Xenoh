@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
+using Xenoh.Application.Features.CoachClient;
 
 namespace Xenoh.Application.Features.Nutrition.MealPlans;
 
@@ -21,6 +22,11 @@ public sealed class UncheckMealPlanItemHandler(
         var day = item.MealPlanMeal.MealPlanDay;
         if (day.UserId != currentUser.UserId)
             throw new UnauthorizedAccessException("Only the user can uncheck their own meal plan items.");
+
+        if (day.CreatedByUserId is { } author && author != day.UserId
+            && !await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
+                .AnyAsync(r => r.ClientId == day.UserId && r.CoachId == author, cancellationToken))
+            throw new UnauthorizedAccessException("This coaching prescription has ended. Recorded food history is retained.");
 
         if (item.IsChecked)
         {

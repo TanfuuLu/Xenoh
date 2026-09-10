@@ -4,6 +4,8 @@ namespace Xenoh.Application.Tests.Common;
 
 public sealed class FakeNotificationService : INotificationService
 {
+    public Task DeliverPendingAgreementNotificationsAsync(CancellationToken ct = default) => Task.CompletedTask;
+
     public List<NotificationCall> Calls { get; } = [];
 
     public Task NotifyAsync(

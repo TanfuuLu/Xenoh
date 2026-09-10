@@ -15,19 +15,12 @@ public sealed class GetMyInviteCodesHandler(
     {
         var coachId = currentUser.UserId;
 
-        return await db.CoachInviteCodes
+        var codes = await db.CoachInviteCodes
             .AsNoTracking()
+            .Include(c => c.Agreement)
             .Where(c => c.CoachId == coachId)
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new CoachInviteCodeDto(
-                c.Id,
-                c.Code,
-                c.CoachingStartDate,
-                c.CoachingEndDate,
-                c.IsUsed,
-                c.UsedByClientId,
-                c.UsedAt,
-                c.CreatedAt))
             .ToListAsync(cancellationToken);
+        return codes.Select(GenerateInviteCodeHandler.ToDto).ToList();
     }
 }

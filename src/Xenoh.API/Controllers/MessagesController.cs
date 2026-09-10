@@ -30,8 +30,8 @@ public sealed class MessagesController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return ex.Message.Contains("not found")
-                ? NotFound(new { message = ex.Message })
-                : BadRequest(new { message = ex.Message });
+                ? NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") })
+                : BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -49,7 +49,7 @@ public sealed class MessagesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -87,7 +87,7 @@ public sealed class MessagesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
         finally
         {
@@ -109,8 +109,8 @@ public sealed class MessagesController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return ex.Message.Contains("not found")
-                ? NotFound(new { message = ex.Message })
-                : BadRequest(new { message = ex.Message });
+                ? NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") })
+                : BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 

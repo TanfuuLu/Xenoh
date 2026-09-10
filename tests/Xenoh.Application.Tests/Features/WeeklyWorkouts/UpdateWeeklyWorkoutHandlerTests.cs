@@ -142,6 +142,7 @@ public sealed class UpdateWeeklyWorkoutHandlerTests : HandlerTestBase
             StartDate = today,
             EndDate = today.AddDays(6)
         };
+        StageActiveCoachingRelationship(ctx, clientId, coachId);
         ctx.Plans.Add(plan);
         ctx.WeeklyWorkouts.Add(week);
         await ctx.SaveChangesAsync();

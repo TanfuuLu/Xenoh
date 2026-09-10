@@ -20,14 +20,17 @@ public sealed class GetCoachDashboardHandler(
     IApplicationCache? cache = null
 ) : IRequestHandler<GetCoachDashboardQuery, List<CoachClientDashboardResponse>>
 {
-    public ValueTask<List<CoachClientDashboardResponse>> Handle(
+    public async ValueTask<List<CoachClientDashboardResponse>> Handle(
         GetCoachDashboardQuery request, CancellationToken cancellationToken)
     {
         var coachId = currentUser.UserId;
-        return new(cache is null
-            ? BuildAsync(coachId, cancellationToken)
-            : cache.GetOrCreateAsync(CacheTags.CoachDashboards, $"coach:{coachId:N}", TimeSpan.FromSeconds(15),
-                ct => BuildAsync(coachId, ct), cancellationToken));
+        var result = cache is null
+            ? await BuildAsync(coachId, cancellationToken)
+            : await cache.GetOrCreateAsync(CacheTags.CoachDashboards, $"coach:{coachId:N}", TimeSpan.FromSeconds(15),
+                ct => BuildAsync(coachId, ct), cancellationToken);
+        var allowed = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).AsNoTracking()
+            .Where(r => r.CoachId == coachId).Select(r => r.ClientId).ToListAsync(cancellationToken);
+        return result.Where(r => allowed.Contains(r.ClientId)).ToList();
     }
 
     private async Task<List<CoachClientDashboardResponse>> BuildAsync(
@@ -35,8 +38,10 @@ public sealed class GetCoachDashboardHandler(
     {
 
         var allClients = await coachClientRepo.GetAllByCoachAsync(coachId, cancellationToken);
+        var allowed = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).AsNoTracking()
+            .Where(r => r.CoachId == coachId).Select(r => r.ClientId).ToListAsync(cancellationToken);
         var activeClients = allClients
-            .Where(r => r.Status == RelationshipStatus.Active.ToString())
+            .Where(r => allowed.Contains(r.ClientId))
             .ToList();
 
         if (activeClients.Count == 0)

@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Pagination;
@@ -12,7 +13,7 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
     public Task<bool> PlanAccessibleByUserAsync(Guid planId, Guid userId, CancellationToken ct) =>
         db.Plans
           .AsNoTracking()
-          .AnyAsync(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+          .AnyAsync(p => p.Id == planId && (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))), ct);
 
     // Eager load: returns every week in the plan in one response (no pagination).
     // pageNumber/pageSize are accepted for API compatibility but ignored.
@@ -50,7 +51,7 @@ public sealed class WeeklyWorkoutRepository(ApplicationDbContext db) : IWeeklyWo
           .Include(w => w.Plan)
           // Three nested collections (days x exercises x sets) — split avoids a cartesian JOIN.
           .AsSplitQuery()
-          .FirstOrDefaultAsync(w => w.Id == weekId, ct);
+          .FirstOrDefaultAsync(w => w.Id == weekId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == w.PlanId), ct);
 
     public void RemoveRange(IEnumerable<WeeklyWorkout> weeks) =>
         db.WeeklyWorkouts.RemoveRange(weeks);

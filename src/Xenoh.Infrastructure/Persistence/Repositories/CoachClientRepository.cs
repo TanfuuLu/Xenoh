@@ -12,6 +12,8 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
     public Task<CoachClientRelationship?> FindByClientAsync(Guid clientId, CancellationToken ct) =>
         db.CoachClientRelationships
           .AsNoTracking()
+          .OrderByDescending(r => r.Status != RelationshipStatus.Expired)
+          .ThenByDescending(r => r.CreatedAt)
           .FirstOrDefaultAsync(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended, ct);
 
     public Task<CoachClientRelationship?> FindByIdForCoachAsync(Guid id, Guid coachId, CancellationToken ct) =>
@@ -24,18 +26,18 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
           .FirstOrDefaultAsync(r => r.Id == id && (r.ClientId == userId || r.CoachId == userId), ct);
 
     public Task<CoachClientRelationship?> FindActiveByCoachAndClientAsync(Guid coachId, Guid clientId, CancellationToken ct) =>
-        db.CoachClientRelationships
+        db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
           .AsNoTracking()
           .FirstOrDefaultAsync(r =>
               r.CoachId == coachId &&
               r.ClientId == clientId &&
-              r.Status == RelationshipStatus.Active, ct);
+              r.Status != RelationshipStatus.Ended && r.Status != RelationshipStatus.Expired, ct);
 
     public Task<bool> HasActiveRelationshipAsync(Guid userId1, Guid userId2, CancellationToken ct) =>
-        db.CoachClientRelationships
+        db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
           .AsNoTracking()
           .AnyAsync(r =>
-              r.Status == RelationshipStatus.Active &&
+              r.Status != RelationshipStatus.Ended && r.Status != RelationshipStatus.Expired && r.Status != RelationshipStatus.Pending &&
               ((r.CoachId == userId1 && r.ClientId == userId2) ||
                (r.ClientId == userId1 && r.CoachId == userId2)), ct);
 
@@ -50,6 +52,8 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
         db.CoachClientRelationships
             .AsNoTracking()
             .Where(r => r.ClientId == clientId && r.Status != RelationshipStatus.Ended)
+            .OrderByDescending(r => r.Status != RelationshipStatus.Expired)
+            .ThenByDescending(r => r.CreatedAt)
             .Select(CoachRelationshipMapper.ResponseProjection)
             .FirstOrDefaultAsync(ct);
 
@@ -64,14 +68,14 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
               r.ClientId,
               $"{r.Client.FirstName} {r.Client.LastName}",
               r.Client.Email!,
-              r.Status.ToString(),
+              Xenoh.Domain.Rules.CoachingPolicy.DisplayStatus(r, DateTime.UtcNow),
               r.CreatedAt,
-              db.WorkoutHistories
+              db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).Any(active => active.Id == r.Id) ? db.WorkoutHistories
                 .AsNoTracking()
                 .Where(w => w.UserId == r.ClientId)
                 .OrderByDescending(w => w.Date)
                 .Select(w => (DateOnly?)w.Date)
-                .FirstOrDefault(),
+                .FirstOrDefault() : null,
               r.TerminationRequestedBy,
               r.StartDate,
               r.EndDate,
@@ -82,14 +86,14 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships
           .AsNoTracking()
-          .CountAsync(r => r.CoachId == coachId && r.Status == RelationshipStatus.Active, ct);
+          .CountAsync(r => r.CoachId == coachId && r.Status != RelationshipStatus.Ended && r.Status != RelationshipStatus.Expired, ct);
 
     public Task<int> CountOverlappingActiveByCoachAsync(Guid coachId, DateOnly startDate, DateOnly endDate, CancellationToken ct) =>
         db.CoachClientRelationships
           .AsNoTracking()
           .CountAsync(r =>
               r.CoachId == coachId &&
-              r.Status == RelationshipStatus.Active &&
+              r.Status != RelationshipStatus.Ended && r.Status != RelationshipStatus.Expired && r.Status != RelationshipStatus.Pending &&
               r.StartDate <= endDate &&
               (r.EndDate == null || r.EndDate >= startDate), ct);
 

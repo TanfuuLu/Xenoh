@@ -81,7 +81,8 @@ public sealed class CopyReusableTrainingShareHandler(IApplicationDbContext db, I
             .Include(x => x.WeeklyWorkout).ThenInclude(x => x.Plan)
             .FirstOrDefaultAsync(x => x.Id == request.TargetDailyWorkoutId, ct) ?? throw new InvalidOperationException("Target workout not found.");
         var plan = target.WeeklyWorkout.Plan;
-        var canEdit = plan.PlanType == PlanType.Coach ? plan.CreatedByCoachId == currentUser.UserId : plan.OwnerId == currentUser.UserId;
+        var writable = await Xenoh.Application.Features.CoachClient.CoachingAccess.WritableCoachingPlans(db.Plans, db).AnyAsync(p => p.Id == plan.Id, ct);
+        var canEdit = writable && (plan.PlanType == PlanType.Coach ? plan.CreatedByCoachId == currentUser.UserId : plan.OwnerId == currentUser.UserId);
         if (!canEdit) throw new UnauthorizedAccessException();
         db.Exercises.RemoveRange(target.Exercises);
         var exercises = share.Exercises.OrderBy(x => x.SortOrder).Select((x, index) => new Exercise

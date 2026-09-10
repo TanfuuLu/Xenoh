@@ -9,6 +9,8 @@ public class CoachInviteCodeConfiguration : IEntityTypeConfiguration<CoachInvite
     public void Configure(EntityTypeBuilder<CoachInviteCode> builder)
     {
         builder.HasKey(c => c.Id);
+        builder.Property(c => c.IsUsed).IsConcurrencyToken();
+        builder.HasOne(c => c.Agreement).WithMany().HasForeignKey(c => c.AgreementId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(c => c.Code)
             .HasMaxLength(8)

@@ -26,7 +26,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -35,7 +35,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
     {
         try { return Ok(await mediator.Send(new GetTrainingDayShareQuery(id), ct)); }
         catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpPatch("{id:guid}")]
@@ -43,7 +43,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
     {
         try { return Ok(await mediator.Send(new UpdateTrainingDayShareCommand(id, request.Caption, request.IsReusable), ct)); }
         catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpPost("{id:guid}/copy")]
@@ -51,7 +51,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
     {
         try { return Ok(new { exercisesCopied = await mediator.Send(new CopyReusableTrainingShareCommand(id, request.TargetDailyWorkoutId), ct) }); }
         catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpGet("feed")]
@@ -71,7 +71,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
                 return Ok(await mediator.Send(new GetFriendTrainingDayFeedQuery(page, pageSize), ct));
             return Ok(await mediator.Send(new GetTrainingDayFeedPageQuery(scope, null, pageSize), ct));
         }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpPost("{id:guid}/love")]
@@ -88,7 +88,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -106,7 +106,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -125,7 +125,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
             return Ok(new { id = reportId });
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpDelete("{id:guid}")]
@@ -142,7 +142,7 @@ public sealed class TrainingDaySharesController(IMediator mediator) : Controller
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

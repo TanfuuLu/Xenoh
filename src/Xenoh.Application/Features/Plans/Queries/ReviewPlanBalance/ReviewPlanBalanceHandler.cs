@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Mediator;
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Cycle.Common;
@@ -25,7 +26,7 @@ public sealed class ReviewPlanBalanceHandler(
         var userId = currentUser.UserId;
         var language = string.Equals(request.Language, "vi", StringComparison.OrdinalIgnoreCase) ? "vi" : "en";
 
-        var plan = await db.Plans
+        var plan = await db.Plans.AccessibleTo(db, userId)
             .AsNoTracking()
             .Where(p => p.Id == request.PlanId &&
                         (p.OwnerId == userId || p.CreatedByCoachId == userId))

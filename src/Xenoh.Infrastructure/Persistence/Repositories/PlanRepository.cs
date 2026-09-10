@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
@@ -18,7 +19,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
 {
     // Single source of truth for the Plan -> PlanResponse SQL projection,
     // shared by every list/detail query so the shape can never drift.
-    private static readonly Expression<Func<Plan, PlanResponse>> ToResponse = p => new PlanResponse(
+    private Expression<Func<Plan, PlanResponse>> ToResponse => p => new PlanResponse(
         p.Id, p.Name, p.StartDate, p.EndDate,
         p.PlanType.ToString(), p.OwnerId,
         (p.Owner.FirstName + " " + p.Owner.LastName).Trim(),
@@ -28,7 +29,8 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         p.WeeklyWorkouts.Count(w => w.IsCompleted),
         p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count),
         p.WeeklyWorkouts.Sum(w => w.DailyWorkouts.Count(d => d.Exercises.Any() && d.Exercises.All(e => e.IsCompleted))),
-        p.IsActive, p.CreatedAt);
+        p.IsActive && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id), p.CreatedAt,
+        !db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id));
 
     // Eager load: returns every plan for the owner in one response (no pagination).
     // pageNumber/pageSize are accepted for API compatibility but ignored.
@@ -49,7 +51,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
     {
         return await db.Plans
             .AsNoTracking()
-            .Where(p => p.Id == planId && (p.OwnerId == userId || p.CreatedByCoachId == userId))
+            .Where(p => p.Id == planId && (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))))
             .Select(ToResponse)
             .FirstOrDefaultAsync(ct);
     }
@@ -62,13 +64,13 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               .ThenInclude(w => w.DailyWorkouts)
           // Two nested collections (weeks x days) — split avoids a cartesian JOIN.
           .AsSplitQuery()
-          .FirstOrDefaultAsync(p => p.Id == planId, ct);
+          .FirstOrDefaultAsync(p => p.Id == planId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id), ct);
 
     public Task<Plan?> FindByIdAndCallerAsync(Guid planId, Guid userId, CancellationToken ct) =>
         db.Plans
           .FirstOrDefaultAsync(p => p.Id == planId &&
               (p.OwnerId == userId ||
-               (p.PlanType == PlanType.Coach && p.CreatedByCoachId == userId)), ct);
+               (p.PlanType == PlanType.Coach && (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id)))), ct);
 
     // Eager load: returns every coach-created plan in one response (no pagination).
     // pageNumber/pageSize are accepted for API compatibility but ignored.
@@ -78,7 +80,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
           .AsNoTracking()
           .Where(p =>
               p.PlanType == PlanType.Coach &&
-              p.CreatedByCoachId == coachId &&
+              (p.CreatedByCoachId == coachId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id)) &&
               p.OwnerId != coachId)
           .OrderByDescending(p => p.CreatedAt)
           .Select(p => new CoachPlanResponse(
@@ -113,7 +115,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         var plans = await db.Plans
             .AsNoTracking()
             .Where(p => ids.Contains(p.OwnerId) &&
-                p.CreatedByCoachId == coachId &&
+                (p.CreatedByCoachId == coachId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id)) &&
                 p.StartDate <= today &&
                 p.EndDate >= today)
             .Select(p => new
@@ -181,7 +183,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
               .SetProperty(p => p.IsActive, false)
               .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), ct);
 
-    public async Task DeleteCoachPlansForClientAsync(Guid clientId, Guid coachId, CancellationToken ct)
+    public async Task ArchiveCoachPlansForClientAsync(Guid clientId, Guid coachId, CancellationToken ct)
     {
         var plans = await db.Plans
             .Where(p => p.OwnerId == clientId &&
@@ -189,14 +191,19 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
                         p.PlanType == PlanType.Coach)
             .ToListAsync(ct);
 
-        db.Plans.RemoveRange(plans);
+        foreach (var plan in plans)
+        {
+            plan.IsCoachingArchived = true;
+            plan.IsActive = false;
+            plan.UpdatedAt = DateTime.UtcNow;
+        }
     }
 
     public async Task<PlanDesignAnalysisResponse?> GetDesignAnalysisAsync(Guid planId, Guid userId, CancellationToken ct)
     {
         var canAccess = await db.Plans.AsNoTracking()
             .AnyAsync(p => p.Id == planId &&
-                (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+                (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))), ct);
         if (!canAccess) return null;
 
         var weeks = await db.WeeklyWorkouts
@@ -304,7 +311,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
     {
         var canAccess = await db.Plans.AsNoTracking()
             .AnyAsync(p => p.Id == planId &&
-                (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+                (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))), ct);
         if (!canAccess) return null;
 
         var weeks = await db.WeeklyWorkouts.AsNoTracking()
@@ -478,7 +485,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
         var raw = await db.Plans
             .AsNoTracking()
             .Where(p => p.Id == planId &&
-                        (p.OwnerId == userId || p.CreatedByCoachId == userId))
+                        (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))))
             .Select(p => new
             {
                 p.Name,
@@ -559,7 +566,7 @@ public sealed class PlanRepository(ApplicationDbContext db) : IPlanRepository
           // multiply rows ~weeks*days*exercises*sets. Split runs one query per level instead.
           .AsSplitQuery()
           .FirstOrDefaultAsync(p => p.Id == planId &&
-              (p.OwnerId == userId || p.CreatedByCoachId == userId), ct);
+              (p.OwnerId == userId || (p.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))), ct);
 
     public async Task AddAsync(Plan plan, CancellationToken ct) =>
         await db.Plans.AddAsync(plan, ct);

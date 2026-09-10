@@ -39,6 +39,7 @@ public sealed class CreatePlanForUserHandler(
             PlanType = PlanType.Coach,
             OwnerId = request.UserId,
             CreatedByCoachId = coachId,
+            CoachingRelationshipId = relationship.Id,
             IsActive = planCount == 0
         };
 

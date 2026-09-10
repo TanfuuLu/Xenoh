@@ -59,6 +59,7 @@ public sealed class GetSupplementDailyHandler(
         var doses = versions
             .Where(x => x.IsEffectiveOn(query.Date))
             .SelectMany(x => x.DoseSlots)
+            .Where(x => !x.ScheduleVersion.Regimen.IsArchived || x.ScheduleVersion.Regimen.CreatedByUserId == userId || intakeBySlot.ContainsKey(x.Id))
             .Where(x => x.OccursOn(query.Date))
             .Select(slot => SupplementOccurrenceFactory.ToDailyDose(
                 slot,
@@ -114,6 +115,7 @@ public sealed class GetSupplementHistoryHandler(
             var statuses = versions
                 .Where(x => x.IsEffectiveOn(date))
                 .SelectMany(x => x.DoseSlots)
+                .Where(x => !x.ScheduleVersion.Regimen.IsArchived || x.ScheduleVersion.Regimen.CreatedByUserId == userId || intakesByOccurrence.ContainsKey((x.Id, date)))
                 .Where(x => x.OccursOn(date))
                 .Select(slot => SupplementOccurrenceFactory.ResolveStatus(
                     intakesByOccurrence.GetValueOrDefault((slot.Id, date)),

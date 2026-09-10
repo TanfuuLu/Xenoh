@@ -756,6 +756,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AgreementId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
@@ -771,10 +774,23 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("EndedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NoticeDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("NoticeEndsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly?>("ProposedEndDate")
                         .HasColumnType("date");
 
                     b.Property<Guid?>("RenewalRequestedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly>("StartDate")
@@ -810,6 +826,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AgreementId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CoachId")
                         .HasColumnType("uuid");
 
@@ -828,6 +847,7 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsUsed")
+                        .IsConcurrencyToken()
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -841,12 +861,153 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AgreementId");
+
                     b.HasIndex("CoachId");
 
                     b.HasIndex("Code")
                         .IsUnique();
 
                     b.ToTable("CoachInviteCodes");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachingAgreement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AcceptedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Availability")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CheckInFrequency")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ClientResponsibilities")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("CoachId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CoachResponsibilities")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Goals")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("NoticeDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublishedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RejectedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RelationshipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Services")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RelationshipId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("CoachingAgreements");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachingAgreementEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AgreementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RelationshipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RelationshipId", "OccurredAtUtc");
+
+                    b.ToTable("CoachingAgreementEvents");
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CommunitySettings", b =>
@@ -2100,6 +2261,9 @@ namespace Xenoh.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeliveredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
@@ -2118,6 +2282,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2128,7 +2295,14 @@ namespace Xenoh.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeliveredAtUtc")
+                        .HasFilter("\"SourceEventId\" IS NOT NULL AND \"DeliveredAtUtc\" IS NULL");
+
                     b.HasIndex("RecipientId", "CreatedAt");
+
+                    b.HasIndex("SourceEventId", "RecipientId")
+                        .IsUnique()
+                        .HasFilter("\"SourceEventId\" IS NOT NULL");
 
                     b.HasIndex("RecipientId", "IsRead", "CreatedAt");
 
@@ -2417,6 +2591,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CoachingRelationshipId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2427,6 +2604,9 @@ namespace Xenoh.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCoachingArchived")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -3787,13 +3967,37 @@ namespace Xenoh.Infrastructure.Migrations
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CoachInviteCode", b =>
                 {
+                    b.HasOne("Xenoh.Domain.Entities.CoachingAgreement", "Agreement")
+                        .WithMany()
+                        .HasForeignKey("AgreementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Xenoh.Domain.Entities.ApplicationUser", "Coach")
                         .WithMany()
                         .HasForeignKey("CoachId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Agreement");
+
                     b.Navigation("Coach");
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachingAgreement", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CoachClientRelationship", null)
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Xenoh.Domain.Entities.CoachingAgreementEvent", b =>
+                {
+                    b.HasOne("Xenoh.Domain.Entities.CoachClientRelationship", null)
+                        .WithMany()
+                        .HasForeignKey("RelationshipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Xenoh.Domain.Entities.CommunitySettings", b =>

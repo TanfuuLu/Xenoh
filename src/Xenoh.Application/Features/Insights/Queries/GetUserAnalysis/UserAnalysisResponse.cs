@@ -106,10 +106,29 @@ public sealed record AnalysisRecentPrEntry(
     DateTime AchievedAt
 );
 
+public sealed record AnalysisRecommendationEvidence(
+    DateOnly StartDate,
+    DateOnly EndDate,
+    IReadOnlyList<AnalysisEvidenceFact> Facts,
+    IReadOnlyList<AnalysisEvidenceSession> Sessions,
+    IReadOnlyList<string> MissingData
+);
+
+public sealed record AnalysisEvidenceFact(string Label, string Value, string Detail);
+
+public sealed record AnalysisEvidenceSession(
+    Guid DailyWorkoutId,
+    DateOnly Date,
+    string Exercise,
+    int CompletedSetCount,
+    decimal? AverageRpe
+);
+
 public sealed record UserAnalysisResponse(
     string Language,
     DateTime GeneratedAt,
     bool Cached,
     AnalysisContent Content,
-    AnalysisMetrics Metrics
+    AnalysisMetrics Metrics,
+    AnalysisRecommendationEvidence Evidence
 );

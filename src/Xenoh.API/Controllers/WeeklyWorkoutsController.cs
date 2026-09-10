@@ -25,7 +25,7 @@ public sealed class WeeklyWorkoutsController(IMediator mediator) : ControllerBas
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -46,7 +46,7 @@ public sealed class WeeklyWorkoutsController(IMediator mediator) : ControllerBas
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

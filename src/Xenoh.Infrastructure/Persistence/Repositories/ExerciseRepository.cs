@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Application.Common.Pagination;
@@ -17,7 +18,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
             .AsNoTracking()
             .Where(d => d.Id == dailyWorkoutId &&
                 (d.WeeklyWorkout.Plan.OwnerId == userId ||
-                 d.WeeklyWorkout.Plan.CreatedByCoachId == userId))
+                 (d.WeeklyWorkout.Plan.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == d.WeeklyWorkout.Plan.Id))))
             .Select(d => new
             {
                 d.Date,
@@ -70,7 +71,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
         var week = await db.WeeklyWorkouts
             .AsNoTracking()
             .Where(w => w.Id == weeklyWorkoutId &&
-                (w.Plan.OwnerId == userId || w.Plan.CreatedByCoachId == userId))
+                (w.Plan.OwnerId == userId || (w.Plan.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == w.Plan.Id))))
             .Select(w => new
             {
                 w.Plan.OwnerId,
@@ -130,7 +131,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
           .Include(e => e.DailyWorkout)
               .ThenInclude(d => d.WeeklyWorkout)
                   .ThenInclude(w => w.Plan)
-          .FirstOrDefaultAsync(e => e.Id == exerciseId, ct);
+          .FirstOrDefaultAsync(e => e.Id == exerciseId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == e.DailyWorkout.WeeklyWorkout.PlanId), ct);
 
     public Task<Exercise?> FindWithPlanAsync(Guid exerciseId, CancellationToken ct) =>
         db.Exercises
@@ -139,7 +140,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
           .Include(e => e.DailyWorkout)
               .ThenInclude(d => d.WeeklyWorkout)
                   .ThenInclude(w => w.Plan)
-          .FirstOrDefaultAsync(e => e.Id == exerciseId, ct);
+          .FirstOrDefaultAsync(e => e.Id == exerciseId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == e.DailyWorkout.WeeklyWorkout.PlanId), ct);
 
     public async Task<int> GetNextSortOrderAsync(Guid dailyWorkoutId, CancellationToken ct = default)
     {
@@ -160,7 +161,7 @@ public sealed class ExerciseRepository(ApplicationDbContext db) : IExerciseRepos
             .Include(e => e.DailyWorkout)
                 .ThenInclude(d => d.WeeklyWorkout)
                     .ThenInclude(w => w.Plan)
-            .Where(e => ids.Contains(e.Id))
+            .Where(e => ids.Contains(e.Id) && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == e.DailyWorkout.WeeklyWorkout.PlanId))
             .ToListAsync(ct);
     }
 

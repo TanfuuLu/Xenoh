@@ -31,5 +31,6 @@ public sealed record PlanResponse(
     int TotalDays,
     int CompletedDays,
     bool IsActive,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool IsReadOnly = false
 );

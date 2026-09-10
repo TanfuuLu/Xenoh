@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Files.Dtos;
@@ -16,7 +17,9 @@ public sealed class ListSharedWithMeHandler(
         var userId = currentUser.UserId;
 
         return await db.StoredFileShares
-            .Where(s => s.SharedWithUserId == userId)
+            .AsNoTracking()
+            .Where(s => s.SharedWithUserId == userId && db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).Any(r =>
+                (r.CoachId == s.SharedByUserId && r.ClientId == userId) || (r.ClientId == s.SharedByUserId && r.CoachId == userId)))
             .OrderByDescending(s => s.CreatedAt)
             .Select(s => new SharedFileDto(
                 s.File.Id,

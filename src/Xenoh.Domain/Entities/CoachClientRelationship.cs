@@ -5,6 +5,11 @@ namespace Xenoh.Domain.Entities;
 
 public class CoachClientRelationship : BaseEntity
 {
+    public Guid? AgreementId { get; set; }
+    public int NoticeDays { get; set; }
+    public DateTime? NoticeEndsAtUtc { get; set; }
+    public DateTime? EndedAtUtc { get; set; }
+    public Guid Revision { get; set; } = Guid.NewGuid();
     public Guid ClientId { get; set; }
     public ApplicationUser Client { get; set; } = null!;
 

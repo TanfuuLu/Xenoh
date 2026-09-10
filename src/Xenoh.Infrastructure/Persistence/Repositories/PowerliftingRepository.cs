@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Analytics;
 using Xenoh.Application.Common.Interfaces.Repositories;
@@ -10,7 +11,7 @@ public sealed class PowerliftingRepository(ApplicationDbContext db) : IPowerlift
     public Task<bool> PlanHasCompetitionLiftsAsync(Guid planId, Guid ownerId, CancellationToken ct) =>
         db.Plans
           .AsNoTracking()
-          .Where(p => p.Id == planId && (p.OwnerId == ownerId || p.CreatedByCoachId == ownerId))
+          .Where(p => p.Id == planId && (p.OwnerId == ownerId || (p.CreatedByCoachId == ownerId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id))))
           .SelectMany(p => p.WeeklyWorkouts)
           .SelectMany(w => w.DailyWorkouts)
           .SelectMany(d => d.Exercises)
@@ -22,7 +23,7 @@ public sealed class PowerliftingRepository(ApplicationDbContext db) : IPowerlift
     {
         var rows = await (
             from p in db.Plans.AsNoTracking()
-            where p.Id == planId && (p.OwnerId == ownerId || p.CreatedByCoachId == ownerId)
+            where p.Id == planId && (p.OwnerId == ownerId || (p.CreatedByCoachId == ownerId && db.Plans.WritableCoachingPlans(db).Any(access => access.Id == p.Id)))
             from w in p.WeeklyWorkouts
             from d in w.DailyWorkouts
             from ex in d.Exercises

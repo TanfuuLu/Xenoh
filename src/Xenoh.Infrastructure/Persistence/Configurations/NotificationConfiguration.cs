@@ -9,6 +9,8 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
         builder.HasKey(n => n.Id);
+        builder.HasIndex(n => new { n.SourceEventId, n.RecipientId }).IsUnique().HasFilter("\"SourceEventId\" IS NOT NULL");
+        builder.HasIndex(n => n.DeliveredAtUtc).HasFilter("\"SourceEventId\" IS NOT NULL AND \"DeliveredAtUtc\" IS NULL");
         builder.Property(n => n.Type).IsRequired().HasMaxLength(50);
         builder.Property(n => n.Message).IsRequired().HasMaxLength(500);
         builder.Property(n => n.RelatedEntityType).HasMaxLength(50);

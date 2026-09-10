@@ -5,12 +5,8 @@ using Xenoh.Application.Common.Interfaces.Repositories;
 namespace Xenoh.Application.Features.CoachClient;
 
 /// <summary>
-/// Tears down everything a coach authored for a client when their relationship ends.
-/// <para>
-/// Two separate paths end a relationship — <c>EndRelationshipHandler</c> and the
-/// <c>Expired to Ended</c> transition in <c>ConnectByInviteCodeHandler</c> — and they
-/// have to remove the same things, so the list lives here rather than in either one.
-/// </para>
+/// Archives coach-authored training and supplement prescriptions, retaining actual history.
+/// Ending, expiry and replacing an expired relationship share the same retention policy.
 /// <para>
 /// Everything is staged on the change tracker and left for the caller to commit, so the
 /// cleanup lands in the same transaction as the relationship's own status change.
@@ -26,11 +22,10 @@ internal static class CoachResourceCleanup
         Guid coachId,
         CancellationToken cancellationToken)
     {
-        await planRepo.DeleteCoachPlansForClientAsync(clientId, coachId, cancellationToken);
+        await planRepo.ArchiveCoachPlansForClientAsync(clientId, coachId, cancellationToken);
 
-        // The coach loses access the moment the relationship ends, so leaving these behind
-        // would keep scheduling the client doses nobody can adjust.
-        await supplementRepo.DeleteCoachRegimensForClientAsync(clientId, coachId, cancellationToken);
+        // Preserve dose logs while stopping future prescribed doses.
+        await supplementRepo.ArchiveCoachRegimensForClientAsync(clientId, coachId, cancellationToken);
 
         await StageMealPlanDaysAsync(db, clientId, coachId, cancellationToken);
         await StageFileShareRevocationAsync(db, clientId, coachId, cancellationToken);

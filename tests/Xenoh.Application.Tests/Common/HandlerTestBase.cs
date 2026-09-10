@@ -17,6 +17,13 @@ public abstract class HandlerTestBase : IDisposable
             .Options);
 
     protected ICurrentUserService CurrentUser() => new FakeCurrentUserService(UserId);
+    protected static void StageActiveCoachingRelationship(ApplicationDbContext db, Guid clientId, Guid coachId) =>
+        db.CoachClientRelationships.Add(new Xenoh.Domain.Entities.CoachClientRelationship
+        {
+            ClientId = clientId, CoachId = coachId, Status = Xenoh.Domain.Enums.RelationshipStatus.Active,
+            StartDate = Xenoh.Domain.Rules.CoachingPolicy.LocalDate(DateTime.UtcNow).AddDays(-30),
+            EndDate = Xenoh.Domain.Rules.CoachingPolicy.LocalDate(DateTime.UtcNow).AddYears(1)
+        });
 
     public void Dispose() { }
 }

@@ -100,6 +100,7 @@ public sealed class GetWeeksByPlanHandlerTests : HandlerTestBase
             StartDate = today,
             EndDate = today.AddDays(6)
         };
+        StageActiveCoachingRelationship(ctx, clientId, coachId);
         ctx.Plans.Add(plan);
         ctx.WeeklyWorkouts.Add(new WeeklyWorkout
         {

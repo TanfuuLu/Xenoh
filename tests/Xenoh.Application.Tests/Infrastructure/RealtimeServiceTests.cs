@@ -74,7 +74,7 @@ public sealed class RealtimeServiceTests : HandlerTestBase
     {
         await using var db = CreateContext();
         var hub = new FakeHubContext();
-        var service = new NotificationService(db, hub);
+        var service = new NotificationService(db, hub, Microsoft.Extensions.Logging.Abstractions.NullLogger<NotificationService>.Instance);
         var recipient = Guid.NewGuid();
 
         await service.NotifyAsync(

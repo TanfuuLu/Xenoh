@@ -187,6 +187,8 @@ public sealed class SePayRenewalTests : HandlerTestBase
 
     private sealed class ThrowingNotificationService : INotificationService
     {
+    public Task DeliverPendingAgreementNotificationsAsync(CancellationToken ct = default) => Task.CompletedTask;
+
         public Task NotifyAsync(
             Guid recipientId,
             string type,

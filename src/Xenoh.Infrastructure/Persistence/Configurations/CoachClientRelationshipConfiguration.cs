@@ -9,6 +9,7 @@ public class CoachClientRelationshipConfiguration : IEntityTypeConfiguration<Coa
     public void Configure(EntityTypeBuilder<CoachClientRelationship> builder)
     {
         builder.HasKey(r => r.Id);
+        builder.Property(r => r.Revision).IsConcurrencyToken();
 
         builder.HasOne(r => r.Client)
             .WithOne(u => u.CoachRelationship)

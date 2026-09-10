@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Features.Chat.Dtos;
@@ -21,6 +22,7 @@ public sealed class GetAttachmentUrlHandler(
         var attachment = await db.ChatMessageAttachments
             .AsNoTracking()
             .Where(a => a.Id == request.AttachmentId
+                        && (a.Message.SenderId == userId || db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).Any(r => r.Id == a.Message.RelationshipId))
                         && (a.Message.Relationship.ClientId == userId
                             || a.Message.Relationship.CoachId == userId))
             .Select(a => new { a.StorageKey, a.FileName })

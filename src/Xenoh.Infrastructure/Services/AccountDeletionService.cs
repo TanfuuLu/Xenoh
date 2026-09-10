@@ -206,6 +206,13 @@ public sealed class AccountDeletionService(
 
         await db.ChatMessageAttachments.Where(a => messageIds.Contains(a.MessageId)).ExecuteDeleteAsync(ct);
         await db.Messages.Where(m => messageIds.Contains(m.Id)).ExecuteDeleteAsync(ct);
+        var agreementIds = await db.CoachingAgreements
+            .Where(a => a.CoachId == userId || (a.RelationshipId != null && relationshipIds.Contains(a.RelationshipId.Value)))
+            .Select(a => a.Id).ToListAsync(ct);
+        await db.CoachInviteCodes.Where(c => c.AgreementId != null && agreementIds.Contains(c.AgreementId.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.AgreementId, (Guid?)null), ct);
+        await db.CoachingAgreementEvents.Where(e => relationshipIds.Contains(e.RelationshipId)).ExecuteDeleteAsync(ct);
+        await db.CoachingAgreements.Where(a => agreementIds.Contains(a.Id)).ExecuteDeleteAsync(ct);
         await db.CoachClientRelationships.Where(r => relationshipIds.Contains(r.Id)).ExecuteDeleteAsync(ct);
         await db.CoachInviteCodes.Where(c => c.CoachId == userId).ExecuteDeleteAsync(ct);
         await db.CoachInviteCodes

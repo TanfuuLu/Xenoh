@@ -9,6 +9,7 @@ using Xenoh.Application.Features.Insights.Commands.CoachChat;
 using Xenoh.Application.Features.Insights.Queries.AiChat;
 using Xenoh.Application.Features.Insights.Queries.GetPlanProgressInsight;
 using Xenoh.Application.Features.Insights.Queries.GetTrainingCoachTip;
+using Xenoh.Application.Features.Insights.Queries.GetTrainingComparison;
 using Xenoh.Application.Features.Insights.Queries.GetUserAnalysis;
 
 namespace Xenoh.API.Controllers;
@@ -36,7 +37,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -56,7 +57,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -77,7 +78,28 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
+        }
+    }
+
+    /// <summary>
+    /// Returns deterministic, evidence-ready training comparisons for the selected period
+    /// and optional exercise template. This remains available when AI analysis is unavailable.
+    /// </summary>
+    [HttpGet("me/training-comparison")]
+    [Authorize(Policy = SubscriptionPolicies.RequirePro)]
+    public async Task<IActionResult> GetTrainingComparison(
+        [FromQuery] int days = 28,
+        [FromQuery] Guid? exerciseTemplateId = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return Ok(await mediator.Send(new GetTrainingComparisonQuery(days, exerciseTemplateId), ct));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -95,7 +117,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -112,7 +134,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -132,7 +154,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -151,7 +173,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -172,7 +194,7 @@ public sealed class InsightsController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

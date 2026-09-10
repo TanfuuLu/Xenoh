@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -84,11 +85,11 @@ public sealed class GetCoachClientAiBriefHandler(
 
     private async Task<object> BuildSnapshotAsync(Guid coachId, Guid clientId, CancellationToken ct)
     {
-        var relationship = await db.CoachClientRelationships
+        var relationship = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
             .AsNoTracking()
             .Where(r => r.CoachId == coachId &&
                         r.ClientId == clientId &&
-                        (r.Status == RelationshipStatus.Active || r.Status == RelationshipStatus.PendingRenewal))
+                        r.Status != RelationshipStatus.Ended)
             .Select(r => new
             {
                 r.ClientId,

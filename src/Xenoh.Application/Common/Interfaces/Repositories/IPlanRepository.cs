@@ -47,7 +47,7 @@ public interface IPlanRepository
     Task DeactivateOthersAsync(Guid ownerId, Guid excludePlanId, CancellationToken ct = default);
 
     /// <summary>Delete all Coach-type plans owned by clientId and created by coachId.</summary>
-    Task DeleteCoachPlansForClientAsync(Guid clientId, Guid coachId, CancellationToken ct = default);
+    Task ArchiveCoachPlansForClientAsync(Guid clientId, Guid coachId, CancellationToken ct = default);
 
     Task AddAsync(Plan plan, CancellationToken ct = default);
     void Remove(Plan plan);

@@ -39,7 +39,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "We could not create the account.") });
         }
     }
 
@@ -55,7 +55,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
     public async Task<IActionResult> VerifyAccountDeletion([FromBody] VerifyAccountDeletionCommand command, CancellationToken ct)
     {
         try { await mediator.Send(command, ct); return NoContent(); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "The deletion link is invalid or expired.") }); }
     }
 
     [HttpPost("login")]
@@ -71,7 +71,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "Invalid email or password.") });
         }
     }
 
@@ -92,7 +92,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "The session could not be refreshed.") });
         }
     }
 
@@ -126,7 +126,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "Could not change the password.") });
         }
     }
 
@@ -141,7 +141,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "Could not send the password reset code.") });
         }
     }
 
@@ -156,7 +156,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "Could not reset the password.") });
         }
     }
 
@@ -171,7 +171,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "The verification code is invalid or expired.") });
         }
     }
 
@@ -219,7 +219,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "External sign-in could not be completed.") });
         }
     }
 
@@ -237,7 +237,7 @@ public sealed class AuthController(IMediator mediator, ILogger<AuthController> l
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { code = "AUTHENTICATION_ERROR", message = ApiErrorMessages.Safe(ex.Message, "Registration could not be completed.") });
         }
     }
 

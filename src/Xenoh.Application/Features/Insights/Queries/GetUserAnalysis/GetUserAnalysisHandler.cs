@@ -50,7 +50,7 @@ public sealed class GetUserAnalysisHandler(
             // instead of returning it forever, since the fingerprint alone won't change again
             // until the user's training data does.
             if (cachedContent is not null && IsComplete(cachedContent))
-                return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent, BuildMetrics(snapshot));
+                return new UserAnalysisResponse(language, existing.GeneratedAt, Cached: true, cachedContent, BuildMetrics(snapshot), snapshot.RecommendationEvidence);
         }
 
         var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
@@ -91,7 +91,7 @@ public sealed class GetUserAnalysisHandler(
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new UserAnalysisResponse(language, now, Cached: false, content, BuildMetrics(snapshot));
+        return new UserAnalysisResponse(language, now, Cached: false, content, BuildMetrics(snapshot), snapshot.RecommendationEvidence);
     }
 
     /// <summary>
@@ -329,23 +329,22 @@ public sealed class GetUserAnalysisHandler(
             .ToListAsync(ct);
 
         // Recent volume and effort pattern (last 28 days completed sets)
-        var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-28));
+        var since = today.AddDays(-27);
         var recentSets = await db.ExerciseSets
             .AsNoTracking()
             .Where(s => s.IsCompleted &&
                         s.Exercise.DailyWorkout.WeeklyWorkout.Plan.OwnerId == userId &&
                         s.Exercise.DailyWorkout.Date >= since)
-            .Select(s => new
-            {
+            .Select(s => new RecentSet(
+                s.Exercise.DailyWorkoutId,
+                s.Exercise.DailyWorkout.Date,
+                s.Exercise.Name,
+                s.Exercise.PrimaryMuscleGroup,
                 s.ActualReps,
                 s.PlannedReps,
                 s.ActualWeight,
                 s.PlannedWeight,
-                s.Rpe,
-                Exercise = s.Exercise.Name,
-                Muscle = s.Exercise.PrimaryMuscleGroup,
-                Day = s.Exercise.DailyWorkout.Date
-            })
+                s.Rpe))
             .ToListAsync(ct);
 
         decimal totalVolume = 0m;
@@ -456,8 +455,48 @@ public sealed class GetUserAnalysisHandler(
             byMuscle,
             highRpeMisses,
             lowRpeWins,
-            prs
+            prs,
+            BuildRecommendationEvidence(since, today, recentSets, bw)
         );
+    }
+
+    private static AnalysisRecommendationEvidence BuildRecommendationEvidence(
+        DateOnly startDate,
+        DateOnly endDate,
+        IReadOnlyList<RecentSet> recentSets,
+        IReadOnlyList<BodyweightPoint> bodyweight)
+    {
+        var completedSetCount = recentSets.Count;
+        var rpeLoggedCount = recentSets.Count(set => set.Rpe is >= 1m and <= 10m);
+        var facts = new List<AnalysisEvidenceFact>
+        {
+            new("Analysis period", $"{startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}", "Completed training data in the most recent 28-day window."),
+            new("Completed sets", completedSetCount.ToString(), "Only completed sets are included."),
+            new("RPE coverage", $"{Percent(rpeLoggedCount, completedSetCount)}%", $"{rpeLoggedCount} of {completedSetCount} completed sets have a valid RPE."),
+        };
+        var missingData = new List<string>();
+        if (completedSetCount == 0)
+            missingData.Add("Complete and log a workout to unlock training-specific guidance.");
+        if (completedSetCount > 0 && recentSets.All(set => set.ActualReps is null || set.ActualWeight is null))
+            missingData.Add("Log actual reps and weight on completed sets to evaluate performance changes.");
+        if (completedSetCount > 0 && rpeLoggedCount == 0)
+            missingData.Add("Log RPE on working sets to evaluate effort and recovery.");
+        if (bodyweight.Count < 2)
+            missingData.Add("Log bodyweight on at least two dates to evaluate bodyweight trend.");
+
+        var sessions = recentSets
+            .GroupBy(set => new { set.DailyWorkoutId, set.Day, set.Exercise })
+            .Select(group => new AnalysisEvidenceSession(
+                group.Key.DailyWorkoutId,
+                group.Key.Day,
+                group.Key.Exercise,
+                group.Count(),
+                group.Where(set => set.Rpe is >= 1m and <= 10m).Select(set => set.Rpe).DefaultIfEmpty().Average()))
+            .OrderByDescending(session => session.Date)
+            .Take(5)
+            .ToList();
+
+        return new AnalysisRecommendationEvidence(startDate, endDate, facts, sessions, missingData);
     }
 
     private static string ComputeFingerprint(Snapshot snapshot, string language)
@@ -479,6 +518,7 @@ public sealed class GetUserAnalysisHandler(
             HighRpeMissSig = snapshot.HighRpeMisses.Select(e => $"{e.Exercise}:{e.Sets}:{e.AverageRpe}"),
             LowRpeWinSig = snapshot.LowRpeWins.Select(e => $"{e.Exercise}:{e.Sets}:{e.AverageRpe}"),
             PrSig = snapshot.RecentPrs.Select(p => $"{p.Exercise}:{p.Weight}:{p.Reps}:{p.AchievedAt:O}"),
+            EvidenceSig = snapshot.RecommendationEvidence,
         });
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(canonical));
@@ -503,7 +543,8 @@ public sealed class GetUserAnalysisHandler(
         IReadOnlyList<MuscleVolume> MuscleVolumes,
         IReadOnlyList<EffortGapEntry> HighRpeMisses,
         IReadOnlyList<EffortGapEntry> LowRpeWins,
-        IReadOnlyList<PrEntry> RecentPrs
+        IReadOnlyList<PrEntry> RecentPrs,
+        AnalysisRecommendationEvidence RecommendationEvidence
     );
 
     private sealed record ProfileContext(
@@ -546,4 +587,15 @@ public sealed class GetUserAnalysisHandler(
     private sealed record EffortGapEntry(string Exercise, int Sets, decimal AverageRpe, string Pattern);
 
     private sealed record PrEntry(string Exercise, decimal Weight, int Reps, DateTime AchievedAt);
+
+    private sealed record RecentSet(
+        Guid DailyWorkoutId,
+        DateOnly Day,
+        string Exercise,
+        Xenoh.Domain.Enums.MuscleGroup Muscle,
+        int? ActualReps,
+        int PlannedReps,
+        decimal? ActualWeight,
+        decimal? PlannedWeight,
+        decimal? Rpe);
 }

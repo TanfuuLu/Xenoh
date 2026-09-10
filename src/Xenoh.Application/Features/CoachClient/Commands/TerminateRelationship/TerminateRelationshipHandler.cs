@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachClient.Commands.EndRelationship;
 using Xenoh.Application.Common.Interfaces;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Enums;
@@ -7,7 +8,8 @@ namespace Xenoh.Application.Features.CoachClient.Commands.TerminateRelationship;
 
 public sealed class TerminateRelationshipHandler(
     ICoachClientRepository coachClientRepo,
-    ICurrentUserService currentUser
+    ICurrentUserService currentUser,
+    IMediator mediator
 ) : IRequestHandler<TerminateRelationshipCommand>
 {
     public async ValueTask<Unit> Handle(TerminateRelationshipCommand request, CancellationToken cancellationToken)
@@ -21,9 +23,7 @@ public sealed class TerminateRelationshipHandler(
         if (relationship.Status != RelationshipStatus.Pending)
             throw new InvalidOperationException("Only pending join requests can be declined this way. Use POST /api/coach-client/{id}/end to disconnect an established relationship.");
 
-        coachClientRepo.Remove(relationship);
-
-        await coachClientRepo.SaveChangesAsync(cancellationToken);
+        await mediator.Send(new EndRelationshipCommand { RelationshipId = relationship.Id }, cancellationToken);
 
         return Unit.Value;
     }

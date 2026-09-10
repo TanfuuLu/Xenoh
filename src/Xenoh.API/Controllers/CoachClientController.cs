@@ -31,18 +31,8 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
 {
     [HttpPut("accept/{relationshipId:guid}")]
     [Authorize(Policy = SubscriptionPolicies.RequireProCoach)]
-    public async Task<IActionResult> AcceptRequest(Guid relationshipId, CancellationToken ct)
-    {
-        try
-        {
-            var result = await mediator.Send(new AcceptRequestCommand { RelationshipId = relationshipId }, ct);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    public IActionResult AcceptRequest(Guid relationshipId, CancellationToken ct)
+    => StatusCode(StatusCodes.Status410Gone, new { message = "Review and accept a versioned coaching agreement from the relationship page." });
 
     [HttpDelete("{relationshipId:guid}")]
     public async Task<IActionResult> Terminate(Guid relationshipId, CancellationToken ct)
@@ -54,7 +44,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -77,8 +67,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
-    /// Ends the relationship immediately. Either participant may call it; the other
-    /// party is notified, not asked to approve.
+    /// Clients may end coaching. Coach calls create a request requiring client approval.
     /// </summary>
     [HttpPost("{relationshipId:guid}/end")]
     public async Task<IActionResult> End(Guid relationshipId, CancellationToken ct)
@@ -90,72 +79,36 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
-    /// <summary>Deprecated alias for <see cref="End"/>, kept for clients released before
-    /// disconnecting became one-sided. Remove once web and mobile are both updated.</summary>
+    /// <summary>Legacy coach request route; uses the same client-approval rules.</summary>
     [HttpPost("{relationshipId:guid}/request-termination")]
-    [HttpPost("{relationshipId:guid}/accept-termination")]
-    public Task<IActionResult> EndLegacy(Guid relationshipId, CancellationToken ct)
+    public Task<IActionResult> RequestTerminationLegacy(Guid relationshipId, CancellationToken ct)
         => End(relationshipId, ct);
 
-    /// <summary>Deprecated. There is no termination request to reject any more.</summary>
+    [HttpPost("{relationshipId:guid}/accept-termination")]
     [HttpPost("{relationshipId:guid}/reject-termination")]
-    public IActionResult RejectTermination(Guid relationshipId)
+    public IActionResult RespondToTerminationLegacy(Guid relationshipId)
         => StatusCode(StatusCodes.Status410Gone, new
         {
-            message = "Disconnecting no longer needs approval, so there is nothing to reject."
+            message = "Review the coach's ending request and respond from Coach Hub."
         });
 
     public sealed record RequestRenewalRequest(DateOnly ProposedEndDate);
 
     [HttpPost("{relationshipId:guid}/request-renewal")]
-    public async Task<IActionResult> RequestRenewal(Guid relationshipId, [FromBody] RequestRenewalRequest body, CancellationToken ct)
-    {
-        try
-        {
-            await mediator.Send(new RequestRenewalCommand
-            {
-                RelationshipId = relationshipId,
-                ProposedEndDate = body.ProposedEndDate
-            }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    public IActionResult RequestRenewal(Guid relationshipId, [FromBody] RequestRenewalRequest body, CancellationToken ct)
+    => StatusCode(StatusCodes.Status410Gone, new { message = "Review and accept a versioned coaching agreement from the relationship page." });
 
     [HttpPost("{relationshipId:guid}/accept-renewal")]
-    public async Task<IActionResult> AcceptRenewal(Guid relationshipId, CancellationToken ct)
-    {
-        try
-        {
-            await mediator.Send(new AcceptRenewalCommand { RelationshipId = relationshipId }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    public IActionResult AcceptRenewal(Guid relationshipId, CancellationToken ct)
+    => StatusCode(StatusCodes.Status410Gone, new { message = "Review and accept a versioned coaching agreement from the relationship page." });
 
     [HttpPost("{relationshipId:guid}/reject-renewal")]
-    public async Task<IActionResult> RejectRenewal(Guid relationshipId, CancellationToken ct)
-    {
-        try
-        {
-            await mediator.Send(new RejectRenewalCommand { RelationshipId = relationshipId }, ct);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
+    public IActionResult RejectRenewal(Guid relationshipId, CancellationToken ct)
+    => StatusCode(StatusCodes.Status410Gone, new { message = "Review and accept a versioned coaching agreement from the relationship page." });
 
     /// <summary>
     /// [Coach only] Trả về danh sách tất cả clients (Pending + Active).
@@ -217,7 +170,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -238,7 +191,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -267,7 +220,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -286,7 +239,7 @@ public sealed class CoachClientController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

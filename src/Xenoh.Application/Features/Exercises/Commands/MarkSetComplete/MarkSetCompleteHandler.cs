@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -180,12 +181,12 @@ public sealed class MarkSetCompleteHandler(
             return;
 
         var coachId = plan.CreatedByCoachId.Value;
-        var relationship = await db.CoachClientRelationships
+        var relationship = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
             .AsNoTracking()
             .Where(r =>
                 r.CoachId == coachId &&
                 r.ClientId == clientId &&
-                r.Status == RelationshipStatus.Active)
+                r.Status != RelationshipStatus.Ended)
             .Select(r => new { r.Id, r.CoachId, r.ClientId })
             .FirstOrDefaultAsync(cancellationToken);
 

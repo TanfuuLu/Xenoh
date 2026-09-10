@@ -26,7 +26,7 @@ public sealed class UpdateSetPlanHandler(
         var exercise = set.Exercise;
         var plan = exercise.DailyWorkout.WeeklyWorkout.Plan;
 
-        if (plan.OwnerId != userId)
+        if (plan.OwnerId != userId && plan.CreatedByCoachId != userId)
             throw new InvalidOperationException("Access denied.");
 
         if (set.IsCompleted)

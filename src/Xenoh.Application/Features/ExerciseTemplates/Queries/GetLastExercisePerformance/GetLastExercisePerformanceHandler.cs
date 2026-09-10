@@ -1,4 +1,5 @@
 using Mediator;
+using Xenoh.Application.Features.CoachClient;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
 
@@ -21,7 +22,7 @@ public sealed class GetLastExercisePerformanceHandler(
             .AsNoTracking()
             .Where(d => d.Id == request.DailyWorkoutId &&
                         (d.WeeklyWorkout.Plan.OwnerId == userId ||
-                         d.WeeklyWorkout.Plan.CreatedByCoachId == userId))
+                         (d.WeeklyWorkout.Plan.CreatedByCoachId == userId && db.Plans.WritableCoachingPlans(db).Any(p => p.Id == d.WeeklyWorkout.PlanId))))
             .Select(d => new
             {
                 d.Date,

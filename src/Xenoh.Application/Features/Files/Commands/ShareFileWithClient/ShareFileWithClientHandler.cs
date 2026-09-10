@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
@@ -26,10 +27,10 @@ public sealed class ShareFileWithClientHandler(
             .FirstOrDefaultAsync(f => f.Id == request.FileId && f.OwnerId == coachId, cancellationToken)
             ?? throw new InvalidOperationException("File not found or access denied.");
 
-        var isActiveClient = await db.CoachClientRelationships.AnyAsync(
+        var isActiveClient = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).AnyAsync(
             r => r.CoachId == coachId
                  && r.ClientId == request.ClientId
-                 && r.Status == RelationshipStatus.Active,
+                 ,
             cancellationToken);
         if (!isActiveClient)
             throw new InvalidOperationException("This user is not one of your active clients.");

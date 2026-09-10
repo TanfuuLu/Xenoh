@@ -110,6 +110,7 @@ public sealed class CreateExerciseHandlerTests : HandlerTestBase
         };
 
         ctx.ExerciseTemplates.Add(template);
+        StageActiveCoachingRelationship(ctx, clientId, coachId);
         ctx.Plans.Add(plan);
         ctx.WeeklyWorkouts.Add(week);
         ctx.DailyWorkouts.Add(day);

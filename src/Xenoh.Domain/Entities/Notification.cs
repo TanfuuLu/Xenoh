@@ -4,6 +4,8 @@ namespace Xenoh.Domain.Entities;
 
 public class Notification : BaseEntity
 {
+    public Guid? SourceEventId { get; set; }
+    public DateTime? DeliveredAtUtc { get; set; }
     public Guid RecipientId { get; set; }
     public ApplicationUser Recipient { get; set; } = null!;
 

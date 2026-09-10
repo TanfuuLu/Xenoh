@@ -60,7 +60,7 @@ public static class RateLimitingSetup
                     context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds).ToString("0");
 
                 await context.HttpContext.Response.WriteAsJsonAsync(
-                    new { message = "Too many requests. Please retry later." },
+                    new { code = "RATE_LIMITED", message = "Too many requests. Please retry later." },
                     cancellationToken);
             };
         });

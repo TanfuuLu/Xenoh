@@ -47,6 +47,7 @@ public sealed class RedisRateLimitingMiddleware(RequestDelegate next)
 
         await context.Response.WriteAsJsonAsync(new
         {
+            code = lease.IsAvailable ? "RATE_LIMITED" : "RATE_LIMITER_UNAVAILABLE",
             message = lease.IsAvailable
                 ? "Too many requests. Please retry later."
                 : "Rate limiting is temporarily unavailable. Please retry later."

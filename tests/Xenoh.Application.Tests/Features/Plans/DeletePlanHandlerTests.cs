@@ -93,6 +93,7 @@ public sealed class DeletePlanHandlerTests : HandlerTestBase
             StartDate = DateOnly.FromDateTime(DateTime.Today),
             EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(27))
         };
+        StageActiveCoachingRelationship(ctx, clientId, coachId);
         ctx.Plans.Add(plan);
         await ctx.SaveChangesAsync();
         return plan.Id;

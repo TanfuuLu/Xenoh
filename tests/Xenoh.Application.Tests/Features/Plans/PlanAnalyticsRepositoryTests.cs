@@ -91,6 +91,7 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         var coachId = UserId;
         var clientId = Guid.NewGuid();
         await using var seedCtx = CreateContext();
+        StageActiveCoachingRelationship(seedCtx, clientId, coachId);
 
         var coach = new ApplicationUser
         {
@@ -153,6 +154,7 @@ public sealed class PlanAnalyticsRepositoryTests : HandlerTestBase
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var coachId = Guid.NewGuid();
         await using var seedCtx = CreateContext();
+        StageActiveCoachingRelationship(seedCtx, UserId, coachId);
         var plan = new Plan
         {
             Name = "Client Block",

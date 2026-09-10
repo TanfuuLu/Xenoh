@@ -4,6 +4,8 @@ namespace Xenoh.Domain.Entities;
 
 public class CoachInviteCode : BaseEntity
 {
+    public Guid? AgreementId { get; set; }
+    public CoachingAgreement? Agreement { get; set; }
     public Guid CoachId { get; set; }
     public ApplicationUser Coach { get; set; } = null!;
 

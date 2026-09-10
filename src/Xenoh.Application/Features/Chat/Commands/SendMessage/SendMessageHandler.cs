@@ -1,3 +1,4 @@
+using Xenoh.Application.Features.CoachClient;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
@@ -21,12 +22,12 @@ public sealed class SendMessageHandler(
     {
         var senderId = currentUser.UserId;
 
-        var relationship = await db.CoachClientRelationships
+        var relationship = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 r => r.Id == request.RelationshipId
                      && (r.ClientId == senderId || r.CoachId == senderId)
-                     && r.Status == RelationshipStatus.Active,
+                     ,
                 cancellationToken)
             ?? throw new InvalidOperationException(
                 "Relationship not found or you are not a participant.");

@@ -130,6 +130,10 @@ public sealed class GetUserAnalysisMetricsTests : HandlerTestBase
         result.Metrics.EffortGap.HighRpeMisses.Should().Contain(p => p.Exercise == "Squat");
         result.Metrics.EffortGap.LowRpeWins.Should().Contain(p => p.Exercise == "Row");
         result.Metrics.RecentPrs.Should().ContainSingle(p => p.Exercise == "Deadlift" && p.Weight == 150m);
+        result.Evidence.StartDate.Should().Be(today.AddDays(-27));
+        result.Evidence.EndDate.Should().Be(today);
+        result.Evidence.Facts.Should().Contain(fact => fact.Label == "Completed sets" && fact.Value == "3");
+        result.Evidence.Sessions.Should().Contain(session => session.DailyWorkoutId == currentDay.Id && session.Exercise == "Squat");
     }
 
     private GetUserAnalysisHandler CreateHandler(

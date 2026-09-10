@@ -169,6 +169,27 @@ public sealed class MealPlanHandlerTests : HandlerTestBase
         dailyLog.ProteinG.Should().Be(0);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExpiredCoachPrescription_CannotBeCheckedOrUncheckedBeforeWorkerRuns(bool alreadyChecked)
+    {
+        var foodId = await SeedBaseDataAsync(withCoachRelationship: true);
+        await using var ctx = CreateContext();
+        var plan = await CreateUpsertHandler(ctx, CoachId).Handle(CreateCommand(foodId, UserId), default);
+        var itemId = plan.Meals.Single().Items.Single().Id;
+        if (alreadyChecked)
+            await CreateCheckHandler(ctx, UserId).Handle(new(itemId), default);
+        (await ctx.CoachClientRelationships.SingleAsync()).NoticeEndsAtUtc = DateTime.UtcNow.AddSeconds(-1);
+        await ctx.SaveChangesAsync();
+
+        Func<Task> mutate = alreadyChecked
+            ? () => CreateUncheckHandler(ctx, UserId).Handle(new(itemId), default).AsTask()
+            : () => CreateCheckHandler(ctx, UserId).Handle(new(itemId), default).AsTask();
+        await mutate.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await ctx.FoodLogs.CountAsync()).Should().Be(alreadyChecked ? 1 : 0);
+    }
+
     private UpsertMealPlanForDateHandler CreateUpsertHandler(ApplicationDbContext ctx, Guid currentUserId) =>
         new(ctx, FoodLogService(ctx), new CoachClientRepository(ctx), new FakeCurrentUserService(currentUserId));
 

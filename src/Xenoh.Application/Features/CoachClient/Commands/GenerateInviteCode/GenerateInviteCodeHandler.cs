@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using Mapster;
+using Xenoh.Application.Features.CoachClient.Agreements;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Xenoh.Application.Common.Interfaces;
@@ -18,7 +20,10 @@ public sealed class GenerateInviteCodeHandler(
         GenerateInviteCodeCommand request, CancellationToken cancellationToken)
     {
         var coachId = currentUser.UserId;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = Xenoh.Domain.Rules.CoachingPolicy.LocalDate(DateTime.UtcNow);
+        if (!request.Acknowledged || request.Terms is null)
+            throw new InvalidOperationException("Review and acknowledge the coaching agreement before publishing.");
+        var agreement = request.Terms.Publish(coachId, request.CoachingStartDate, request.CoachingEndDate, coachId);
 
         if (request.CoachingStartDate < today)
             throw new InvalidOperationException("Coaching start date cannot be in the past.");
@@ -36,6 +41,8 @@ public sealed class GenerateInviteCodeHandler(
         var inviteCode = new CoachInviteCode
         {
             CoachId = coachId,
+            Agreement = agreement,
+            AgreementId = agreement.Id,
             Code = code,
             CoachingStartDate = request.CoachingStartDate,
             CoachingEndDate = request.CoachingEndDate,
@@ -59,5 +66,5 @@ public sealed class GenerateInviteCodeHandler(
 
     internal static CoachInviteCodeDto ToDto(CoachInviteCode c) =>
         new(c.Id, c.Code, c.CoachingStartDate, c.CoachingEndDate,
-            c.IsUsed, c.UsedByClientId, c.UsedAt, c.CreatedAt);
+            c.IsUsed, c.UsedByClientId, c.UsedAt, c.CreatedAt, c.Agreement?.Adapt<AgreementDto>(), c.Agreement?.RelationshipId);
 }

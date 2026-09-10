@@ -251,7 +251,8 @@ public sealed class MarkSetCompleteHandlerTests : HandlerTestBase
         var handler = CreateHandler(ctx);
 
         await handler.Handle(new MarkSetCompleteCommand { SetId = selfPlanSetId }, CancellationToken.None);
-        await handler.Handle(new MarkSetCompleteCommand { SetId = coachPlanSetId }, CancellationToken.None);
+        var completeExpiredCoaching = () => handler.Handle(new MarkSetCompleteCommand { SetId = coachPlanSetId }, CancellationToken.None).AsTask();
+        await completeExpiredCoaching.Should().ThrowAsync<InvalidOperationException>();
 
         await using var verifyCtx = CreateContext();
         verifyCtx.Messages.Should().BeEmpty();

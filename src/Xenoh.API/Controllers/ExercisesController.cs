@@ -11,6 +11,8 @@ using Xenoh.Application.Features.Exercises.Commands.StartExerciseTimer;
 using Xenoh.Application.Features.Exercises.Commands.SkipExercise;
 using Xenoh.Application.Features.Exercises.Commands.UpdateExercise;
 using Xenoh.Application.Features.Exercises.Commands.UpdateSetPlan;
+using Xenoh.Application.Features.Exercises.Commands.AddExerciseSet;
+using Xenoh.Application.Features.Exercises.Commands.UncompleteSet;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByDay;
 using Xenoh.Application.Features.Exercises.Queries.GetExercisesByWeek;
 
@@ -35,7 +37,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -53,7 +55,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -73,7 +75,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -87,7 +89,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -103,7 +105,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -117,7 +119,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -131,7 +133,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -150,7 +152,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -170,7 +172,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -187,7 +189,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -204,8 +206,22 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
+    }
+
+    [HttpPatch("sets/{setId:guid}/uncomplete")]
+    public async Task<IActionResult> UncompleteSet(Guid setId, CancellationToken ct)
+    {
+        try { return Ok(await mediator.Send(new UncompleteSetCommand { SetId = setId }, ct)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
+    }
+
+    [HttpPost("{exerciseId:guid}/sets")]
+    public async Task<IActionResult> AddSet(Guid exerciseId, CancellationToken ct)
+    {
+        try { return Ok(await mediator.Send(new AddExerciseSetCommand { ExerciseId = exerciseId }, ct)); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpDelete("{exerciseId:guid}")]
@@ -218,7 +234,7 @@ public sealed class ExercisesController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 }

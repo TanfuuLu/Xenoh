@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Xenoh.Application.Features.CoachClient;
 using Xenoh.Application.Common.Interfaces.Repositories;
 using Xenoh.Domain.Entities;
 
@@ -33,14 +34,20 @@ public sealed class SupplementRepository(ApplicationDbContext db) : ISupplementR
     public Task<SupplementDoseSlot?> GetDoseSlotAsync(
         Guid doseSlotId,
         Guid userId,
-        CancellationToken cancellationToken) =>
-        db.SupplementDoseSlots
+        CancellationToken cancellationToken)
+    {
+        var activeRelationships = db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow);
+        return db.SupplementDoseSlots
             .AsNoTracking()
             .Include(x => x.ScheduleVersion)
                 .ThenInclude(x => x.Regimen)
             .SingleOrDefaultAsync(
-                x => x.Id == doseSlotId && x.ScheduleVersion.Regimen.UserId == userId,
+                x => x.Id == doseSlotId && x.ScheduleVersion.Regimen.UserId == userId
+                    && (x.ScheduleVersion.Regimen.CreatedByUserId == null || x.ScheduleVersion.Regimen.CreatedByUserId == userId ||
+                        (!x.ScheduleVersion.Regimen.IsArchived && activeRelationships.Any(r =>
+                            r.ClientId == userId && r.CoachId == x.ScheduleVersion.Regimen.CreatedByUserId))),
                 cancellationToken);
+    }
 
     public Task<SupplementIntakeLog?> GetIntakeForUpdateAsync(
         Guid doseSlotId,
@@ -54,21 +61,21 @@ public sealed class SupplementRepository(ApplicationDbContext db) : ISupplementR
             cancellationToken);
 
     public async Task<IReadOnlyList<SupplementScheduleVersion>> GetScheduleVersionsAsync(
-        Guid userId,
-        DateOnly from,
-        DateOnly to,
-        CancellationToken cancellationToken) =>
-        await db.SupplementScheduleVersions
-            .AsNoTracking()
-            .Where(x =>
-                x.Regimen.UserId == userId &&
-                x.EffectiveFrom <= to &&
+        Guid userId, DateOnly from, DateOnly to, CancellationToken cancellationToken)
+    {
+        var versions = await db.SupplementScheduleVersions.AsNoTracking()
+            .Where(x => x.Regimen.UserId == userId && x.EffectiveFrom <= to &&
                 (x.EffectiveTo == null || x.EffectiveTo >= from))
-            .Include(x => x.Regimen)
-                .ThenInclude(x => x.CreatedByUser)
-            .Include(x => x.DoseSlots)
-            .OrderBy(x => x.EffectiveFrom)
-            .ToListAsync(cancellationToken);
+            .Include(x => x.Regimen).ThenInclude(x => x.CreatedByUser)
+            .Include(x => x.DoseSlots).OrderBy(x => x.EffectiveFrom).ToListAsync(cancellationToken);
+        var activeCoachIds = await db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).AsNoTracking()
+            .Where(r => r.ClientId == userId).Select(r => r.CoachId).ToListAsync(cancellationToken);
+        // Read-only response state: don't schedule doses after the deadline while waiting for the worker.
+        foreach (var version in versions)
+            if (version.Regimen.CreatedByUserId is { } author && author != userId && !activeCoachIds.Contains(author))
+                version.Regimen.IsArchived = true;
+        return versions;
+    }
 
     public async Task<IReadOnlyList<SupplementIntakeLog>> GetIntakesAsync(
         Guid userId,
@@ -83,7 +90,7 @@ public sealed class SupplementRepository(ApplicationDbContext db) : ISupplementR
                 x.ScheduledDate <= to)
             .ToListAsync(cancellationToken);
 
-    public async Task DeleteCoachRegimensForClientAsync(
+    public async Task ArchiveCoachRegimensForClientAsync(
         Guid clientId,
         Guid coachId,
         CancellationToken cancellationToken)
@@ -94,8 +101,15 @@ public sealed class SupplementRepository(ApplicationDbContext db) : ISupplementR
                 .ThenInclude(x => x.DoseSlots)
             .ToListAsync(cancellationToken);
 
-        await RemoveIntakeLogsAsync(regimens, cancellationToken);
-        db.SupplementRegimens.RemoveRange(regimens);
+        var today = Xenoh.Domain.Rules.CoachingPolicy.LocalDate(DateTime.UtcNow);
+        foreach (var regimen in regimens)
+        {
+            regimen.IsArchived = true;
+            regimen.UpdatedAt = DateTime.UtcNow;
+            foreach (var version in regimen.ScheduleVersions)
+                if (version.EffectiveTo == null || version.EffectiveTo >= today)
+                    version.EffectiveTo = today;
+        }
     }
 
     public async Task RemoveRegimenAsync(

@@ -29,7 +29,7 @@ public sealed class CommunityController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
@@ -41,7 +41,7 @@ public sealed class CommunityController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> UpdateSettings([FromBody] UpdateCommunitySettingsCommand command, CancellationToken ct)
     {
         try { return Ok(await mediator.Send(command, ct)); }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") }); }
     }
 
     [HttpGet("users/{userId:guid}")]
@@ -54,7 +54,7 @@ public sealed class CommunityController(IMediator mediator) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return NotFound(new { message = Xenoh.API.Security.ApiErrorMessages.Safe(ex.Message, "The request could not be completed.") });
         }
     }
 
