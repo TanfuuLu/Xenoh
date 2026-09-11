@@ -57,31 +57,71 @@ public sealed class CoachClientRepository(ApplicationDbContext db) : ICoachClien
             .Select(CoachRelationshipMapper.ResponseProjection)
             .FirstOrDefaultAsync(ct);
 
-    public Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct) =>
-        db.CoachClientRelationships
-          .AsNoTracking()
-          .Where(r => r.CoachId == coachId)
-          .Where(r => r.Status != RelationshipStatus.Ended)
-          .OrderByDescending(r => r.CreatedAt)
-          .Select(r => new ClientResponse(
-              r.Id,
-              r.ClientId,
-              $"{r.Client.FirstName} {r.Client.LastName}",
-              r.Client.Email!,
-              Xenoh.Domain.Rules.CoachingPolicy.DisplayStatus(r, DateTime.UtcNow),
-              r.CreatedAt,
-              db.CoachClientRelationships.EffectiveAt(DateTime.UtcNow).Any(active => active.Id == r.Id) ? db.WorkoutHistories
-                .AsNoTracking()
-                .Where(w => w.UserId == r.ClientId)
-                .OrderByDescending(w => w.Date)
-                .Select(w => (DateOnly?)w.Date)
-                .FirstOrDefault() : null,
-              r.TerminationRequestedBy,
-              r.StartDate,
-              r.EndDate,
-              r.RenewalRequestedBy,
-              r.ProposedEndDate))
-          .ToListAsync(ct);
+    public async Task<List<ClientResponse>> GetAllByCoachAsync(Guid coachId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var relationships = await db.CoachClientRelationships
+            .AsNoTracking()
+            .Where(r => r.CoachId == coachId && r.Status != RelationshipStatus.Ended)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new ClientListing(
+                r.Id,
+                r.ClientId,
+                r.Client.FirstName,
+                r.Client.LastName,
+                r.Client.Email!,
+                r.Status,
+                r.CreatedAt,
+                r.TerminationRequestedBy,
+                r.StartDate,
+                r.EndDate,
+                r.RenewalRequestedBy,
+                r.ProposedEndDate,
+                r.NoticeEndsAtUtc,
+                db.CoachClientRelationships.EffectiveAt(now).Any(active => active.Id == r.Id) ? db.WorkoutHistories
+                    .AsNoTracking()
+                    .Where(w => w.UserId == r.ClientId)
+                    .OrderByDescending(w => w.Date)
+                    .Select(w => (DateOnly?)w.Date)
+                    .FirstOrDefault() : null))
+            .ToListAsync(ct);
+
+        return relationships.Select(r => new ClientResponse(
+            r.Id,
+            r.ClientId,
+            $"{r.FirstName} {r.LastName}",
+            r.Email,
+            Xenoh.Domain.Rules.CoachingPolicy.DisplayStatus(new CoachClientRelationship
+            {
+                Status = r.Status,
+                StartDate = r.StartDate,
+                EndDate = r.EndDate,
+                NoticeEndsAtUtc = r.NoticeEndsAtUtc,
+            }, now),
+            r.CreatedAt,
+            r.LastWorkoutCompletedAt,
+            r.TerminationRequestedBy,
+            r.StartDate,
+            r.EndDate,
+            r.RenewalRequestedBy,
+            r.ProposedEndDate)).ToList();
+    }
+
+    private sealed record ClientListing(
+        Guid Id,
+        Guid ClientId,
+        string FirstName,
+        string LastName,
+        string Email,
+        RelationshipStatus Status,
+        DateTime CreatedAt,
+        Guid? TerminationRequestedBy,
+        DateOnly StartDate,
+        DateOnly? EndDate,
+        Guid? RenewalRequestedBy,
+        DateOnly? ProposedEndDate,
+        DateTime? NoticeEndsAtUtc,
+        DateOnly? LastWorkoutCompletedAt);
 
     public Task<int> CountActiveByCoachAsync(Guid coachId, CancellationToken ct) =>
         db.CoachClientRelationships

@@ -27,6 +27,14 @@ public interface IDocumentStorageService
         Stream content,
         CancellationToken cancellationToken);
 
+    /// <summary>Validates and stores a JPEG, PNG, or WebP check-in image privately.</summary>
+    Task<string> SaveProgressPhotoAsync(
+        Guid ownerId,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Returns a short-lived presigned GET URL. When <paramref name="inline"/> is
     /// false (default) the object downloads as an attachment with the given file name;

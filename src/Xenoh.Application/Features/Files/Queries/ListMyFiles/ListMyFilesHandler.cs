@@ -35,7 +35,10 @@ public sealed class ListMyFilesHandler(
                     .ToList()))
             .ToListAsync(cancellationToken);
 
-        var usedBytes = files.Sum(f => f.SizeBytes);
+        var usedBytes = files.Sum(f => f.SizeBytes)
+            + await db.ProgressPhotos
+                .Where(f => f.ProgressCheckIn.OwnerId == userId)
+                .SumAsync(f => f.SizeBytes, cancellationToken);
 
         return new MyFilesResponse(
             usedBytes,

@@ -74,6 +74,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<WebsiteBugReport> WebsiteBugReports => Set<WebsiteBugReport>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<StoredFileShare> StoredFileShares => Set<StoredFileShare>();
+    public DbSet<ProgressCheckIn> ProgressCheckIns => Set<ProgressCheckIn>();
+    public DbSet<ProgressPhoto> ProgressPhotos => Set<ProgressPhoto>();
     public DbSet<PromotionCode> PromotionCodes => Set<PromotionCode>();
     public DbSet<AccountDeletionRequest> AccountDeletionRequests => Set<AccountDeletionRequest>();
     public DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs => Set<AccountDeletionAuditLog>();

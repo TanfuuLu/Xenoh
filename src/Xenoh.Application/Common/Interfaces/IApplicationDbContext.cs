@@ -75,6 +75,8 @@ public interface IApplicationDbContext
     DbSet<WebsiteBugReport> WebsiteBugReports { get; }
     DbSet<StoredFile> StoredFiles { get; }
     DbSet<StoredFileShare> StoredFileShares { get; }
+    DbSet<ProgressCheckIn> ProgressCheckIns { get; }
+    DbSet<ProgressPhoto> ProgressPhotos { get; }
     DbSet<PromotionCode> PromotionCodes { get; }
     DbSet<AccountDeletionRequest> AccountDeletionRequests { get; }
     DbSet<AccountDeletionAuditLog> AccountDeletionAuditLogs { get; }

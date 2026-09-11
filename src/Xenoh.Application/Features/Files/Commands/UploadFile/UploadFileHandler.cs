@@ -34,6 +34,10 @@ public sealed class UploadFileHandler(
             .Where(f => f.OwnerId == userId)
             .SumAsync(f => f.SizeBytes, cancellationToken);
 
+        usedBytes += await db.ProgressPhotos
+            .Where(f => f.ProgressCheckIn.OwnerId == userId)
+            .SumAsync(f => f.SizeBytes, cancellationToken);
+
         if (usedBytes + request.Length > quota)
             throw new InvalidOperationException(
                 $"Storage quota exceeded. You have {FormatBytes(Math.Max(0, quota - usedBytes))} of {FormatBytes(quota)} remaining.");

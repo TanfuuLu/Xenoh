@@ -57,6 +57,24 @@ public sealed class DocumentStorageService : IDocumentStorageService
         return await PutAsync(key, extension, buffered, cancellationToken);
     }
 
+    public async Task<string> SaveProgressPhotoAsync(
+        Guid ownerId,
+        string fileName,
+        string contentType,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+
+        await using var buffered = new MemoryStream();
+        await content.CopyToAsync(buffered, cancellationToken);
+        var extension = ValidateProgressImageAndGetExtension(buffered.ToArray(), fileName);
+        buffered.Position = 0;
+
+        var key = $"progress-photos/{ownerId:N}/{Guid.NewGuid():N}{extension}";
+        return await PutAsync(key, extension, buffered, cancellationToken);
+    }
+
     private async Task<string> PutAsync(
         string key, string extension, Stream content, CancellationToken cancellationToken)
     {
@@ -178,6 +196,25 @@ public sealed class DocumentStorageService : IDocumentStorageService
         if (!signatureOk)
             throw new InvalidOperationException(
                 $"The file does not look like a valid {expectedKind} (got {bytes.Length} bytes).");
+
+        return ext;
+    }
+
+    private static string ValidateProgressImageAndGetExtension(byte[] bytes, string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        var valid = ext switch
+        {
+            ".png" => IsPng(bytes),
+            ".jpg" or ".jpeg" => IsJpeg(bytes),
+            ".webp" => IsWebp(bytes),
+            _ => false
+        };
+
+        if (ext is not (".png" or ".jpg" or ".jpeg" or ".webp"))
+            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+        if (!valid)
+            throw new InvalidOperationException("The file does not look like a valid image.");
 
         return ext;
     }

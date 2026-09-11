@@ -55,6 +55,9 @@ public sealed class AccountDeletionObjectCleanerTests
         public Task<string> SaveChatAttachmentAsync(Guid senderId, string fileName, string contentType, Stream content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<string> SaveProgressPhotoAsync(Guid ownerId, string fileName, string contentType, Stream content, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<string> GetPresignedDownloadUrlAsync(string storageKey, string downloadFileName, CancellationToken cancellationToken, bool inline = false) =>
             throw new NotSupportedException();
     }
